@@ -3,16 +3,60 @@
  * 단일 웹 세션으로 https://gdjs.link/ 표시
  */
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import WebViewContainer from '@/components/webview-container';
+import OfflineScreen from '@/components/offline-screen';
+import WebViewContainer, { webViewControls } from '@/components/webview-container';
 import { APP_CONFIG } from '@/constants/app-config';
+import { useIsOnline } from '@/hooks/use-network-status';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const { safeArea, statusBar, navigationBar } = APP_CONFIG;
+  const { safeArea, statusBar, navigationBar, offline } = APP_CONFIG;
+
+  // 네트워크 상태
+  const isOnline = useIsOnline();
+  const [showOffline, setShowOffline] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const wasOffline = useRef(false);
+
+  // 오프라인 상태 감지
+  useEffect(() => {
+    if (!offline.enabled) return;
+
+    if (!isOnline) {
+      // 오프라인으로 전환
+      setShowOffline(true);
+      wasOffline.current = true;
+    } else if (wasOffline.current && isOnline) {
+      // 온라인으로 복구됨
+      setIsReconnecting(true);
+      
+      if (offline.autoReconnect) {
+        // 자동 새로고침
+        setTimeout(() => {
+          webViewControls.reload();
+          setShowOffline(false);
+          setIsReconnecting(false);
+          wasOffline.current = false;
+        }, 500);
+      } else {
+        setIsReconnecting(false);
+      }
+    }
+  }, [isOnline, offline.enabled, offline.autoReconnect]);
+
+  // 수동 재시도
+  const handleRetry = useCallback(() => {
+    if (isOnline) {
+      webViewControls.reload();
+      setShowOffline(false);
+      wasOffline.current = false;
+    }
+  }, [isOnline]);
 
   // SafeArea 배경색 (다크모드 지원)
   const safeAreaBgColor = colorScheme === 'dark' 
@@ -60,6 +104,14 @@ export default function HomeScreen() {
             { height: insets.top, backgroundColor: statusBar.overlayColor }
           ]} 
           pointerEvents="none"
+        />
+      )}
+
+      {/* 오프라인 화면 */}
+      {showOffline && (
+        <OfflineScreen 
+          onRetry={handleRetry}
+          isReconnecting={isReconnecting}
         />
       )}
     </View>

@@ -87,6 +87,24 @@ export const APP_CONFIG = {
     retryCount: 3,
   },
 
+  // 오프라인 화면 설정
+  offline: {
+    // 오프라인 감지 활성화
+    enabled: true,
+    // 오프라인 화면 제목
+    title: '인터넷 연결 없음',
+    // 오프라인 화면 메시지
+    message: '네트워크 연결을 확인해주세요.\nWi-Fi 또는 모바일 데이터가\n활성화되어 있는지 확인하세요.',
+    // 재시도 버튼 텍스트
+    retryButtonText: '다시 시도',
+    // 배경색
+    backgroundColor: '#ffffff',
+    // 다크모드 배경색
+    darkBackgroundColor: '#1a1a1a',
+    // 자동 재연결 시도 (온라인 복구 시 자동 새로고침)
+    autoReconnect: true,
+  },
+
   // 상태바 & SafeArea 설정
   statusBar: {
     // 상태바 표시 여부
