@@ -1,4 +1,4 @@
-# 리엑트네이티브 + EXPO + 웹앱 래퍼
+# 리엑트네이티브 + EXPO + 웹앱 래퍼 템플릿
 
 
 ## 환경 설정
@@ -11,6 +11,19 @@ constants\app-config.ts 에서 가능
 constants\theme.ts 에서 가능
 ```
 
+## 스플레시 화면
+```
+components\custom-splash.tsx 에서 구성됨
+(환경설정의 영향받음)
+```
+
+## 오프라인 화면
+```
+components\offline-screen.tsx 에서 구성됨
+(환경설정의 영향받음)
+```
+
+
 ##  브릿지 시스템
 
 ```text
@@ -18,6 +31,8 @@ constants\theme.ts 에서 가능
 앱 → 웹: native://액션명
 ```
 
+
+### 웹 기준
 ```javascript
 // 앱 환경 체크
 if (window.AppBridge?.isApp()) {
@@ -37,8 +52,7 @@ if (window.AppBridge?.isApp()) {
 }
 ```
 
-
-### 커스텀 핸들러 추가
+### 네이티브 구성 기준 (커스텀 핸들러 추가 예시 등)
 ```javascript
 import { registerHandler, sendToWeb } from '@/lib/bridge';
 
