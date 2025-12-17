@@ -32,6 +32,16 @@ components\offline-screen.tsx 에서 구성됨
 ```
 
 
+### 통신 방향별 함수 관계
+
+| 방향 | 송신 측 | 수신 측 | 설명 |
+|------|--------|--------|------|
+| **웹 → 앱** | `AppBridge.send()` | `registerHandler()` | 단방향 전송 (응답 없음) |
+| **웹 → 앱** | `AppBridge.call()` | `registerHandler()` | 요청 후 응답 대기 (Promise) |
+| **앱 → 웹** | `sendToWeb()` | `AppBridge.on()` | 단방향 전송 (응답 없음) |
+| **앱 → 웹** | `callWeb()` | `AppBridge.on()` | 요청 후 응답 대기 (Promise) |
+
+
 ### 웹 기준
 ```javascript
 // 앱 환경 체크
@@ -104,13 +114,13 @@ interface Window {
 ```javascript
 import { registerHandler, sendToWeb } from '@/lib/bridge';
 
-// 핸들러 등록
+// 동작 핸들러 등록
 registerHandler('myCustomAction', (payload, respond) => {
   console.log('받은 데이터:', payload);
   respond({ result: 'success' });
 });
 
-// 앱에서 웹으로 메시지 전송
+// 앱에서 웹으로 메시지 전송 (웹에서 on 메서드로 대기하고 있을 때)
 sendToWeb('notification', { title: '알림', body: '내용' });
 ```
 
