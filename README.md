@@ -19,12 +19,12 @@ Select your language:
 
 ## ✨ Features
 
-- 🌐 **WebView Wrapper** - Wrap any web application as a native app
-- 🔌 **Bridge System** - Bidirectional communication between Web ↔ App
-- 📱 **Cross Platform** - Android & iOS support
-- 🎨 **Custom Splash Screen** - Configurable splash screen
-- 📶 **Offline Support** - Custom offline screen
-- 🔧 **Built-in Handlers** - Toast, vibration, clipboard, and more
+-  **WebView Wrapper** - Wrap any web application as a native app
+-  **Bridge System** - Bidirectional communication between Web ↔ App
+-  **Cross Platform** - Android & iOS support
+-  **Custom Splash Screen** - Configurable splash screen
+-  **Offline Support** - Custom offline screen
+-  **Built-in Handlers** - Toast, vibration, clipboard, and more
 
 
 ---
@@ -118,7 +118,7 @@ MIT License
 ---
 
 
-## 👥 Contributors
+## Contributors
 
 <a href="https://github.com/taxi-tabby">
   <img src="https://github.com/taxi-tabby.png" width="50" height="50" alt="taxi-tabby" style="border-radius: 50%;" />
