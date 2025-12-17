@@ -17,6 +17,7 @@ import {
 import { WebView } from 'react-native-webview';
 import type {
   WebViewErrorEvent,
+  WebViewHttpErrorEvent,
   WebViewMessageEvent,
   WebViewNavigation,
 } from 'react-native-webview/lib/WebViewTypes';
@@ -31,6 +32,9 @@ import { BRIDGE_CLIENT_SCRIPT } from '@/lib/bridge-client';
 
 // WebView 인스턴스를 전역에서 접근 가능하도록 (네비게이션 제어용)
 export let webViewRef: React.RefObject<WebView | null>;
+
+// 로딩 타임아웃 (ms)
+const LOADING_TIMEOUT = 30000;
 
 interface WebViewError {
   code: number;
@@ -47,21 +51,53 @@ export default function WebViewContainer() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [error, setError] = useState<WebViewError | null>(null);
   const hasLoadedOnce = useRef(false);
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { webview, theme } = APP_CONFIG;
 
-  // 브릿지 초기화
+  // 브릿지 초기화 (최초 1회)
   useEffect(() => {
     registerBuiltInHandlers();
   }, []);
 
-  // WebView ref 변경 시 브릿지에 설정
+  // WebView ref 설정
   useEffect(() => {
-    if (ref.current) {
-      setBridgeWebView(ref.current);
-    }
+    setBridgeWebView(ref.current);
     return () => setBridgeWebView(null);
-  }, [ref.current]);
+  }, []);
+
+  // 로딩 타임아웃 클리어
+  const clearLoadingTimeout = useCallback(() => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+  }, []);
+
+  // 로딩 타임아웃 설정
+  const startLoadingTimeout = useCallback(() => {
+    clearLoadingTimeout();
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!hasLoadedOnce.current) {
+        console.warn('[WebView] Loading timeout');
+        setError({
+          code: -1,
+          description: '페이지 로딩 시간이 초과되었습니다.',
+          url: webview.baseUrl,
+        });
+        setIsInitialLoading(false);
+        // 스플래시도 숨김
+        import('@/app/_layout').then(({ hideSplashScreen }) => {
+          hideSplashScreen();
+        });
+      }
+    }, LOADING_TIMEOUT);
+  }, [clearLoadingTimeout, webview.baseUrl]);
+
+  // 컴포넌트 언마운트 시 타임아웃 클리어
+  useEffect(() => {
+    return () => clearLoadingTimeout();
+  }, [clearLoadingTimeout]);
 
   // Android 하드웨어 뒤로가기 버튼 처리
   useFocusEffect(
@@ -89,28 +125,31 @@ export default function WebViewContainer() {
   const handleLoadStart = useCallback(() => {
     if (!hasLoadedOnce.current) {
       setIsInitialLoading(true);
+      startLoadingTimeout(); // 타임아웃 시작
     }
     setError(null);
-  }, []);
+  }, [startLoadingTimeout]);
 
   // 스플래시 숨기기 헬퍼
   const doHideSplash = useCallback(() => {
+    clearLoadingTimeout(); // 타임아웃 클리어
     const { minDisplayTime } = APP_CONFIG.splash;
     setTimeout(() => {
       import('@/app/_layout').then(({ hideSplashScreen }) => {
         hideSplashScreen();
       });
     }, minDisplayTime);
-  }, []);
+  }, [clearLoadingTimeout]);
 
   // 로드 완료
   const handleLoadEnd = useCallback(() => {
+    clearLoadingTimeout(); // 타임아웃 클리어
     if (!hasLoadedOnce.current) {
       hasLoadedOnce.current = true;
       setIsInitialLoading(false);
       doHideSplash();
     }
-  }, [doHideSplash]);
+  }, [doHideSplash, clearLoadingTimeout]);
 
   // 웹에서 보내는 메시지 처리
   const handleMessage = useCallback((event: WebViewMessageEvent) => {
@@ -136,9 +175,12 @@ export default function WebViewContainer() {
       // JSON이 아닌 메시지는 무시
     }
   }, [doHideSplash]);
+
   // 에러 처리 - 에러 시에도 스플래시 숨김
   const handleError = useCallback((event: WebViewErrorEvent) => {
+    clearLoadingTimeout();
     const { nativeEvent } = event;
+    console.error('[WebView] Error:', nativeEvent.code, nativeEvent.description);
     setError({
       code: nativeEvent.code,
       description: nativeEvent.description,
@@ -146,11 +188,32 @@ export default function WebViewContainer() {
     });
     setIsInitialLoading(false);
     doHideSplash();
-  }, [doHideSplash]);
+  }, [doHideSplash, clearLoadingTimeout]);
+
+  // HTTP 에러 처리 (404, 500 등)
+  const handleHttpError = useCallback((event: WebViewHttpErrorEvent) => {
+    const { nativeEvent } = event;
+    const statusCode = nativeEvent.statusCode;
+    console.error('[WebView] HTTP Error:', statusCode, nativeEvent.url);
+    
+    // 4xx, 5xx 에러만 처리
+    if (statusCode >= 400) {
+      clearLoadingTimeout();
+      setError({
+        code: statusCode,
+        description: `HTTP 오류 ${statusCode}`,
+        url: nativeEvent.url,
+      });
+      setIsInitialLoading(false);
+      doHideSplash();
+    }
+  }, [doHideSplash, clearLoadingTimeout]);
 
   // 재시도 핸들러
   const handleRetry = useCallback(() => {
+    hasLoadedOnce.current = false; // 로드 상태 리셋
     setError(null);
+    setIsInitialLoading(true);
     ref.current?.reload();
   }, []);
 
@@ -207,7 +270,17 @@ export default function WebViewContainer() {
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
+        onHttpError={handleHttpError}
         onMessage={handleMessage}
+        // 렌더링 프로세스 종료 시 자동 재로드
+        onRenderProcessGone={() => {
+          console.warn('[WebView] Render process gone, reloading...');
+          ref.current?.reload();
+        }}
+        onContentProcessDidTerminate={() => {
+          console.warn('[WebView] Content process terminated, reloading...');
+          ref.current?.reload();
+        }}
         // 브릿지 클라이언트 + 페이지 로드 스크립트 주입
         injectedJavaScript={`
           ${BRIDGE_CLIENT_SCRIPT}
