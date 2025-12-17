@@ -2,6 +2,9 @@
 
 A template for wrapping web applications as native mobile apps using React Native and Expo.
 
+> **Note:** Code comments in this project are written in Korean.
+
+
 ## 📖 Documentation
 
 Select your language:
