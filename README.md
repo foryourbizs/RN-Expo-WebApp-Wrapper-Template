@@ -52,6 +52,53 @@ if (window.AppBridge?.isApp()) {
 }
 ```
 
+타입스크립트의 경우 분명 타입이 없어 에러가 날 것.
+
+해결하고 싶다면 아래와 같은 파일을 구성해서 타입을 직접 정의할 필요 있음.
+```typescript
+# globals.d.ts (이런거 하나 만들어서)
+
+
+interface AppBridge {
+  /** 앱으로 메시지 전송 (응답 없음) */
+  send(action: string, payload?: Record<string, unknown>): void;
+  
+  /** 앱으로 메시지 전송 후 응답 대기 */
+  call<T = unknown>(action: string, payload?: Record<string, unknown>, timeout?: number): Promise<T>;
+  
+  /** 앱에서 온 메시지 리스너 등록 ('*'로 모든 메시지 수신 가능) */
+  on(action: string, callback: (payload: unknown, message?: unknown) => void): void;
+  
+  /** 등록된 리스너 해제 */
+  off(action: string, callback?: (payload: unknown, message?: unknown) => void): void;
+  
+  /** 앱 환경인지 체크 */
+  isApp(): boolean;
+  
+  /** 버전 */
+  version: string;
+}
+
+interface Window {
+  AppBridge?: AppBridge;
+}
+
+//요로코롬 정의하면 됨.
+
+```
+
+
+### AppBridge 메서드
+
+| 메서드 | 설명 |
+|--------|------|
+| `send(action, payload)` | 앱으로 메시지 전송 (응답 없음) |
+| `call(action, payload, timeout)` | 앱으로 메시지 전송 후 응답 대기 (Promise 반환) |
+| `on(action, callback)` | 앱에서 온 메시지 리스너 등록 (`*`로 모든 메시지 수신 가능) |
+| `off(action, callback)` | 등록된 리스너 해제 |
+| `isApp()` | 앱 환경인지 체크 (ReactNativeWebView 존재 여부) |
+
+
 ### 네이티브 구성 기준 (커스텀 핸들러 추가 예시 등)
 ```javascript
 import { registerHandler, sendToWeb } from '@/lib/bridge';
