@@ -65,3 +65,11 @@ registerHandler('myCustomAction', (payload, respond) => {
 // 앱에서 웹으로 메시지 전송
 sendToWeb('notification', { title: '알림', body: '내용' });
 ```
+
+
+## 빌드
+```
+윈도우는 build.bat 사용하여 대화형으로 빌드함(편의성 때문)
+
+맥은 모르겠다.. 내가 없네.
+```
