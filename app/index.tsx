@@ -12,7 +12,7 @@ import { APP_CONFIG } from '@/constants/app-config';
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const { safeArea, statusBar } = APP_CONFIG;
+  const { safeArea, statusBar, navigationBar } = APP_CONFIG;
 
   // SafeArea 배경색 (다크모드 지원)
   const safeAreaBgColor = colorScheme === 'dark' 
@@ -30,6 +30,8 @@ export default function HomeScreen() {
   };
 
   const getBottomInset = () => {
+    // 네비게이션 바가 숨김이면 하단 SafeArea도 없음 (웹뷰가 하단까지 확장)
+    if (navigationBar.visibility === 'hidden') return 0;
     if (!safeArea.enabled) return 0;
     if (safeArea.edges === 'none') return 0;
     if (safeArea.edges === 'top') return 0;

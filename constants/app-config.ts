@@ -113,6 +113,30 @@ export const APP_CONFIG = {
     translucent: true,
   },
 
+  // 하단 네비게이션 바 설정 (Android 전용)
+  navigationBar: {
+    // 네비게이션 바 표시 모드
+    // 'visible': 항상 표시
+    // 'hidden': 숨김 (스와이프로 나타남)
+    visibility: 'hidden' as 'visible' | 'hidden',
+    
+    // 숨김 시 동작 방식 (visibility가 'hidden'일 때만 유효)
+    // 'overlay-swipe': 스와이프하면 오버레이로 나타남 (컨텐츠 유지)
+    // 'inset-swipe': 스와이프하면 나타남 (컨텐츠 밀림)
+    behavior: 'overlay-swipe' as 'overlay-swipe' | 'inset-swipe',
+    
+    // 네비게이션 바 배경색 (Hex)
+    backgroundColor: '#ffffff',
+    
+    // 다크모드 네비게이션 바 배경색
+    darkBackgroundColor: '#000000',
+    
+    // 네비게이션 바 버튼 스타일
+    // 'light': 밝은 버튼 (어두운 배경용)
+    // 'dark': 어두운 버튼 (밝은 배경용)
+    buttonStyle: 'dark' as 'light' | 'dark',
+  },
+
   // SafeArea 설정
   safeArea: {
     // SafeArea 사용 여부 (false면 웹뷰가 상태바 뒤까지 확장)
