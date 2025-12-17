@@ -24,13 +24,15 @@ components\offline-screen.tsx 에서 구성됨
 ```
 
 
-##  브릿지 시스템
+---
+
+
+## 브릿지 시스템
 
 ```text
 웹 → 앱: app://액션명
 앱 → 웹: native://액션명
 ```
-
 
 ### 통신 방향별 함수 관계
 
@@ -42,7 +44,12 @@ components\offline-screen.tsx 에서 구성됨
 | **앱 → 웹** | `callWeb()` | `AppBridge.on()` | 요청 후 응답 대기 (Promise) |
 
 
-### 웹 기준
+---
+
+
+### 웹 (JavaScript)
+
+#### 사용 예시
 ```javascript
 // 앱 환경 체크
 if (window.AppBridge?.isApp()) {
@@ -62,12 +69,22 @@ if (window.AppBridge?.isApp()) {
 }
 ```
 
-타입스크립트의 경우 분명 타입이 없어 에러가 날 것.
+#### AppBridge 메서드
 
-해결하고 싶다면 아래와 같은 파일을 구성해서 타입을 직접 정의할 필요 있음.
+| 메서드 | 설명 |
+|--------|------|
+| `send(action, payload)` | 앱으로 메시지 전송 (응답 없음) |
+| `call(action, payload, timeout)` | 앱으로 메시지 전송 후 응답 대기 (Promise 반환) |
+| `on(action, callback)` | 앱에서 온 메시지 리스너 등록 (`*`로 모든 메시지 수신 가능) |
+| `off(action, callback)` | 등록된 리스너 해제 |
+| `isApp()` | 앱 환경인지 체크 (ReactNativeWebView 존재 여부) |
+
+#### TypeScript 타입 정의
+
+타입스크립트의 경우 타입이 없어 에러가 날 수 있음. 아래와 같이 정의 파일을 만들어 해결.
+
 ```typescript
-# globals.d.ts (이런거 하나 만들어서)
-
+// globals.d.ts
 
 interface AppBridge {
   /** 앱으로 메시지 전송 (응답 없음) */
@@ -92,40 +109,29 @@ interface AppBridge {
 interface Window {
   AppBridge?: AppBridge;
 }
-
-//요로코롬 정의하면 됨.
-
 ```
 
 
-### AppBridge 메서드
-
-| 메서드 | 설명 |
-|--------|------|
-| `send(action, payload)` | 앱으로 메시지 전송 (응답 없음) |
-| `call(action, payload, timeout)` | 앱으로 메시지 전송 후 응답 대기 (Promise 반환) |
-| `on(action, callback)` | 앱에서 온 메시지 리스너 등록 (`*`로 모든 메시지 수신 가능) |
-| `off(action, callback)` | 등록된 리스너 해제 |
-| `isApp()` | 앱 환경인지 체크 (ReactNativeWebView 존재 여부) |
+---
 
 
+### React Native (앱)
 
-### 네이티브 구성 기준 (커스텀 핸들러 추가 예시 등)
+#### 사용 예시
 ```javascript
 import { registerHandler, sendToWeb } from '@/lib/bridge';
 
-// 동작 핸들러 등록
+// 웹에서 호출할 핸들러 등록
 registerHandler('myCustomAction', (payload, respond) => {
   console.log('받은 데이터:', payload);
   respond({ result: 'success' });
 });
 
-// 앱에서 웹으로 메시지 전송 (웹에서 on 메서드로 대기하고 있을 때)
+// 앱에서 웹으로 메시지 전송 (웹에서 on 메서드로 대기)
 sendToWeb('notification', { title: '알림', body: '내용' });
 ```
 
-
-### 브릿지 함수 (React Native 측)
+#### 브릿지 함수
 
 | 함수 | 설명 |
 |------|------|
@@ -138,6 +144,8 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `callWeb(action, payload, timeout)` | 앱에서 웹으로 요청 후 응답 대기 (Promise) |
 | `registerBuiltInHandlers()` | 기본 내장 핸들러 일괄 등록 |
 
+
+---
 
 
 ### 기본 내장 핸들러 (Built-in Handlers)
@@ -157,8 +165,11 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `hideSplash` | - | - | 스플래시 화면 숨기기 |
 
 
+---
+
 
 ## 빌드
+
 ```
 윈도우는 build.bat 사용하여 대화형으로 빌드함(편의성 때문)
 
