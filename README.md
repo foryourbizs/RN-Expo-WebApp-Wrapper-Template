@@ -99,6 +99,7 @@ interface Window {
 | `isApp()` | 앱 환경인지 체크 (ReactNativeWebView 존재 여부) |
 
 
+
 ### 네이티브 구성 기준 (커스텀 핸들러 추가 예시 등)
 ```javascript
 import { registerHandler, sendToWeb } from '@/lib/bridge';
@@ -112,6 +113,24 @@ registerHandler('myCustomAction', (payload, respond) => {
 // 앱에서 웹으로 메시지 전송
 sendToWeb('notification', { title: '알림', body: '내용' });
 ```
+
+
+### 기본 내장 핸들러 (Built-in Handlers)
+
+| 액션명 | 페이로드 | 응답 | 설명 |
+|--------|----------|------|------|
+| `getDeviceInfo` | - | `{ platform, version, isTV }` | 디바이스 정보 조회 |
+| `getAppInfo` | - | `{ name, version, bundleId }` | 앱 정보 조회 |
+| `showToast` | `{ message, duration? }` | - | 토스트 메시지 표시 (iOS: Alert) |
+| `vibrate` | `{ pattern?: number[] }` | - | 진동 발생 |
+| `copyToClipboard` | `{ text }` | `{ success }` | 클립보드에 텍스트 복사 |
+| `getClipboard` | - | `{ success, text }` | 클립보드 텍스트 읽기 |
+| `openExternalUrl` | `{ url }` | `{ success }` | 외부 URL 열기 |
+| `goBack` | - | - | WebView 뒤로가기 |
+| `goForward` | - | - | WebView 앞으로가기 |
+| `reload` | - | - | WebView 새로고침 |
+| `hideSplash` | - | - | 스플래시 화면 숨기기 |
+
 
 
 ## 빌드

@@ -223,11 +223,14 @@ export const registerBuiltInHandlers = () => {
     });
   });
 
-  // 토스트 메시지 (Android)
-  registerHandler<{ message: string }>('showToast', async ({ message }) => {
-    const { ToastAndroid, Platform } = await import('react-native');
+  // 토스트 메시지 (Android: Toast, iOS: Alert)
+  registerHandler<{ message: string; duration?: 'short' | 'long' }>('showToast', async ({ message, duration = 'short' }) => {
+    const { ToastAndroid, Platform, Alert } = await import('react-native');
     if (Platform.OS === 'android') {
-      ToastAndroid.show(message, ToastAndroid.SHORT);
+      ToastAndroid.show(message, duration === 'long' ? ToastAndroid.LONG : ToastAndroid.SHORT);
+    } else {
+      // iOS는 Toast가 없으므로 Alert 사용 (자동 닫힘 없음)
+      Alert.alert('', message);
     }
   });
 
@@ -241,12 +244,27 @@ export const registerBuiltInHandlers = () => {
     }
   });
 
-  // 클립보드 복사 (expo-clipboard 필요 시 설치: npx expo install expo-clipboard)
-  // registerHandler<{ text: string }>('copyToClipboard', async ({ text }, respond) => {
-  //   const Clipboard = await import('expo-clipboard');
-  //   await Clipboard.setStringAsync(text);
-  //   respond({ success: true });
-  // });
+  // 클립보드 복사 (expo-clipboard 필요: npx expo install expo-clipboard)
+  registerHandler<{ text: string }>('copyToClipboard', async ({ text }, respond) => {
+    try {
+      const Clipboard = await import('expo-clipboard');
+      await Clipboard.setStringAsync(text);
+      respond({ success: true });
+    } catch (error) {
+      respond({ success: false, error: 'Clipboard not available' });
+    }
+  });
+
+  // 클립보드 읽기
+  registerHandler('getClipboard', async (_payload, respond) => {
+    try {
+      const Clipboard = await import('expo-clipboard');
+      const text = await Clipboard.getStringAsync();
+      respond({ success: true, text });
+    } catch (error) {
+      respond({ success: false, error: 'Clipboard not available' });
+    }
+  });
 
   // 외부 URL 열기
   registerHandler<{ url: string }>('openExternalUrl', async ({ url }, respond) => {
