@@ -5,13 +5,13 @@
 
 import React, { useEffect, useRef } from 'react';
 import {
-    Animated,
-    Easing,
-    Image,
-    StyleSheet,
-    Text,
-    View,
-    useColorScheme
+  Animated,
+  Easing,
+  Image,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme
 } from 'react-native';
 
 import { APP_CONFIG } from '@/constants/app-config';
