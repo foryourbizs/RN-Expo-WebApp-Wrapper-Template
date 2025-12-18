@@ -223,26 +223,30 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 
 ### 組み込みハンドラー
 
-| アクション | ペイロード | レスポンス | 説明 |
-|------------|------------|------------|------|
-| `getDeviceInfo` | - | `{ platform, version, isTV }` | デバイス情報を取得 |
-| `getAppInfo` | - | `{ name, version, bundleId }` | アプリ情報を取得 |
-| `showToast` | `{ message, duration? }` | - | トーストメッセージを表示（iOS: Alert） |
-| `vibrate` | `{ pattern?: number[] }` | - | バイブレーションを発生 |
-| `copyToClipboard` | `{ text }` | `{ success }` | テキストをクリップボードにコピー |
-| `getClipboard` | - | `{ success, text }` | クリップボードからテキストを読み取り |
-| `openExternalUrl` | `{ url }` | `{ success }` | 外部 URL を開く |
-| `goBack` | - | - | WebView 戻る |
-| `goForward` | - | - | WebView 進む |
-| `reload` | - | - | WebView 再読み込み |
-| `hideSplash` | - | - | スプラッシュ画面を非表示 |
-| `getOrientation` | - | `{ success, orientation, lock }` | 画面の向き状態を取得 |
-| `setOrientation` | `{ mode }` | `{ success, mode }` | 画面の向きを設定 |
-| `unlockOrientation` | - | `{ success }` | 画面の向きロックを解除（自動回転） |
-| `setNavigationBarVisible` | `{ visible }` | `{ success }` | ナビゲーションバーの表示/非表示 (Android) |
-| `setNavigationBarColor` | `{ color }` | `{ success }` | ナビゲーションバーの色を設定 (Android) |
-| `setNavigationBarStyle` | `{ style }` | `{ success }` | ナビゲーションバーのボタンスタイル (Android) |
-| `setFullscreen` | `{ enabled }` | `{ success }` | フルスクリーンモード（ステータス+ナビバー非表示） |
+| アクション | ペイロード | レスポンス | Android | iOS | 説明 |
+|------------|------------|------------|:-------:|:---:|------|
+| `getDeviceInfo` | - | `{ platform, version, isTV }` | ✅ | ✅ | デバイス情報を取得 |
+| `getAppInfo` | - | `{ name, version, bundleId }` | ✅ | ✅ | アプリ情報を取得 |
+| `showToast` | `{ message, duration? }` | - | ✅ | ⚠️ | トースト (iOS: Alert) |
+| `vibrate` | `{ pattern?: number[] }` | - | ✅ | ✅ | バイブレーションを発生 |
+| `copyToClipboard` | `{ text }` | `{ success }` | ✅ | ✅ | クリップボードにコピー |
+| `getClipboard` | - | `{ success, text }` | ✅ | ✅ | クリップボードから読み取り |
+| `openExternalUrl` | `{ url }` | `{ success }` | ✅ | ✅ | 外部 URL を開く |
+| `goBack` | - | - | ✅ | ✅ | WebView 戻る |
+| `goForward` | - | - | ✅ | ✅ | WebView 進む |
+| `reload` | - | - | ✅ | ✅ | WebView 再読み込み |
+| `hideSplash` | - | - | ✅ | ✅ | スプラッシュを非表示 |
+| `getOrientation` | - | `{ success, orientation, lock }` | ✅ | ✅ | 画面の向き状態を取得 |
+| `setOrientation` | `{ mode }` | `{ success, mode }` | ✅ | ✅ | 画面の向きを設定 |
+| `unlockOrientation` | - | `{ success }` | ✅ | ✅ | 向きロックを解除 |
+| `getStatusBar` | - | `{ success, saved }` | ✅ | ✅ | ステータスバー状態を取得 |
+| `setStatusBar` | `{ hidden?, style?, color?, animated? }` | `{ success }` | ✅ | ⚠️ | ステータスバー設定 (color: Android のみ) |
+| `restoreStatusBar` | - | `{ success, restored }` | ✅ | ✅ | ステータスバーを復元 |
+| `getNavigationBar` | - | `{ success, visible, buttonStyle, backgroundColor }` | ✅ | ❌ | ナビバー状態を取得 |
+| `setNavigationBar` | `{ visible?, color?, buttonStyle?, behavior? }` | `{ success }` | ✅ | ❌ | ナビバーを設定 |
+| `restoreNavigationBar` | - | `{ success, restored }` | ✅ | ❌ | ナビバーを復元 |
+
+> ✅ 対応 | ⚠️ 一部対応 | ❌ 非対応
 
 
 ---

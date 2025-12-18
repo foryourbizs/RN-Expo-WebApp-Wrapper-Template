@@ -223,26 +223,30 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 
 ### Built-in Handlers
 
-| Action | Payload | Response | Description |
-|--------|---------|----------|-------------|
-| `getDeviceInfo` | - | `{ platform, version, isTV }` | Get device information |
-| `getAppInfo` | - | `{ name, version, bundleId }` | Get app information |
-| `showToast` | `{ message, duration? }` | - | Show toast message (iOS: Alert) |
-| `vibrate` | `{ pattern?: number[] }` | - | Trigger vibration |
-| `copyToClipboard` | `{ text }` | `{ success }` | Copy text to clipboard |
-| `getClipboard` | - | `{ success, text }` | Read text from clipboard |
-| `openExternalUrl` | `{ url }` | `{ success }` | Open external URL |
-| `goBack` | - | - | WebView go back |
-| `goForward` | - | - | WebView go forward |
-| `reload` | - | - | WebView reload |
-| `hideSplash` | - | - | Hide splash screen |
-| `getOrientation` | - | `{ success, orientation, lock }` | Get screen orientation status |
-| `setOrientation` | `{ mode }` | `{ success, mode }` | Set screen orientation |
-| `unlockOrientation` | - | `{ success }` | Unlock orientation (enable auto-rotate) |
-| `setNavigationBarVisible` | `{ visible }` | `{ success }` | Show/hide navigation bar (Android) |
-| `setNavigationBarColor` | `{ color }` | `{ success }` | Set navigation bar color (Android) |
-| `setNavigationBarStyle` | `{ style }` | `{ success }` | Set navigation bar button style (Android) |
-| `setFullscreen` | `{ enabled }` | `{ success }` | Fullscreen mode (hide status+nav bar) |
+| Action | Payload | Response | Android | iOS | Description |
+|--------|---------|----------|:-------:|:---:|-------------|
+| `getDeviceInfo` | - | `{ platform, version, isTV }` | ✅ | ✅ | Get device information |
+| `getAppInfo` | - | `{ name, version, bundleId }` | ✅ | ✅ | Get app information |
+| `showToast` | `{ message, duration? }` | - | ✅ | ⚠️ | Toast message (iOS: Alert) |
+| `vibrate` | `{ pattern?: number[] }` | - | ✅ | ✅ | Trigger vibration |
+| `copyToClipboard` | `{ text }` | `{ success }` | ✅ | ✅ | Copy text to clipboard |
+| `getClipboard` | - | `{ success, text }` | ✅ | ✅ | Read text from clipboard |
+| `openExternalUrl` | `{ url }` | `{ success }` | ✅ | ✅ | Open external URL |
+| `goBack` | - | - | ✅ | ✅ | WebView go back |
+| `goForward` | - | - | ✅ | ✅ | WebView go forward |
+| `reload` | - | - | ✅ | ✅ | WebView reload |
+| `hideSplash` | - | - | ✅ | ✅ | Hide splash screen |
+| `getOrientation` | - | `{ success, orientation, lock }` | ✅ | ✅ | Get screen orientation status |
+| `setOrientation` | `{ mode }` | `{ success, mode }` | ✅ | ✅ | Set screen orientation |
+| `unlockOrientation` | - | `{ success }` | ✅ | ✅ | Unlock orientation |
+| `getStatusBar` | - | `{ success, saved }` | ✅ | ✅ | Get status bar state |
+| `setStatusBar` | `{ hidden?, style?, color?, animated? }` | `{ success }` | ✅ | ⚠️ | Set status bar (color: Android only) |
+| `restoreStatusBar` | - | `{ success, restored }` | ✅ | ✅ | Restore status bar to original |
+| `getNavigationBar` | - | `{ success, visible, buttonStyle, backgroundColor }` | ✅ | ❌ | Get navigation bar state |
+| `setNavigationBar` | `{ visible?, color?, buttonStyle?, behavior? }` | `{ success }` | ✅ | ❌ | Set navigation bar |
+| `restoreNavigationBar` | - | `{ success, restored }` | ✅ | ❌ | Restore navigation bar |
+
+> ✅ Supported | ⚠️ Partial | ❌ Not supported
 
 
 ---

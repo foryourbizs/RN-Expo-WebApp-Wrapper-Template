@@ -421,8 +421,120 @@ export const registerBuiltInHandlers = () => {
     }
   });
 
-  // 하단 네비게이션 바 숨기기 (Android 전용, Immersive 모드)
-  registerHandler<{ visible?: boolean; behavior?: 'overlay-swipe' | 'inset-swipe' | 'inset-touch' }>('setNavigationBarVisible', async ({ visible = false, behavior = 'overlay-swipe' }, respond) => {
+  // ========== 상태바 (Status Bar) ==========
+  // 저장된 상태바 상태
+  let savedStatusBarState: { hidden: boolean; style: 'default' | 'light-content' | 'dark-content'; color?: string } | null = null;
+
+  // 상태바 상태 조회
+  registerHandler('getStatusBar', async (_payload, respond) => {
+    try {
+      // React Native StatusBar는 상태 조회 API가 없어서 저장된 값 반환
+      respond({
+        success: true,
+        saved: savedStatusBarState,
+        note: 'StatusBar API does not provide current state query. Returns last saved state.',
+      });
+    } catch (error) {
+      respond({ success: false, error: 'Failed to get status bar state' });
+    }
+  });
+
+  // 상태바 설정
+  registerHandler<{ 
+    hidden?: boolean; 
+    style?: 'default' | 'light-content' | 'dark-content';
+    color?: string;
+    animated?: boolean;
+  }>('setStatusBar', async ({ hidden, style, color, animated = true }, respond) => {
+    try {
+      const { StatusBar, Platform } = await import('react-native');
+      
+      // 현재 상태 저장 (첫 호출 시)
+      if (!savedStatusBarState) {
+        savedStatusBarState = { hidden: false, style: 'default' };
+      }
+      
+      if (hidden !== undefined) {
+        StatusBar.setHidden(hidden, animated ? 'fade' : 'none');
+        savedStatusBarState.hidden = hidden;
+      }
+      
+      if (style) {
+        StatusBar.setBarStyle(style, animated);
+        savedStatusBarState.style = style;
+      }
+      
+      if (color && Platform.OS === 'android') {
+        StatusBar.setBackgroundColor(color, animated);
+        savedStatusBarState.color = color;
+      }
+      
+      respond({ success: true, hidden, style, color });
+    } catch (error) {
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set status bar' });
+    }
+  });
+
+  // 상태바 원래 상태로 복원
+  registerHandler('restoreStatusBar', async (_payload, respond) => {
+    try {
+      const { StatusBar, Platform } = await import('react-native');
+      
+      if (savedStatusBarState) {
+        StatusBar.setHidden(savedStatusBarState.hidden, 'fade');
+        StatusBar.setBarStyle(savedStatusBarState.style, true);
+        if (savedStatusBarState.color && Platform.OS === 'android') {
+          StatusBar.setBackgroundColor(savedStatusBarState.color, true);
+        }
+        respond({ success: true, restored: savedStatusBarState });
+      } else {
+        // 기본값으로 복원
+        StatusBar.setHidden(false, 'fade');
+        StatusBar.setBarStyle('default', true);
+        respond({ success: true, restored: { hidden: false, style: 'default' } });
+      }
+    } catch (error) {
+      respond({ success: false, error: 'Failed to restore status bar' });
+    }
+  });
+
+  // ========== 네비게이션 바 (Android Navigation Bar) ==========
+  // 저장된 네비게이션 바 상태
+  let savedNavigationBarState: { visible: boolean; color?: string; buttonStyle?: 'light' | 'dark' } | null = null;
+
+  // 네비게이션 바 상태 조회 (Android 전용)
+  registerHandler('getNavigationBar', async (_payload, respond) => {
+    try {
+      const { Platform } = await import('react-native');
+      if (Platform.OS !== 'android') {
+        respond({ success: false, error: 'Only supported on Android' });
+        return;
+      }
+      
+      const NavigationBar = await import('expo-navigation-bar');
+      const visibility = await NavigationBar.getVisibilityAsync();
+      const buttonStyle = await NavigationBar.getButtonStyleAsync();
+      const backgroundColor = await NavigationBar.getBackgroundColorAsync();
+      
+      respond({
+        success: true,
+        visible: visibility === 'visible',
+        buttonStyle,
+        backgroundColor,
+        saved: savedNavigationBarState,
+      });
+    } catch (error) {
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to get navigation bar state' });
+    }
+  });
+
+  // 네비게이션 바 설정 (Android 전용) - 통합 설정
+  registerHandler<{ 
+    visible?: boolean; 
+    color?: string; 
+    buttonStyle?: 'light' | 'dark';
+    behavior?: 'overlay-swipe' | 'inset-swipe' | 'inset-touch';
+  }>('setNavigationBar', async ({ visible, color, buttonStyle, behavior = 'overlay-swipe' }, respond) => {
     try {
       const { Platform } = await import('react-native');
       if (Platform.OS !== 'android') {
@@ -432,20 +544,38 @@ export const registerBuiltInHandlers = () => {
       
       const NavigationBar = await import('expo-navigation-bar');
       
-      if (!visible) {
-        // Immersive 모드 설정 (숨김 후 스와이프로 일시 표시)
-        await NavigationBar.setBehaviorAsync(behavior);
+      // 현재 상태 저장 (첫 호출 시)
+      if (!savedNavigationBarState) {
+        savedNavigationBarState = {
+          visible: (await NavigationBar.getVisibilityAsync()) === 'visible',
+          buttonStyle: await NavigationBar.getButtonStyleAsync(),
+          color: await NavigationBar.getBackgroundColorAsync(),
+        };
       }
       
-      await NavigationBar.setVisibilityAsync(visible ? 'visible' : 'hidden');
-      respond({ success: true, visible, behavior });
+      if (visible !== undefined) {
+        if (!visible) {
+          await NavigationBar.setBehaviorAsync(behavior);
+        }
+        await NavigationBar.setVisibilityAsync(visible ? 'visible' : 'hidden');
+      }
+      
+      if (color) {
+        await NavigationBar.setBackgroundColorAsync(color);
+      }
+      
+      if (buttonStyle) {
+        await NavigationBar.setButtonStyleAsync(buttonStyle);
+      }
+      
+      respond({ success: true, visible, color, buttonStyle });
     } catch (error) {
-      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar visibility' });
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar' });
     }
   });
 
-  // 하단 네비게이션 바 색상 설정 (Android 전용)
-  registerHandler<{ color: string }>('setNavigationBarColor', async ({ color }, respond) => {
+  // 네비게이션 바 원래 상태로 복원 (Android 전용)
+  registerHandler('restoreNavigationBar', async (_payload, respond) => {
     try {
       const { Platform } = await import('react-native');
       if (Platform.OS !== 'android') {
@@ -454,47 +584,23 @@ export const registerBuiltInHandlers = () => {
       }
       
       const NavigationBar = await import('expo-navigation-bar');
-      await NavigationBar.setBackgroundColorAsync(color);
-      respond({ success: true, color });
-    } catch (error) {
-      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar color' });
-    }
-  });
-
-  // 하단 네비게이션 바 버튼 스타일 설정 (Android 전용)
-  registerHandler<{ style: 'light' | 'dark' }>('setNavigationBarStyle', async ({ style }, respond) => {
-    try {
-      const { Platform } = await import('react-native');
-      if (Platform.OS !== 'android') {
-        respond({ success: false, error: 'Only supported on Android' });
-        return;
+      
+      if (savedNavigationBarState) {
+        await NavigationBar.setVisibilityAsync(savedNavigationBarState.visible ? 'visible' : 'hidden');
+        if (savedNavigationBarState.color) {
+          await NavigationBar.setBackgroundColorAsync(savedNavigationBarState.color);
+        }
+        if (savedNavigationBarState.buttonStyle) {
+          await NavigationBar.setButtonStyleAsync(savedNavigationBarState.buttonStyle);
+        }
+        respond({ success: true, restored: savedNavigationBarState });
+      } else {
+        // 기본값으로 복원
+        await NavigationBar.setVisibilityAsync('visible');
+        respond({ success: true, restored: { visible: true } });
       }
-      
-      const NavigationBar = await import('expo-navigation-bar');
-      await NavigationBar.setButtonStyleAsync(style);
-      respond({ success: true, style });
     } catch (error) {
-      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar style' });
-    }
-  });
-
-  // 전체화면 모드 (상태바 + 네비게이션 바 숨김)
-  registerHandler<{ enabled?: boolean }>('setFullscreen', async ({ enabled = true }, respond) => {
-    try {
-      const { Platform, StatusBar } = await import('react-native');
-      
-      // 상태바 숨기기/보이기
-      StatusBar.setHidden(enabled, 'fade');
-      
-      // Android 네비게이션 바 숨기기/보이기
-      if (Platform.OS === 'android') {
-        const NavigationBar = await import('expo-navigation-bar');
-        await NavigationBar.setVisibilityAsync(enabled ? 'hidden' : 'visible');
-      }
-      
-      respond({ success: true, fullscreen: enabled });
-    } catch (error) {
-      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set fullscreen' });
+      respond({ success: false, error: 'Failed to restore navigation bar' });
     }
   });
 

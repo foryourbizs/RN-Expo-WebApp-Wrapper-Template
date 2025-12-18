@@ -223,26 +223,30 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 
 ### 기본 내장 핸들러 (Built-in Handlers)
 
-| 액션명 | 페이로드 | 응답 | 설명 |
-|--------|----------|------|------|
-| `getDeviceInfo` | - | `{ platform, version, isTV }` | 디바이스 정보 조회 |
-| `getAppInfo` | - | `{ name, version, bundleId }` | 앱 정보 조회 |
-| `showToast` | `{ message, duration? }` | - | 토스트 메시지 표시 (iOS: Alert) |
-| `vibrate` | `{ pattern?: number[] }` | - | 진동 발생 |
-| `copyToClipboard` | `{ text }` | `{ success }` | 클립보드에 텍스트 복사 |
-| `getClipboard` | - | `{ success, text }` | 클립보드 텍스트 읽기 |
-| `openExternalUrl` | `{ url }` | `{ success }` | 외부 URL 열기 |
-| `goBack` | - | - | WebView 뒤로가기 |
-| `goForward` | - | - | WebView 앞으로가기 |
-| `reload` | - | - | WebView 새로고침 |
-| `hideSplash` | - | - | 스플래시 화면 숨기기 |
-| `getOrientation` | - | `{ success, orientation, lock }` | 화면 방향 상태 조회 |
-| `setOrientation` | `{ mode }` | `{ success, mode }` | 화면 방향 설정 |
-| `unlockOrientation` | - | `{ success }` | 화면 방향 잠금 해제 (자동 회전) |
-| `setNavigationBarVisible` | `{ visible }` | `{ success }` | 하단 네비바 표시/숨김 (Android) |
-| `setNavigationBarColor` | `{ color }` | `{ success }` | 하단 네비바 색상 설정 (Android) |
-| `setNavigationBarStyle` | `{ style }` | `{ success }` | 하단 네비바 버튼 스타일 (Android) |
-| `setFullscreen` | `{ enabled }` | `{ success }` | 전체화면 모드 (상태바+네비바 숨김) |
+| 액션명 | 페이로드 | 응답 | Android | iOS | 설명 |
+|--------|----------|------|:-------:|:---:|------|
+| `getDeviceInfo` | - | `{ platform, version, isTV }` | ✅ | ✅ | 디바이스 정보 조회 |
+| `getAppInfo` | - | `{ name, version, bundleId }` | ✅ | ✅ | 앱 정보 조회 |
+| `showToast` | `{ message, duration? }` | - | ✅ | ⚠️ | 토스트 메시지 (iOS: Alert) |
+| `vibrate` | `{ pattern?: number[] }` | - | ✅ | ✅ | 진동 발생 |
+| `copyToClipboard` | `{ text }` | `{ success }` | ✅ | ✅ | 클립보드에 텍스트 복사 |
+| `getClipboard` | - | `{ success, text }` | ✅ | ✅ | 클립보드 텍스트 읽기 |
+| `openExternalUrl` | `{ url }` | `{ success }` | ✅ | ✅ | 외부 URL 열기 |
+| `goBack` | - | - | ✅ | ✅ | WebView 뒤로가기 |
+| `goForward` | - | - | ✅ | ✅ | WebView 앞으로가기 |
+| `reload` | - | - | ✅ | ✅ | WebView 새로고침 |
+| `hideSplash` | - | - | ✅ | ✅ | 스플래시 화면 숨기기 |
+| `getOrientation` | - | `{ success, orientation, lock }` | ✅ | ✅ | 화면 방향 상태 조회 |
+| `setOrientation` | `{ mode }` | `{ success, mode }` | ✅ | ✅ | 화면 방향 설정 |
+| `unlockOrientation` | - | `{ success }` | ✅ | ✅ | 화면 방향 잠금 해제 |
+| `getStatusBar` | - | `{ success, saved }` | ✅ | ✅ | 상태바 상태 조회 |
+| `setStatusBar` | `{ hidden?, style?, color?, animated? }` | `{ success }` | ✅ | ⚠️ | 상태바 설정 (color: Android만) |
+| `restoreStatusBar` | - | `{ success, restored }` | ✅ | ✅ | 상태바 원래 상태로 복원 |
+| `getNavigationBar` | - | `{ success, visible, buttonStyle, backgroundColor }` | ✅ | ❌ | 네비바 상태 조회 |
+| `setNavigationBar` | `{ visible?, color?, buttonStyle?, behavior? }` | `{ success }` | ✅ | ❌ | 네비바 설정 |
+| `restoreNavigationBar` | - | `{ success, restored }` | ✅ | ❌ | 네비바 원래 상태로 복원 |
+
+> ✅ 지원 | ⚠️ 부분 지원 | ❌ 미지원
 
 
 ---

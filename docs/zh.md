@@ -223,26 +223,30 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 
 ### 内置处理器
 
-| 动作 | 载荷 | 响应 | 说明 |
-|------|------|------|------|
-| `getDeviceInfo` | - | `{ platform, version, isTV }` | 获取设备信息 |
-| `getAppInfo` | - | `{ name, version, bundleId }` | 获取应用信息 |
-| `showToast` | `{ message, duration? }` | - | 显示 Toast 消息（iOS: Alert） |
-| `vibrate` | `{ pattern?: number[] }` | - | 触发振动 |
-| `copyToClipboard` | `{ text }` | `{ success }` | 复制文本到剪贴板 |
-| `getClipboard` | - | `{ success, text }` | 从剪贴板读取文本 |
-| `openExternalUrl` | `{ url }` | `{ success }` | 打开外部 URL |
-| `goBack` | - | - | WebView 后退 |
-| `goForward` | - | - | WebView 前进 |
-| `reload` | - | - | WebView 重新加载 |
-| `hideSplash` | - | - | 隐藏启动画面 |
-| `getOrientation` | - | `{ success, orientation, lock }` | 获取屏幕方向状态 |
-| `setOrientation` | `{ mode }` | `{ success, mode }` | 设置屏幕方向 |
-| `unlockOrientation` | - | `{ success }` | 解锁屏幕方向（自动旋转） |
-| `setNavigationBarVisible` | `{ visible }` | `{ success }` | 显示/隐藏导航栏 (Android) |
-| `setNavigationBarColor` | `{ color }` | `{ success }` | 设置导航栏颜色 (Android) |
-| `setNavigationBarStyle` | `{ style }` | `{ success }` | 设置导航栏按钮样式 (Android) |
-| `setFullscreen` | `{ enabled }` | `{ success }` | 全屏模式（隐藏状态栏+导航栏） |
+| 动作 | 载荷 | 响应 | Android | iOS | 说明 |
+|------|------|------|:-------:|:---:|------|
+| `getDeviceInfo` | - | `{ platform, version, isTV }` | ✅ | ✅ | 获取设备信息 |
+| `getAppInfo` | - | `{ name, version, bundleId }` | ✅ | ✅ | 获取应用信息 |
+| `showToast` | `{ message, duration? }` | - | ✅ | ⚠️ | Toast 消息 (iOS: Alert) |
+| `vibrate` | `{ pattern?: number[] }` | - | ✅ | ✅ | 触发振动 |
+| `copyToClipboard` | `{ text }` | `{ success }` | ✅ | ✅ | 复制到剪贴板 |
+| `getClipboard` | - | `{ success, text }` | ✅ | ✅ | 从剪贴板读取 |
+| `openExternalUrl` | `{ url }` | `{ success }` | ✅ | ✅ | 打开外部 URL |
+| `goBack` | - | - | ✅ | ✅ | WebView 后退 |
+| `goForward` | - | - | ✅ | ✅ | WebView 前进 |
+| `reload` | - | - | ✅ | ✅ | WebView 重新加载 |
+| `hideSplash` | - | - | ✅ | ✅ | 隐藏启动画面 |
+| `getOrientation` | - | `{ success, orientation, lock }` | ✅ | ✅ | 获取屏幕方向状态 |
+| `setOrientation` | `{ mode }` | `{ success, mode }` | ✅ | ✅ | 设置屏幕方向 |
+| `unlockOrientation` | - | `{ success }` | ✅ | ✅ | 解锁屏幕方向 |
+| `getStatusBar` | - | `{ success, saved }` | ✅ | ✅ | 获取状态栏状态 |
+| `setStatusBar` | `{ hidden?, style?, color?, animated? }` | `{ success }` | ✅ | ⚠️ | 设置状态栏 (color: 仅Android) |
+| `restoreStatusBar` | - | `{ success, restored }` | ✅ | ✅ | 恢复状态栏 |
+| `getNavigationBar` | - | `{ success, visible, buttonStyle, backgroundColor }` | ✅ | ❌ | 获取导航栏状态 |
+| `setNavigationBar` | `{ visible?, color?, buttonStyle?, behavior? }` | `{ success }` | ✅ | ❌ | 设置导航栏 |
+| `restoreNavigationBar` | - | `{ success, restored }` | ✅ | ❌ | 恢复导航栏 |
+
+> ✅ 支持 | ⚠️ 部分支持 | ❌ 不支持
 
 
 ---
