@@ -239,6 +239,10 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `getOrientation` | - | `{ success, orientation, lock }` | 画面の向き状態を取得 |
 | `setOrientation` | `{ mode }` | `{ success, mode }` | 画面の向きを設定 |
 | `unlockOrientation` | - | `{ success }` | 画面の向きロックを解除（自動回転） |
+| `setNavigationBarVisible` | `{ visible }` | `{ success }` | ナビゲーションバーの表示/非表示 (Android) |
+| `setNavigationBarColor` | `{ color }` | `{ success }` | ナビゲーションバーの色を設定 (Android) |
+| `setNavigationBarStyle` | `{ style }` | `{ success }` | ナビゲーションバーのボタンスタイル (Android) |
+| `setFullscreen` | `{ enabled }` | `{ success }` | フルスクリーンモード（ステータス+ナビバー非表示） |
 
 
 ---

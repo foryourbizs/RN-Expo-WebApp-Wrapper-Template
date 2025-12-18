@@ -239,6 +239,10 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `getOrientation` | - | `{ success, orientation, lock }` | 화면 방향 상태 조회 |
 | `setOrientation` | `{ mode }` | `{ success, mode }` | 화면 방향 설정 |
 | `unlockOrientation` | - | `{ success }` | 화면 방향 잠금 해제 (자동 회전) |
+| `setNavigationBarVisible` | `{ visible }` | `{ success }` | 하단 네비바 표시/숨김 (Android) |
+| `setNavigationBarColor` | `{ color }` | `{ success }` | 하단 네비바 색상 설정 (Android) |
+| `setNavigationBarStyle` | `{ style }` | `{ success }` | 하단 네비바 버튼 스타일 (Android) |
+| `setFullscreen` | `{ enabled }` | `{ success }` | 전체화면 모드 (상태바+네비바 숨김) |
 
 
 ---

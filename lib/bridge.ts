@@ -421,5 +421,82 @@ export const registerBuiltInHandlers = () => {
     }
   });
 
+  // 하단 네비게이션 바 숨기기 (Android 전용, Immersive 모드)
+  registerHandler<{ visible?: boolean; behavior?: 'overlay-swipe' | 'inset-swipe' | 'inset-touch' }>('setNavigationBarVisible', async ({ visible = false, behavior = 'overlay-swipe' }, respond) => {
+    try {
+      const { Platform } = await import('react-native');
+      if (Platform.OS !== 'android') {
+        respond({ success: false, error: 'Only supported on Android' });
+        return;
+      }
+      
+      const NavigationBar = await import('expo-navigation-bar');
+      
+      if (!visible) {
+        // Immersive 모드 설정 (숨김 후 스와이프로 일시 표시)
+        await NavigationBar.setBehaviorAsync(behavior);
+      }
+      
+      await NavigationBar.setVisibilityAsync(visible ? 'visible' : 'hidden');
+      respond({ success: true, visible, behavior });
+    } catch (error) {
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar visibility' });
+    }
+  });
+
+  // 하단 네비게이션 바 색상 설정 (Android 전용)
+  registerHandler<{ color: string }>('setNavigationBarColor', async ({ color }, respond) => {
+    try {
+      const { Platform } = await import('react-native');
+      if (Platform.OS !== 'android') {
+        respond({ success: false, error: 'Only supported on Android' });
+        return;
+      }
+      
+      const NavigationBar = await import('expo-navigation-bar');
+      await NavigationBar.setBackgroundColorAsync(color);
+      respond({ success: true, color });
+    } catch (error) {
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar color' });
+    }
+  });
+
+  // 하단 네비게이션 바 버튼 스타일 설정 (Android 전용)
+  registerHandler<{ style: 'light' | 'dark' }>('setNavigationBarStyle', async ({ style }, respond) => {
+    try {
+      const { Platform } = await import('react-native');
+      if (Platform.OS !== 'android') {
+        respond({ success: false, error: 'Only supported on Android' });
+        return;
+      }
+      
+      const NavigationBar = await import('expo-navigation-bar');
+      await NavigationBar.setButtonStyleAsync(style);
+      respond({ success: true, style });
+    } catch (error) {
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar style' });
+    }
+  });
+
+  // 전체화면 모드 (상태바 + 네비게이션 바 숨김)
+  registerHandler<{ enabled?: boolean }>('setFullscreen', async ({ enabled = true }, respond) => {
+    try {
+      const { Platform, StatusBar } = await import('react-native');
+      
+      // 상태바 숨기기/보이기
+      StatusBar.setHidden(enabled, 'fade');
+      
+      // Android 네비게이션 바 숨기기/보이기
+      if (Platform.OS === 'android') {
+        const NavigationBar = await import('expo-navigation-bar');
+        await NavigationBar.setVisibilityAsync(enabled ? 'hidden' : 'visible');
+      }
+      
+      respond({ success: true, fullscreen: enabled });
+    } catch (error) {
+      respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set fullscreen' });
+    }
+  });
+
   console.log('[Bridge] Built-in handlers registered');
 };

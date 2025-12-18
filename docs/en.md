@@ -239,6 +239,10 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 | `getOrientation` | - | `{ success, orientation, lock }` | Get screen orientation status |
 | `setOrientation` | `{ mode }` | `{ success, mode }` | Set screen orientation |
 | `unlockOrientation` | - | `{ success }` | Unlock orientation (enable auto-rotate) |
+| `setNavigationBarVisible` | `{ visible }` | `{ success }` | Show/hide navigation bar (Android) |
+| `setNavigationBarColor` | `{ color }` | `{ success }` | Set navigation bar color (Android) |
+| `setNavigationBarStyle` | `{ style }` | `{ success }` | Set navigation bar button style (Android) |
+| `setFullscreen` | `{ enabled }` | `{ success }` | Fullscreen mode (hide status+nav bar) |
 
 
 ---

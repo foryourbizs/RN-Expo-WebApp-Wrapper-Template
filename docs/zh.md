@@ -239,6 +239,10 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `getOrientation` | - | `{ success, orientation, lock }` | 获取屏幕方向状态 |
 | `setOrientation` | `{ mode }` | `{ success, mode }` | 设置屏幕方向 |
 | `unlockOrientation` | - | `{ success }` | 解锁屏幕方向（自动旋转） |
+| `setNavigationBarVisible` | `{ visible }` | `{ success }` | 显示/隐藏导航栏 (Android) |
+| `setNavigationBarColor` | `{ color }` | `{ success }` | 设置导航栏颜色 (Android) |
+| `setNavigationBarStyle` | `{ style }` | `{ success }` | 设置导航栏按钮样式 (Android) |
+| `setFullscreen` | `{ enabled }` | `{ success }` | 全屏模式（隐藏状态栏+导航栏） |
 
 
 ---
