@@ -6,33 +6,33 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  BackHandler,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    BackHandler,
+    Linking,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type {
-  ShouldStartLoadRequest,
-  WebViewErrorEvent,
-  WebViewHttpErrorEvent,
-  WebViewMessageEvent,
-  WebViewNavigation,
-  WebViewProgressEvent,
+    ShouldStartLoadRequest,
+    WebViewErrorEvent,
+    WebViewHttpErrorEvent,
+    WebViewMessageEvent,
+    WebViewNavigation,
+    WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 
+import DebugOverlay, { debugLog, DebugOverlayRef } from '@/components/debug-overlay';
 import { APP_CONFIG } from '@/constants/app-config';
 import {
-  handleBridgeMessage,
-  registerBuiltInHandlers,
-  setBridgeWebView
+    handleBridgeMessage,
+    registerBuiltInHandlers,
+    setBridgeWebView
 } from '@/lib/bridge';
 import { BRIDGE_CLIENT_SCRIPT } from '@/lib/bridge-client';
-import DebugOverlay, { debugLog, DebugOverlayRef } from '@/components/debug-overlay';
 
 // WebView 인스턴스를 전역에서 접근 가능하도록 (네비게이션 제어용)
 export let webViewRef: React.RefObject<WebView | null>;

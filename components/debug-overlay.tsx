@@ -5,14 +5,14 @@
 
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Dimensions,
+    PanResponder,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 
 import { APP_CONFIG } from '@/constants/app-config';
