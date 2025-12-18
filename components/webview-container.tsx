@@ -58,8 +58,10 @@ export default function WebViewContainer() {
   const [loadProgress, setLoadProgress] = useState(0);
   const [webViewKey, setWebViewKey] = useState(1); // WebView 재생성용 키
   const [cacheMode, setCacheMode] = useState(true); // 캐시 사용 여부
+  const [showDebugStatus, setShowDebugStatus] = useState(false); // 디버그 상태바 표시
   const hasLoadedOnce = useRef(false);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debugStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadStartTime = useRef<number>(0);
   const emptyBodyRetryCount = useRef(0); // 빈 body 재시도 카운터
   const MAX_EMPTY_BODY_RETRIES = 2; // 일반 재시도 횟수
@@ -144,6 +146,21 @@ export default function WebViewContainer() {
     return () => setBridgeWebView(null);
   }, []);
 
+  // 디버그 상태바 표시 (2초 후 자동 숨김)
+  const showDebugStatusBar = useCallback(() => {
+    if (!debug.enabled) return;
+    
+    // 기존 타이머 클리어
+    if (debugStatusTimerRef.current) {
+      clearTimeout(debugStatusTimerRef.current);
+    }
+    
+    setShowDebugStatus(true);
+    debugStatusTimerRef.current = setTimeout(() => {
+      setShowDebugStatus(false);
+    }, 2000);
+  }, [debug.enabled]);
+
   // 로딩 타임아웃 클리어
   const clearLoadingTimeout = useCallback(() => {
     if (loadingTimeoutRef.current) {
@@ -216,7 +233,8 @@ export default function WebViewContainer() {
   const handleLoadProgress = useCallback((event: WebViewProgressEvent) => {
     const progress = Math.round(event.nativeEvent.progress * 100);
     setLoadProgress(progress);
-  }, []);
+    showDebugStatusBar();
+  }, [showDebugStatusBar]);
 
   // 스플래시 숨기기 헬퍼
   const doHideSplash = useCallback(() => {
@@ -240,7 +258,9 @@ export default function WebViewContainer() {
       setIsInitialLoading(false);
       doHideSplash();
     }
-  }, [doHideSplash, clearLoadingTimeout]);
+    
+    showDebugStatusBar();
+  }, [doHideSplash, clearLoadingTimeout, showDebugStatusBar]);
 
   // 웹에서 보내는 메시지 처리
   const handleMessage = useCallback((event: WebViewMessageEvent) => {
@@ -576,8 +596,8 @@ export default function WebViewContainer() {
         </View>
       )}
       
-      {/* 디버그: 상태 표시 (흰 화면 디버깅용) */}
-      {debug.enabled && !isInitialLoading && (
+      {/* 디버그: 상태 표시 (2초 후 자동 숨김) */}
+      {showDebugStatus && !isInitialLoading && (
         <View style={styles.debugStatusBar} pointerEvents="none">
           <Text style={styles.debugStatusText}>
             ✓ 로딩완료 | Progress: {loadProgress}% | hasLoaded: {hasLoadedOnce.current ? 'Y' : 'N'}
