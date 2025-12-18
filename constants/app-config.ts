@@ -3,18 +3,24 @@
  * 웹뷰 및 앱 전반적인 설정을 관리
  */
 
+import Constants from 'expo-constants';
+
+// app.json에서 가져온 값들
+const expoConfig = Constants.expoConfig;
+
 export const APP_CONFIG = {
-  // 앱 기본 정보
+  // 앱 기본 정보 (app.json에서 자동으로 가져옴)
   app: {
-    name: 'RNWebWrapper',
-    version: '1.0.0',
-    bundleId: 'com.gdjs.rnwebwrapper',
+    name: expoConfig?.name ?? 'WebApp',
+    version: expoConfig?.version ?? '1.0.0',
+    bundleId: expoConfig?.android?.package ?? expoConfig?.ios?.bundleIdentifier ?? 'com.app.webwrapper',
+    slug: expoConfig?.slug ?? 'webapp',
   },
 
   // 웹뷰 설정
   webview: {
     // 메인 웹사이트 URL
-    baseUrl: 'https://anilife.app/',
+    baseUrl: 'https://webapp-sample.example-page.cc/',
     
     // 웹뷰 기본 옵션
     options: {
@@ -74,8 +80,8 @@ export const APP_CONFIG = {
 
     // 허용된 URL 패턴 (보안)
     allowedUrlPatterns: [
-      'https://gdjs.link',
-      'https://*.gdjs.link',
+      'https://webapp-sample.example-page.cc/',
+      'https://*.example-page.cc/',
     ],
   },
 

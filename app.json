@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "RNWebWrapper",
-    "slug": "RNWebWrapper",
+    "name": "webappsample",
+    "slug": "webappsample",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rnwebwrapper",
+    "scheme": "webappsample",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "package": "com.gdjs.rnwebwrapper",
+      "package": "com.webappsample.rnwebwrapper",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
