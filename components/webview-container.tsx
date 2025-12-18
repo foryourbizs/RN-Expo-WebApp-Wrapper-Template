@@ -6,31 +6,31 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    BackHandler,
-    Linking,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  BackHandler,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type {
-    ShouldStartLoadRequest,
-    WebViewErrorEvent,
-    WebViewHttpErrorEvent,
-    WebViewMessageEvent,
-    WebViewNavigation,
-    WebViewProgressEvent,
+  ShouldStartLoadRequest,
+  WebViewErrorEvent,
+  WebViewHttpErrorEvent,
+  WebViewMessageEvent,
+  WebViewNavigation,
+  WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 
 import DebugOverlay, { debugLog, DebugOverlayRef } from '@/components/debug-overlay';
 import { APP_CONFIG } from '@/constants/app-config';
 import {
-    handleBridgeMessage,
-    registerBuiltInHandlers,
-    setBridgeWebView
+  handleBridgeMessage,
+  registerBuiltInHandlers,
+  setBridgeWebView
 } from '@/lib/bridge';
 import { BRIDGE_CLIENT_SCRIPT } from '@/lib/bridge-client';
 
