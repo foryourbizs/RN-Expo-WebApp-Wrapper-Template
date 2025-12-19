@@ -2,7 +2,7 @@
  * WebView 네비게이션 관련 핸들러
  */
 
-import { registerHandler, getWebViewInstance } from '@/lib/bridge';
+import { getWebViewInstance, registerHandler } from '@/lib/bridge';
 
 export const registerWebviewHandlers = () => {
   // 외부 URL 열기

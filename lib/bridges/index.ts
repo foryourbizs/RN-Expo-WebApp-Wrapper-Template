@@ -3,15 +3,15 @@
  * 그룹별로 분리된 핸들러들을 통합 등록
  */
 
-import { registerDeviceHandlers } from './device';
-import { registerUIHandlers } from './ui';
 import { registerClipboardHandlers } from './clipboard';
-import { registerWebviewHandlers } from './webview';
-import { registerSplashHandlers } from './splash';
-import { registerOrientationHandlers } from './orientation';
-import { registerStatusBarHandlers } from './status-bar';
+import { registerDeviceHandlers } from './device';
 import { registerNavigationBarHandlers } from './navigation-bar';
+import { registerOrientationHandlers } from './orientation';
 import { registerScreenPinningHandlers } from './screen-pinning';
+import { registerSplashHandlers } from './splash';
+import { registerStatusBarHandlers } from './status-bar';
+import { registerUIHandlers } from './ui';
+import { registerWebviewHandlers } from './webview';
 
 /**
  * 모든 내장 핸들러 등록
