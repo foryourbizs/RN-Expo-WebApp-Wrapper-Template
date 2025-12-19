@@ -3,8 +3,8 @@
  * Android 앱 고정 (Screen Pinning / Lock Task Mode) 기능
  */
 
-import { Platform } from 'react-native';
 import { requireNativeModule } from 'expo-modules-core';
+import { Platform } from 'react-native';
 
 // Android에서만 네이티브 모듈 로드
 const ScreenPinningModule = Platform.OS === 'android' 

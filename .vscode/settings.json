@@ -3,5 +3,10 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "java.project.sourcePaths": [],
+  "java.import.exclusions": [
+    "**/modules/**"
+  ],
+  "gradle.nestedProjects": false
 }

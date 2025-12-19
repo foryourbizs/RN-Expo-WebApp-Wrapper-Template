@@ -6,10 +6,13 @@ group = 'expo.modules.screenpinning'
 version = '1.0.0'
 
 buildscript {
-  def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
-  if (expoModulesCorePlugin.exists()) {
-    apply from: expoModulesCorePlugin
-    applyKotlinExpoModulesCorePlugin()
+  def expoModulesCoreProject = rootProject.findProject(":expo-modules-core")
+  if (expoModulesCoreProject != null) {
+    def expoModulesCorePlugin = new File(expoModulesCoreProject.projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+    if (expoModulesCorePlugin.exists()) {
+      apply from: expoModulesCorePlugin
+      applyKotlinExpoModulesCorePlugin()
+    }
   }
 }
 
