@@ -56,6 +56,7 @@ export default function WebViewContainer() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [error, setError] = useState<WebViewError | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [currentUrl, setCurrentUrl] = useState<string>(APP_CONFIG.webview.baseUrl);
   const [webViewKey, setWebViewKey] = useState(1); // WebView 재생성용 키
   const [cacheMode, setCacheMode] = useState(true); // 캐시 사용 여부
   const [showDebugStatus, setShowDebugStatus] = useState(false); // 디버그 상태바 표시
@@ -215,19 +216,23 @@ export default function WebViewContainer() {
   // 네비게이션 상태 변경 핸들러
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
+    if (navState.url) {
+      setCurrentUrl(navState.url);
+      debugLog('nav', '📍 URL 변경', navState.url);
+    }
   }, []);
 
   // 로드 시작 - 초기 로딩 시에만 스피너 표시
   const handleLoadStart = useCallback(() => {
     loadStartTime.current = Date.now();
-    debugLog('event', '🚀 로드 시작', webview.baseUrl);
+    debugLog('event', '🚀 로드 시작', currentUrl);
     
     if (!hasLoadedOnce.current) {
       setIsInitialLoading(true);
       startLoadingTimeout();
     }
     setError(null);
-  }, [startLoadingTimeout, webview.baseUrl]);
+  }, [startLoadingTimeout, currentUrl]);
 
   // 로드 진행률 핸들러
   const handleLoadProgress = useCallback((event: WebViewProgressEvent) => {
@@ -599,8 +604,8 @@ export default function WebViewContainer() {
       {/* 디버그: 상태 표시 (2초 후 자동 숨김) */}
       {showDebugStatus && !isInitialLoading && (
         <View style={styles.debugStatusBar} pointerEvents="none">
-          <Text style={styles.debugStatusText}>
-            ✓ 로딩완료 | Progress: {loadProgress}% | hasLoaded: {hasLoadedOnce.current ? 'Y' : 'N'}
+          <Text style={styles.debugStatusText} numberOfLines={1}>
+            ✓ {loadProgress}% | {currentUrl.replace(/^https?:\/\/[^/]+/, '')}
           </Text>
         </View>
       )}

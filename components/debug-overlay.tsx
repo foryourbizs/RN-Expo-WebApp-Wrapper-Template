@@ -15,7 +15,7 @@ import {
 
 import { APP_CONFIG } from '@/constants/app-config';
 
-export type LogLevel = 'info' | 'warn' | 'error' | 'success' | 'event';
+export type LogLevel = 'info' | 'warn' | 'error' | 'success' | 'event' | 'nav';
 
 export interface LogEntry {
   id: number;
@@ -149,6 +149,7 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
         case 'error': return '❌';
         case 'success': return '✅';
         case 'event': return '📡';
+        case 'nav': return '📍';
         default: return '•';
       }
     };

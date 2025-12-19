@@ -229,6 +229,7 @@ export const APP_CONFIG = {
       error: '#e74c3c',
       success: '#27ae60',
       event: '#9b59b6',
+      nav: '#1abc9c',
     },
   },
 
