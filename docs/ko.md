@@ -245,8 +245,44 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `getNavigationBar` | - | `{ success, visible, buttonStyle, backgroundColor }` | ✅ | ❌ | 네비바 상태 조회 |
 | `setNavigationBar` | `{ visible?, color?, buttonStyle?, behavior? }` | `{ success }` | ✅ | ❌ | 네비바 설정 |
 | `restoreNavigationBar` | - | `{ success, restored }` | ✅ | ❌ | 네비바 원래 상태로 복원 |
+| `lockUrl` | `{ url, hideStatusBar?, hideNavigationBar? }` | `{ success, isLocked, lockedUrl }` | ✅ | ✅ | URL 고정 (키오스크) |
+| `unlockUrl` | - | `{ success, previousUrl }` | ✅ | ✅ | URL 고정 해제 |
+| `getUrlLockStatus` | - | `{ isLocked, lockedUrl, lockedAt, ... }` | ✅ | ✅ | URL 고정 상태 조회 |
+| `getScreenPinning` | - | `{ success, isPinned, lockTaskModeState }` | ✅ | ❌ | 앱 고정 상태 조회 |
+| `startScreenPinning` | - | `{ success }` | ✅ | ❌ | 앱 고정 시작 |
+| `stopScreenPinning` | - | `{ success }` | ✅ | ❌ | 앱 고정 해제 |
 
 > ✅ 지원 | ⚠️ 부분 지원 | ❌ 미지원
+
+
+---
+
+
+### 앱 고정 (Screen Pinning) - Android 전용
+
+Android의 앱 고정 기능을 사용하면 사용자가 다른 앱으로 전환할 수 없습니다.
+
+```javascript
+// 앱 고정 상태 확인
+const status = await AppBridge.getScreenPinning();
+console.log(status.isPinned);  // true/false
+// lockTaskModeState: 0=none, 1=pinned, 2=locked
+
+// 앱 고정 시작 (사용자 확인 다이얼로그 표시)
+await AppBridge.startScreenPinning();
+
+// 앱 고정 해제
+// ⚠️ 일반 앱: 뒤로가기 + 최근 앱 버튼 동시 길게 누르기로 해제
+// Device Owner 앱만 프로그래밍 방식으로 해제 가능
+await AppBridge.stopScreenPinning();
+```
+
+**URL 고정 vs 앱 고정:**
+| 기능 | URL 고정 (`lockUrl`) | 앱 고정 (`startScreenPinning`) |
+|------|---------------------|-------------------------------|
+| 범위 | WebView 내 URL만 제한 | 앱 자체를 고정 (다른 앱 전환 불가) |
+| 해제 | 프로그래밍 방식 | 뒤로+최근 버튼 길게 누르기 |
+| 플랫폼 | Android, iOS | Android만 |
 
 
 ---

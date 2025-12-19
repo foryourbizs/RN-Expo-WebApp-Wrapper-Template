@@ -172,6 +172,66 @@ export const BRIDGE_CLIENT_SCRIPT = `
       }
     },
 
+    // ========== 헬퍼 함수들 ==========
+
+    /**
+     * 현재 페이지 URL 고정 (키오스크 모드)
+     * @param {object} options - 옵션
+     * @param {boolean} options.hideStatusBar - 상태바 숨김
+     * @param {boolean} options.hideNavigationBar - 네비게이션바 숨김 (Android)
+     * @returns {Promise}
+     */
+    lockCurrentUrl: function(options) {
+      options = options || {};
+      return this.call('lockUrl', { 
+        url: window.location.href,
+        hideStatusBar: options.hideStatusBar || false,
+        hideNavigationBar: options.hideNavigationBar || false
+      });
+    },
+
+    /**
+     * URL 고정 해제
+     * @returns {Promise}
+     */
+    unlockUrl: function() {
+      return this.call('unlockUrl');
+    },
+
+    /**
+     * URL 고정 상태 확인
+     * @returns {Promise<{isLocked, lockedUrl, lockedAt, hideStatusBar, hideNavigationBar}>}
+     */
+    getUrlLockStatus: function() {
+      return this.call('getUrlLockStatus');
+    },
+
+    /**
+     * 앱 고정 상태 확인 (Android Screen Pinning)
+     * @returns {Promise<{success, isPinned, lockTaskModeState}>}
+     */
+    getScreenPinning: function() {
+      return this.call('getScreenPinning');
+    },
+
+    /**
+     * 앱 고정 시작 (Android Screen Pinning)
+     * 사용자에게 확인 다이얼로그가 표시됨
+     * @returns {Promise<{success, error?}>}
+     */
+    startScreenPinning: function() {
+      return this.call('startScreenPinning');
+    },
+
+    /**
+     * 앱 고정 해제 (Android Screen Pinning)
+     * 일반 앱: 뒤로가기 + 최근 앱 버튼 동시 길게 누르기로 해제
+     * @returns {Promise<{success, error?}>}
+     */
+    stopScreenPinning: function() {
+      return this.call('stopScreenPinning');
+    },
+
     // 앱 환경 체크
     isApp: function() {
       return !!window.ReactNativeWebView;
