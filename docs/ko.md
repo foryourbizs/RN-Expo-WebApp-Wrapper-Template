@@ -245,9 +245,6 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `getNavigationBar` | - | `{ success, visible, buttonStyle, backgroundColor }` | ✅ | ❌ | 네비바 상태 조회 |
 | `setNavigationBar` | `{ visible?, color?, buttonStyle?, behavior? }` | `{ success }` | ✅ | ❌ | 네비바 설정 |
 | `restoreNavigationBar` | - | `{ success, restored }` | ✅ | ❌ | 네비바 원래 상태로 복원 |
-| `lockUrl` | `{ url, hideStatusBar?, hideNavigationBar? }` | `{ success, isLocked, lockedUrl }` | ✅ | ✅ | URL 고정 (키오스크) |
-| `unlockUrl` | - | `{ success, previousUrl }` | ✅ | ✅ | URL 고정 해제 |
-| `getUrlLockStatus` | - | `{ isLocked, lockedUrl, lockedAt, ... }` | ✅ | ✅ | URL 고정 상태 조회 |
 | `getScreenPinning` | - | `{ success, isPinned, lockTaskModeState }` | ✅ | ❌ | 앱 고정 상태 조회 |
 | `startScreenPinning` | - | `{ success }` | ✅ | ❌ | 앱 고정 시작 |
 | `stopScreenPinning` | - | `{ success }` | ✅ | ❌ | 앱 고정 해제 |
