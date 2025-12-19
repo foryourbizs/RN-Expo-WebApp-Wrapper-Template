@@ -2,8 +2,10 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'maven-publish'
 
+
 group = 'expo.modules.screenpinning'
 version = '1.0.0'
+
 
 buildscript {
   def expoModulesCoreProject = rootProject.findProject(":expo-modules-core")
