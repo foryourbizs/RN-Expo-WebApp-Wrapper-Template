@@ -5,9 +5,9 @@
  * 네이티브 모듈 + WebView 브릿지 통합
  */
 
+import { registerHandler } from '@/lib/bridge';
 import { requireNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
-import { registerHandler } from '@/lib/bridge';
 
 // ========================================
 // 네이티브 모듈 인터페이스
