@@ -30,7 +30,7 @@ export const registerBuiltInHandlers = () => {
   registerNavigationBarHandlers();
   registerScreenPinningHandlers();
   registerKeepAwakeHandlers();
-  registerCameraHandlers(registerHandler);
+  registerCameraHandlers();
 
   console.log('[Bridge] All built-in handlers registered');
 };

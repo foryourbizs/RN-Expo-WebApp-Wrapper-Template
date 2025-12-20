@@ -1,329 +1,135 @@
 /**
- * Camera Bridge Handlers
- * Provides real-time video recording with frame streaming using custom native module
+ * Camera Module (Android Only)
+ * 카메라 권한 및 녹화 기능 제공
  */
 
 import { requireNativeModule } from 'expo-modules-core';
-import type { BridgeHandler } from '../../bridge';
-import { sendToWeb } from '../../bridge';
+import { Platform } from 'react-native';
 
-let CameraModule: any = null;
+// Android에서만 네이티브 모듈 로드
+const CameraModule = Platform.OS === 'android' 
+  ? requireNativeModule('Camera')
+  : null;
 
-// Try to load native module (only available in development build)
-try {
-  CameraModule = requireNativeModule('Camera');
-} catch (e) {
-  console.warn('[Camera] Native module not available. Use development build: npx expo run:android');
-  CameraModule = null;
+export interface CameraPermissionStatus {
+  /** 권한 승인 여부 */
+  granted: boolean;
+  /** 권한 상태 */
+  status: string;
+  /** 카메라 권한 */
+  cameraGranted?: boolean;
+  /** 마이크 권한 */
+  micGranted?: boolean;
 }
 
-// Recording state management
-interface RecordingState {
-  isRecording: boolean;
-  facing: string;
+export interface CameraRecordingOptions {
+  /** 카메라 방향 (front/back) */
+  facing?: 'front' | 'back';
+  /** 이벤트 키 (프레임 스트리밍용) */
   eventKey?: string;
 }
 
-let recordingState: RecordingState = {
-  isRecording: false,
-  facing: 'back',
-};
+export interface RecordingResult {
+  /** 성공 여부 */
+  success: boolean;
+  /** 녹화 여부 */
+  isRecording?: boolean;
+  /** 스트리밍 여부 */
+  isStreaming?: boolean;
+  /** 오류 메시지 */
+  error?: string;
+}
 
-/**
- * Set up event listeners
- */
-if (CameraModule) {
-  try {
-    CameraModule.addListener('onCameraFrame', (event: any) => {
-      if (recordingState.eventKey && recordingState.isRecording) {
-        sendToWeb(recordingState.eventKey, event);
-      }
-    });
+export interface CameraStatus {
+  /** 녹화 여부 */
+  isRecording: boolean;
+  /** 스트리밍 여부 */
+  isStreaming: boolean;
+  /** 카메라 방향 */
+  facing: string;
+  /** 카메라 사용 가능 여부 */
+  hasCamera: boolean;
+}
 
-    CameraModule.addListener('onRecordingFinished', (event: any) => {
-      if (recordingState.eventKey) {
-        sendToWeb(recordingState.eventKey, {
-          type: 'recordingFinished',
-          path: event.path,
-        });
-      }
-    });
-
-    CameraModule.addListener('onRecordingError', (event: any) => {
-      if (recordingState.eventKey) {
-        sendToWeb(recordingState.eventKey, {
-          type: 'recordingError',
-          error: event.error,
-        });
-      }
-    });
-  } catch (e) {
-    console.warn('[Camera] Failed to add event listeners:', e);
-  }
+export interface PhotoResult {
+  /** 성공 여부 */
+  success: boolean;
+  /** 사진 파일 경로 */
+  path?: string;
+  /** 오류 메시지 */
+  error?: string;
 }
 
 /**
- * Dummy functions for compatibility (camera component not needed)
+ * 카메라 권한 확인
+ * @returns 카메라 권한 상태
  */
-export function setCameraRef(ref: any) {
-  // Not used with native module
+export async function checkCameraPermission(): Promise<CameraPermissionStatus> {
+  if (Platform.OS !== 'android' || !CameraModule) {
+    return { granted: false, status: 'unavailable' };
+  }
+  return await CameraModule.checkCameraPermission();
 }
 
-export function getCameraRef() {
-  return null;
+/**
+ * 카메라 권한 요청
+ * @returns 권한 요청 결과
+ */
+export async function requestCameraPermission(): Promise<CameraPermissionStatus> {
+  if (Platform.OS !== 'android' || !CameraModule) {
+    return { granted: false, status: 'unavailable' };
+  }
+  return await CameraModule.requestCameraPermission();
 }
 
 /**
- * Check camera permission status
+ * 사진 촬영
+ * @returns 촬영 결과 및 파일 경로
  */
-export const checkCameraPermission: BridgeHandler = async (_payload, respond) => {
-  if (!CameraModule) {
-    respond({
-      granted: false,
-      status: 'unavailable',
-      error: 'Camera module not available. Run: npx expo prebuild --clean && npx expo run:android',
-    });
-    return;
+export async function takePhoto(): Promise<PhotoResult> {
+  if (Platform.OS !== 'android' || !CameraModule) {
+    return { success: false, error: 'Only supported on Android' };
   }
-
-  try {
-    const result = await CameraModule.checkCameraPermission();
-    console.log('[Camera] Permission check result:', result);
-    
-    respond({
-      granted: result.granted,
-      status: result.status,
-      cameraGranted: result.cameraGranted,
-      micGranted: result.micGranted,
-    });
-  } catch (error) {
-    console.error('[Camera] Permission check error:', error);
-    respond({
-      granted: false,
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Failed to check camera permission',
-    });
-  }
-};
+  return await CameraModule.takePhoto();
+}
 
 /**
- * Request camera permission
+ * 비디오 녹화 시작 (선택적으로 프레임 스트리밍)
+ * @param options 녹화 옵션 (카메라 방향, 이벤트 키)
+ * @returns 녹화 시작 결과
  */
-export const requestCameraPermission: BridgeHandler = async (_payload, respond) => {
-  if (!CameraModule) {
-    respond({
-      granted: false,
-      status: 'unavailable',
-      error: 'Camera module not available. Run: npx expo prebuild --clean && npx expo run:android',
-    });
-    return;
+export async function startCamera(options?: CameraRecordingOptions): Promise<RecordingResult> {
+  if (Platform.OS !== 'android' || !CameraModule) {
+    return { success: false, error: 'Only supported on Android' };
   }
-
-  try {
-    // Note: Android permissions must be requested via AndroidManifest.xml
-    // This just checks the current status
-    const result = await CameraModule.checkCameraPermission();
-    console.log('[Camera] Permission status:', result);
-    
-    respond({
-      granted: result.granted,
-      status: result.status,
-      message: 'Please grant camera and microphone permissions in app settings',
-    });
-  } catch (error) {
-    console.error('[Camera] Permission request error:', error);
-    respond({
-      granted: false,
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Failed to request camera permission',
-    });
-  }
-};
+  
+  const { facing = 'back', eventKey } = options || {};
+  return await CameraModule.startCamera(facing, eventKey || null);
+}
 
 /**
- * Take a photo (one-time capture, not streaming)
+ * 비디오 녹화 중지
+ * @returns 녹화 중지 결과
  */
-export const takePhoto: BridgeHandler = async (_payload, respond) => {
-  if (!CameraModule) {
-    respond({
-      success: false,
-      error: 'Camera module not available. Run: npx expo prebuild --clean && npx expo run:android',
-    });
-    return;
+export async function stopCamera(): Promise<RecordingResult> {
+  if (Platform.OS !== 'android' || !CameraModule) {
+    return { success: false, error: 'Only supported on Android' };
   }
-
-  try {
-    const result = await CameraModule.takePhoto();
-    
-    if (result.success) {
-      respond({
-        success: true,
-        data: {
-          path: result.path,
-        },
-      });
-    } else {
-      respond({
-        success: false,
-        error: result.error || 'Failed to take photo',
-      });
-    }
-  } catch (error) {
-    respond({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to take photo',
-    });
-  }
-};
+  return await CameraModule.stopCamera();
+}
 
 /**
- * Start video recording with optional frame streaming
+ * 카메라 상태 확인
+ * @returns 현재 카메라 상태
  */
-export const startCamera: BridgeHandler = async (payload, respond) => {
-  if (!CameraModule) {
-    respond({
-      error: 'Camera module not available. Run: npx expo prebuild --clean && npx expo run:android',
-    });
-    return;
-  }
-
-  const params = (payload || {}) as { 
-    facing?: string; 
-    eventKey?: string; 
-  };
-  const { facing = 'back', eventKey } = params;
-
-  try {
-    const result = await CameraModule.startCamera(facing, eventKey || null);
-    
-    if (result.success) {
-      recordingState = {
-        isRecording: true,
-        facing,
-        eventKey,
-      };
-
-      respond({
-        isRecording: true,
-        facing,
-        eventKey,
-        isStreaming: result.isStreaming,
-        mode: result.isStreaming ? 'recording+streaming' : 'recording',
-      });
-
-      console.log('[Camera] Recording started - streaming:', result.isStreaming);
-    } else {
-      respond({
-        error: result.error || 'Failed to start camera',
-      });
-    }
-  } catch (error) {
-    respond({
-      error: error instanceof Error ? error.message : 'Failed to start camera',
-    });
-  }
-};
-
-/**
- * Stop video recording
- */
-export const stopCamera: BridgeHandler = async (_payload, respond) => {
-  if (!CameraModule) {
-    respond({
-      error: 'Camera module not available. Run: npx expo prebuild --clean && npx expo run:android',
-    });
-    return;
-  }
-
-  if (!recordingState.isRecording) {
-    respond({
-      error: 'No recording in progress',
-    });
-    return;
-  }
-
-  try {
-    const result = await CameraModule.stopCamera();
-    
-    recordingState = {
-      isRecording: false,
-      facing: recordingState.facing,
-      eventKey: undefined,
+export async function getCameraStatus(): Promise<CameraStatus> {
+  if (Platform.OS !== 'android' || !CameraModule) {
+    return { 
+      isRecording: false, 
+      isStreaming: false, 
+      facing: 'back',
+      hasCamera: false 
     };
-
-    if (result.success) {
-      console.log('[Camera] Recording stopped');
-      respond({
-        isRecording: false,
-      });
-    } else {
-      respond({
-        error: result.error || 'Failed to stop camera',
-      });
-    }
-  } catch (error) {
-    recordingState.isRecording = false;
-    recordingState.eventKey = undefined;
-    
-    respond({
-      error: error instanceof Error ? error.message : 'Failed to stop recording',
-    });
   }
-};
-
-/**
- * Get recording status
- */
-export const getCameraStatus: BridgeHandler = async (_payload, respond) => {
-  if (!CameraModule) {
-    respond({
-      success: true,
-      data: {
-        isRecording: false,
-        isStreaming: false,
-        facing: 'back',
-        hasCamera: false,
-        error: 'Camera module not available',
-      },
-    });
-    return;
-  }
-
-  try {
-    const result = await CameraModule.getCameraStatus();
-    
-    respond({
-      success: true,
-      data: {
-        isRecording: result.isRecording || recordingState.isRecording,
-        isStreaming: result.isStreaming,
-        facing: recordingState.facing,
-        eventKey: recordingState.eventKey,
-        hasCamera: result.hasCamera,
-      },
-    });
-  } catch (error) {
-    respond({
-      success: true,
-      data: {
-        isRecording: recordingState.isRecording,
-        facing: recordingState.facing,
-        eventKey: recordingState.eventKey,
-        hasCamera: false,
-      },
-    });
-  }
-};
-
-/**
- * Register all camera handlers
- */
-export function registerCameraHandlers(registerHandler: (name: string, handler: BridgeHandler) => void) {
-  registerHandler('checkCameraPermission', checkCameraPermission);
-  registerHandler('requestCameraPermission', requestCameraPermission);
-  registerHandler('takePhoto', takePhoto);
-  registerHandler('startCamera', startCamera);
-  registerHandler('stopCamera', stopCamera);
-  registerHandler('getCameraStatus', getCameraStatus);
-  console.log('[Bridge] Camera handlers registered (VisionCamera)');
+  return await CameraModule.getCameraStatus();
 }
