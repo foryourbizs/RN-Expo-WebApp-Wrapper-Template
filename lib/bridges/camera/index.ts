@@ -53,25 +53,19 @@ export const checkCameraPermission: BridgeHandler = async (_payload, respond) =>
     console.log('[Camera] Parsed - granted:', granted, 'status:', status, 'canAskAgain:', canAskAgain);
     
     respond({
-      success: true,
-      data: {
-        granted,
-        status,
-        canAskAgain,
-        expires: permission.expires || 'never',
-      },
+      granted,
+      status,
+      canAskAgain,
+      expires: permission.expires || 'never',
     });
   } catch (error) {
     console.error('[Camera] Permission check error:', error);
     respond({
-      success: false,
+      granted: false,
+      status: 'undetermined',
+      canAskAgain: true,
+      expires: 'never',
       error: error instanceof Error ? error.message : 'Failed to check camera permission',
-      data: {
-        granted: false,
-        status: 'undetermined',
-        canAskAgain: true,
-        expires: 'never',
-      },
     });
   }
 };
@@ -92,25 +86,19 @@ export const requestCameraPermission: BridgeHandler = async (_payload, respond) 
     console.log('[Camera] Parsed - granted:', granted, 'status:', status, 'canAskAgain:', canAskAgain);
     
     respond({
-      success: true,
-      data: {
-        granted,
-        status,
-        canAskAgain,
-        expires: permission.expires || 'never',
-      },
+      granted,
+      status,
+      canAskAgain,
+      expires: permission.expires || 'never',
     });
   } catch (error) {
     console.error('[Camera] Permission request error:', error);
     respond({
-      success: false,
+      granted: false,
+      status: 'denied',
+      canAskAgain: false,
+      expires: 'never',
       error: error instanceof Error ? error.message : 'Failed to request camera permission',
-      data: {
-        granted: false,
-        status: 'denied',
-        canAskAgain: false,
-        expires: 'never',
-      },
     });
   }
 };
