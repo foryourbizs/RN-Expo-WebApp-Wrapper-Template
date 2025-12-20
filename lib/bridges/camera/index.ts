@@ -5,6 +5,7 @@
 
 import { Camera, CameraType, CameraView } from 'expo-camera';
 import type { BridgeHandler } from '../../bridge';
+import { sendToWeb } from '../../bridge';
 
 // Camera state management
 interface CameraState {
@@ -40,28 +41,50 @@ export function getCameraRef() {
  * Check camera permission status
  */
 export const checkCameraPermission: BridgeHandler = async (_payload, respond) => {
-  const { status } = await Camera.getCameraPermissionsAsync();
-  respond({
-    success: true,
-    data: {
-      granted: status === 'granted',
-      status,
-    },
-  });
+  try {
+    const permission = await Camera.getCameraPermissionsAsync();
+    console.log('[Camera] Permission check:', permission);
+    respond({
+      success: true,
+      data: {
+        granted: permission.granted,
+        status: permission.status,
+        canAskAgain: permission.canAskAgain,
+        expires: permission.expires,
+      },
+    });
+  } catch (error) {
+    console.error('[Camera] Permission check error:', error);
+    respond({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to check permission',
+    });
+  }
 };
 
 /**
  * Request camera permission
  */
 export const requestCameraPermission: BridgeHandler = async (_payload, respond) => {
-  const { status } = await Camera.requestCameraPermissionsAsync();
-  respond({
-    success: true,
-    data: {
-      granted: status === 'granted',
-      status,
-    },
-  });
+  try {
+    const permission = await Camera.requestCameraPermissionsAsync();
+    console.log('[Camera] Permission request result:', permission);
+    respond({
+      success: true,
+      data: {
+        granted: permission.granted,
+        status: permission.status,
+        canAskAgain: permission.canAskAgain,
+        expires: permission.expires,
+      },
+    });
+  } catch (error) {
+    console.error('[Camera] Permission request error:', error);
+    respond({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to request permission',
+    });
+  }
 };
 
 /**
@@ -121,21 +144,15 @@ export const startCamera: BridgeHandler = async (payload, respond) => {
         });
 
         if (photo?.base64) {
-          // Send frame to web via event
-          // This will be handled by the bridge's sendToWeb function
-          const eventData = {
+          // Send frame to web via sendToWeb
+          sendToWeb(eventKey, {
             type: 'cameraFrame',
-            data: {
-              base64: `data:image/jpeg;base64,${photo.base64}`,
-              timestamp: Date.now(),
-              facing: cameraState.facing,
-            },
-          };
-
-          // Emit event to web (will be implemented in bridge)
-          if (typeof (global as any).__bridgeEmitEvent === 'function') {
-            (global as any).__bridgeEmitEvent(eventKey, eventData);
-          }
+            base64: `data:image/jpeg;base64,${photo.base64}`,
+            timestamp: Date.now(),
+            facing: cameraState.facing,
+            width: photo.width,
+            height: photo.height,
+          });
         }
       } catch (error) {
         console.warn('[Camera] Frame capture error:', error);
