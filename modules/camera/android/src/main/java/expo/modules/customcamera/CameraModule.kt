@@ -19,48 +19,30 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class CameraModule : Module() {
-    // 카메라 관련 변수
     private var cameraProvider: ProcessCameraProvider? = null
     private var camera: Camera? = null
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var imageAnalyzer: ImageAnalysis? = null
-    
-    // 상태 변수
     private var isStreaming = false
     private var streamingEventName: String? = null
-    
-    // 스레드 핸들러
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
-    
-    // [수정] by lazy 관련 컴파일 에러 해결을 위해 Nullable var로 변경
-    private var cameraExecutor: ExecutorService? = null
-
-    // [수정] Executor를 안전하게 가져오는 헬퍼 프로퍼티
-    private val executor: ExecutorService
-        get() {
-            if (cameraExecutor == null || cameraExecutor!!.isShutdown) {
-                cameraExecutor = Executors.newSingleThreadExecutor()
-            }
-            return cameraExecutor!!
-        }
-
-    // 성능 최적화: FPS 제한
     private var lastFrameTime = 0L
-    private val TARGET_FPS = 10.0 
+    private val TARGET_FPS = 10.0
     private val FRAME_INTERVAL_MS = (1000.0 / TARGET_FPS).toLong()
+    
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
 
     override fun definition() = ModuleDefinition {
         Name("Camera")
         Events("onCameraFrame", "onRecordingFinished", "onRecordingError")
 
         OnCreate {
-            Log.d("CameraModule", "Module created")
+            Log.d("CameraModule", "Camera module created")
         }
 
         OnDestroy {
@@ -69,193 +51,276 @@ class CameraModule : Module() {
                 recording?.stop()
                 recording = null
                 cameraProvider?.unbindAll()
-                
-                // [수정] 컴파일 에러가 발생하던 부분 수정 (안전한 종료)
-                cameraExecutor?.shutdown()
-                cameraExecutor = null
-                
+                Log.d("CameraModule", "Camera module destroyed")
             } catch (e: Exception) {
-                Log.e("CameraModule", "OnDestroy error", e)
+                Log.e("CameraModule", "Destroy error", e)
             }
         }
 
+        // 권한 확인
         AsyncFunction("checkCameraPermission") { promise: Promise ->
-            val context = appContext.reactContext
-            if (context == null) {
-                promise.resolve(mapOf("granted" to false))
-                return@AsyncFunction
+            try {
+                val context = appContext.reactContext
+                if (context == null) {
+                    promise.resolve(mapOf("granted" to false, "status" to "unavailable"))
+                    return@AsyncFunction
+                }
+                
+                val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                
+                promise.resolve(mapOf(
+                    "granted" to (cameraGranted && micGranted),
+                    "cameraGranted" to cameraGranted,
+                    "micGranted" to micGranted,
+                    "status" to if (cameraGranted && micGranted) "granted" else "denied"
+                ))
+            } catch (e: Exception) {
+                Log.e("CameraModule", "checkCameraPermission error", e)
+                promise.resolve(mapOf("granted" to false, "status" to "error"))
             }
-            val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-            val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-            promise.resolve(mapOf("granted" to (cameraGranted && micGranted)))
         }
 
+        // 사진 촬영
         AsyncFunction("takePhoto") { promise: Promise ->
-            if (imageCapture == null) {
-                promise.resolve(mapOf("success" to false, "error" to "Camera not initialized"))
-                return@AsyncFunction
-            }
             try {
-                val photoFile = File.createTempFile("photo_", ".jpg", appContext.reactContext?.cacheDir)
+                if (imageCapture == null) {
+                    promise.resolve(mapOf("success" to false, "error" to "Camera not initialized"))
+                    return@AsyncFunction
+                }
+
+                val context = appContext.reactContext ?: run {
+                    promise.resolve(mapOf("success" to false, "error" to "Context not available"))
+                    return@AsyncFunction
+                }
+
+                val photoFile = File.createTempFile("photo_", ".jpg", context.cacheDir)
                 val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
-                // executor 헬퍼 사용
-                imageCapture?.takePicture(outputOptions, executor, object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                        promise.resolve(mapOf("success" to true, "path" to photoFile.absolutePath))
+                imageCapture?.takePicture(
+                    outputOptions,
+                    cameraExecutor,
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                            promise.resolve(mapOf("success" to true, "path" to photoFile.absolutePath))
+                        }
+                        override fun onError(exception: ImageCaptureException) {
+                            promise.resolve(mapOf("success" to false, "error" to exception.message))
+                        }
                     }
-                    override fun onError(exception: ImageCaptureException) {
-                        promise.resolve(mapOf("success" to false, "error" to exception.message))
-                    }
-                })
+                )
             } catch (e: Exception) {
+                Log.e("CameraModule", "takePhoto error", e)
                 promise.resolve(mapOf("success" to false, "error" to e.message))
             }
         }
 
+        // 카메라 시작
         AsyncFunction("startCamera") { facing: String, eventKey: String?, promise: Promise ->
-            val context = appContext.reactContext ?: return@AsyncFunction
+            Log.d("CameraModule", "startCamera called: facing=$facing, eventKey=$eventKey")
             
-            mainHandler.post {
-                try {
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-                    cameraProviderFuture.addListener({
-                        try {
-                            cameraProvider = cameraProviderFuture.get()
-                            val lifecycleOwner = appContext.currentActivity as? LifecycleOwner
-                            if (lifecycleOwner == null) {
-                                promise.resolve(mapOf("success" to false, "error" to "LifecycleOwner is null"))
-                                return@addListener
-                            }
-
-                            cameraProvider?.unbindAll()
-
-                            val cameraSelector = if (facing == "front") CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
-
-                            imageCapture = ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
-
-                            val recorder = Recorder.Builder().setQualitySelector(QualitySelector.from(Quality.HD)).build()
-                            videoCapture = VideoCapture.withOutput(recorder)
-
-                            val useCases = mutableListOf<UseCase>(imageCapture!!, videoCapture!!)
-
-                            if (eventKey != null) {
-                                streamingEventName = eventKey
-                                isStreaming = true
-                                lastFrameTime = 0L
-
-                                imageAnalyzer = ImageAnalysis.Builder()
-                                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                    .setTargetResolution(Size(480, 640)) 
-                                    .build()
-                                    .also { analyzer ->
-                                        // executor 헬퍼 사용
-                                        analyzer.setAnalyzer(executor) { imageProxy ->
-                                            processFrameSafe(imageProxy)
-                                        }
-                                    }
-                                useCases.add(imageAnalyzer!!)
-                            }
-
-                            camera = cameraProvider?.bindToLifecycle(lifecycleOwner, cameraSelector, *useCases.toTypedArray())
-                            startVideoRecording(promise)
-
-                        } catch (e: Exception) {
-                            promise.resolve(mapOf("success" to false, "error" to e.message))
-                        }
-                    }, ContextCompat.getMainExecutor(context))
-                } catch (e: Exception) {
-                    promise.resolve(mapOf("success" to false, "error" to e.message))
+            try {
+                val context = appContext.reactContext
+                if (context == null) {
+                    Log.e("CameraModule", "Context is null")
+                    promise.resolve(mapOf("success" to false, "error" to "Context not available"))
+                    return@AsyncFunction
                 }
+
+                Log.d("CameraModule", "Getting camera provider...")
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                
+                cameraProviderFuture.addListener({
+                    try {
+                        Log.d("CameraModule", "Camera provider future listener triggered")
+                        cameraProvider = cameraProviderFuture.get()
+                        
+                        val lifecycleOwner = appContext.currentActivity as? LifecycleOwner
+                        if (lifecycleOwner == null) {
+                            Log.e("CameraModule", "LifecycleOwner is null")
+                            promise.resolve(mapOf("success" to false, "error" to "Activity not available"))
+                            return@addListener
+                        }
+
+                        Log.d("CameraModule", "Unbinding all use cases...")
+                        cameraProvider?.unbindAll()
+
+                        val cameraSelector = if (facing == "front") {
+                            CameraSelector.DEFAULT_FRONT_CAMERA
+                        } else {
+                            CameraSelector.DEFAULT_BACK_CAMERA
+                        }
+
+                        Log.d("CameraModule", "Creating use cases...")
+                        imageCapture = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .build()
+
+                        val recorder = Recorder.Builder()
+                            .setQualitySelector(QualitySelector.from(Quality.HD))
+                            .build()
+                        videoCapture = VideoCapture.withOutput(recorder)
+
+                        val useCases = mutableListOf<UseCase>(imageCapture!!, videoCapture!!)
+
+                        // 스트리밍 설정
+                        if (eventKey != null) {
+                            streamingEventName = eventKey
+                            isStreaming = true
+                            lastFrameTime = 0L
+
+                            imageAnalyzer = ImageAnalysis.Builder()
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .setTargetResolution(Size(480, 640))
+                                .build()
+                                .also { analyzer ->
+                                    analyzer.setAnalyzer(cameraExecutor) { imageProxy ->
+                                        processFrame(imageProxy)
+                                    }
+                                }
+                            useCases.add(imageAnalyzer!!)
+                        }
+
+                        Log.d("CameraModule", "Binding to lifecycle...")
+                        camera = cameraProvider?.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            *useCases.toTypedArray()
+                        )
+
+                        Log.d("CameraModule", "Camera bound successfully, starting recording...")
+                        startVideoRecording(promise)
+
+                    } catch (e: Exception) {
+                        Log.e("CameraModule", "Error in camera provider listener", e)
+                        promise.resolve(mapOf("success" to false, "error" to "Camera initialization failed: ${e.message}"))
+                    }
+                }, ContextCompat.getMainExecutor(context))
+                
+            } catch (e: Exception) {
+                Log.e("CameraModule", "startCamera outer error", e)
+                promise.resolve(mapOf("success" to false, "error" to "Failed to start camera: ${e.message}"))
             }
         }
 
+        // 카메라 중지
         AsyncFunction("stopCamera") { promise: Promise ->
             try {
                 isStreaming = false
-                recording?.stop()
-                recording = null
-                mainHandler.post {
-                    try {
-                        cameraProvider?.unbindAll()
-                    } catch (e: Exception) { Log.e("CameraModule", "Unbind failed", e) }
+                streamingEventName = null
+                
+                try {
+                    recording?.stop()
+                } catch (e: Exception) {
+                    Log.e("CameraModule", "Error stopping recording", e)
                 }
+                recording = null
+
+                try {
+                    cameraProvider?.unbindAll()
+                } catch (e: Exception) {
+                    Log.e("CameraModule", "Error unbinding camera", e)
+                }
+                
                 promise.resolve(mapOf("success" to true))
             } catch (e: Exception) {
+                Log.e("CameraModule", "stopCamera error", e)
                 promise.resolve(mapOf("success" to false, "error" to e.message))
+            }
+        }
+
+        // 상태 확인
+        AsyncFunction("getCameraStatus") { promise: Promise ->
+            try {
+                promise.resolve(mapOf(
+                    "isRecording" to (recording != null),
+                    "isStreaming" to isStreaming,
+                    "hasCamera" to (camera != null)
+                ))
+            } catch (e: Exception) {
+                Log.e("CameraModule", "getCameraStatus error", e)
+                promise.resolve(mapOf(
+                    "isRecording" to false,
+                    "isStreaming" to false,
+                    "hasCamera" to false
+                ))
             }
         }
     }
 
     private fun startVideoRecording(promise: Promise) {
-        val context = appContext.reactContext ?: return
-        val videoCapture = this.videoCapture ?: return
-
         try {
+            val context = appContext.reactContext ?: run {
+                promise.resolve(mapOf("success" to false, "error" to "Context not available"))
+                return
+            }
+            
+            val videoCapture = this.videoCapture ?: run {
+                promise.resolve(mapOf("success" to false, "error" to "Video capture not initialized"))
+                return
+            }
+
             val videoFile = File.createTempFile("video_", ".mp4", context.cacheDir)
             val outputOptions = FileOutputOptions.Builder(videoFile).build()
-            
-            val permission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+
+            val micPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
             
             var pendingRecording = videoCapture.output.prepareRecording(context, outputOptions)
-            if (permission == PackageManager.PERMISSION_GRANTED) {
+            
+            if (micPermission == PackageManager.PERMISSION_GRANTED) {
                 pendingRecording = pendingRecording.withAudioEnabled()
             }
 
             recording = pendingRecording.start(ContextCompat.getMainExecutor(context)) { recordEvent ->
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
-                        promise.resolve(mapOf("success" to true, "isRecording" to true))
+                        Log.d("CameraModule", "Recording started")
+                        promise.resolve(mapOf(
+                            "success" to true,
+                            "isRecording" to true,
+                            "isStreaming" to isStreaming
+                        ))
                     }
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
                             sendEvent("onRecordingFinished", mapOf("path" to videoFile.absolutePath))
                         } else {
-                            recording = null
+                            Log.e("CameraModule", "Recording error: ${recordEvent.error}")
                             sendEvent("onRecordingError", mapOf("error" to "Video error: ${recordEvent.error}"))
                         }
+                        recording = null
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e("CameraModule", "Video start failed", e)
+            Log.e("CameraModule", "startVideoRecording error", e)
+            promise.resolve(mapOf("success" to false, "error" to "Recording failed: ${e.message}"))
         }
     }
 
-    private fun processFrameSafe(imageProxy: ImageProxy) {
-        if (!isStreaming || streamingEventName == null) {
-            imageProxy.close()
-            return
-        }
-
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastFrameTime < FRAME_INTERVAL_MS) {
-            imageProxy.close()
-            return
-        }
-        lastFrameTime = currentTime
-
+    private fun processFrame(imageProxy: ImageProxy) {
         try {
-            val buffer = imageProxy.planes[0].buffer
-            buffer.rewind()
-            
-            val bitmap = Bitmap.createBitmap(imageProxy.width, imageProxy.height, Bitmap.Config.ARGB_8888)
-            bitmap.copyPixelsFromBuffer(buffer)
+            if (!isStreaming || streamingEventName == null) {
+                imageProxy.close()
+                return
+            }
 
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastFrameTime < FRAME_INTERVAL_MS) {
+                imageProxy.close()
+                return
+            }
+            lastFrameTime = currentTime
+
+            val bitmap = imageProxy.toBitmap()
             val matrix = Matrix()
             matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
             
-            val scale = if (bitmap.width > 640) 640f / bitmap.width else 1f
-            if (scale != 1f) {
-                matrix.postScale(scale, scale)
-            }
-
             val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-            
-            val outputStream = ByteArrayOutputStream()
-            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
-            val base64 = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+
+            val out = ByteArrayOutputStream()
+            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, out)
+            val base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
 
             mainHandler.post {
                 sendEvent(streamingEventName!!, mapOf(
@@ -270,7 +335,7 @@ class CameraModule : Module() {
             rotatedBitmap.recycle()
 
         } catch (e: Exception) {
-            Log.e("CameraModule", "Frame processing error: ${e.message}")
+            Log.e("CameraModule", "processFrame error", e)
         } finally {
             imageProxy.close()
         }
