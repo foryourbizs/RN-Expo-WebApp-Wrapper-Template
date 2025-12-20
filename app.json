@@ -32,7 +32,10 @@
       "splash": {
         "backgroundColor": "#ffffff",
         "resizeMode": "contain"
-      }
+      },
+      "intentFilters": [],
+      "allowBackup": true,
+      "userInterfaceStyle": "automatic"
     },
     "splash": {
       "backgroundColor": "#ffffff",

@@ -101,13 +101,13 @@ export const registerCameraHandlers = () => {
   // 카메라 녹화 중지
   registerHandler('stopCamera', async (_payload, respond) => {
     try {
-      const { Platform } = await import('react-native');
-      if (Platform.OS !== 'android') {
       if (!Camera) {
         respond({ success: false, error: 'Camera module not available' });
         return;
       }
       
+      const result = await Camera.stopCamera();
+      respond(result);
     } catch (error) {
       respond({ 
         success: false, 
@@ -119,8 +119,6 @@ export const registerCameraHandlers = () => {
   // 카메라 상태 확인
   registerHandler('getCameraStatus', async (_payload, respond) => {
     try {
-      const { Platform } = await import('react-native');
-      if (Platform.OS !== 'android') {
       if (!Camera) {
         respond({ 
           success: true,
@@ -134,6 +132,8 @@ export const registerCameraHandlers = () => {
         return;
       }
       
+      const status = await Camera.getCameraStatus();
+      respond({ success: true, data: status });
     } catch (error) {
       respond({ 
         success: false, 
