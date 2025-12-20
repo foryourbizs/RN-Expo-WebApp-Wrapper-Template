@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const [showOffline, setShowOffline] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wasOffline = useRef(false);
+  const hasReloaded = useRef(false);
 
   // 오프라인 상태 감지
   useEffect(() => {
@@ -31,9 +32,11 @@ export default function HomeScreen() {
       // 오프라인으로 전환
       setShowOffline(true);
       wasOffline.current = true;
-    } else if (wasOffline.current && isOnline) {
-      // 온라인으로 복구됨
+      hasReloaded.current = false;
+    } else if (wasOffline.current && isOnline && !hasReloaded.current) {
+      // 온라인으로 복구됨 (한 번만 실행)
       setIsReconnecting(true);
+      hasReloaded.current = true;
       
       if (offline.autoReconnect) {
         // 자동 새로고침
@@ -45,6 +48,7 @@ export default function HomeScreen() {
         }, 500);
       } else {
         setIsReconnecting(false);
+        wasOffline.current = false;
       }
     }
   }, [isOnline, offline.enabled, offline.autoReconnect]);
@@ -55,6 +59,7 @@ export default function HomeScreen() {
       webViewControls.reload();
       setShowOffline(false);
       wasOffline.current = false;
+      hasReloaded.current = false;
     }
   }, [isOnline]);
 

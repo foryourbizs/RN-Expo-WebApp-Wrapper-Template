@@ -6,33 +6,33 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  BackHandler,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    BackHandler,
+    Linking,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type {
-  ShouldStartLoadRequest,
-  WebViewErrorEvent,
-  WebViewHttpErrorEvent,
-  WebViewMessageEvent,
-  WebViewNavigation,
-  WebViewProgressEvent,
+    ShouldStartLoadRequest,
+    WebViewErrorEvent,
+    WebViewHttpErrorEvent,
+    WebViewMessageEvent,
+    WebViewNavigation,
+    WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 
 import DebugOverlay, { debugLog, DebugOverlayRef } from '@/components/debug-overlay';
 import { APP_CONFIG } from '@/constants/app-config';
 import {
-  handleBridgeMessage,
-  registerBuiltInHandlers,
-  setBridgeWebView
+    handleBridgeMessage,
+    setBridgeWebView
 } from '@/lib/bridge';
 import { BRIDGE_CLIENT_SCRIPT } from '@/lib/bridge-client';
+import { registerBuiltInHandlers } from '@/lib/bridges';
 
 // WebView 인스턴스를 전역에서 접근 가능하도록 (네비게이션 제어용)
 export let webViewRef: React.RefObject<WebView | null>;
@@ -223,16 +223,17 @@ export default function WebViewContainer() {
   }, []);
 
   // 로드 시작 - 초기 로딩 시에만 스피너 표시
-  const handleLoadStart = useCallback(() => {
+  const handleLoadStart = useCallback((syntheticEvent: any) => {
     loadStartTime.current = Date.now();
-    debugLog('event', '🚀 로드 시작', currentUrl);
+    const url = syntheticEvent?.nativeEvent?.url || currentUrl;
+    debugLog('event', '🚀 로드 시작', url);
     
     if (!hasLoadedOnce.current) {
       setIsInitialLoading(true);
       startLoadingTimeout();
     }
     setError(null);
-  }, [startLoadingTimeout, currentUrl]);
+  }, [startLoadingTimeout]);
 
   // 로드 진행률 핸들러
   const handleLoadProgress = useCallback((event: WebViewProgressEvent) => {
@@ -532,10 +533,15 @@ export default function WebViewContainer() {
         // 렌더링 프로세스 종료 시 자동 재로드
         onRenderProcessGone={handleRenderProcessGone}
         onContentProcessDidTerminate={handleContentProcessDidTerminate}
-        // 브릿지 클라이언트 + 페이지 로드 스크립트 주입
+        // 브릿지 클라이언트 주입 (페이지 로드 전)
+        injectedJavaScriptBeforeContentLoaded={BRIDGE_CLIENT_SCRIPT}
+        // 페이지 로드 후 스크립트
         injectedJavaScript={`
-          ${BRIDGE_CLIENT_SCRIPT}
           (function() {
+            // 중복 실행 방지
+            if (window.__pageReadySent) return;
+            window.__pageReadySent = true;
+            
             // 디버그: DOM 상태 확인
             function checkDOMState() {
               var bodyLen = document.body ? document.body.innerHTML.length : 0;
@@ -548,24 +554,31 @@ export default function WebViewContainer() {
               }));
             }
             
-            // 페이지 로드 감지
-            if (document.readyState === 'complete') {
+            // 페이지 로드 감지 (한 번만)
+            function sendPageReady() {
+              if (window.__pageReadyEventSent) return;
+              window.__pageReadyEventSent = true;
+              
               checkDOMState();
               window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAGE_READY' }));
+            }
+            
+            if (document.readyState === 'complete') {
+              sendPageReady();
             } else {
-              window.addEventListener('load', function() {
-                checkDOMState();
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAGE_READY' }));
-              });
+              window.addEventListener('load', sendPageReady, { once: true });
             }
             
             // 에러 감지
-            window.onerror = function(msg, url, line, col, error) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'JS_ERROR',
-                message: msg
-              }));
-            };
+            if (!window.__errorHandlerSet) {
+              window.__errorHandlerSet = true;
+              window.onerror = function(msg, url, line, col, error) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'JS_ERROR',
+                  message: msg
+                }));
+              };
+            }
             
             // 빈 화면 감지를 위해 여러 번 체크 (1초, 2초, 5초)
             setTimeout(checkDOMState, 1000);
@@ -574,8 +587,6 @@ export default function WebViewContainer() {
           })();
           true;
         `}
-        // 페이지 이동 시에도 스크립트 재주입
-        injectedJavaScriptBeforeContentLoaded={BRIDGE_CLIENT_SCRIPT}
       />
       
       {/* 로딩 인디케이터 - 초기 로딩 시에만 표시 */}

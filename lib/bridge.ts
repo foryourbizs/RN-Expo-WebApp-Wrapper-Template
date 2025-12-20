@@ -245,6 +245,3 @@ export const callWeb = <T = unknown, R = unknown>(
     sendToWeb(action, { ...payload as object, requestId, responseAction: responseHandler });
   });
 };
-
-// 내장 핸들러들은 bridges 폴더에서 관리
-export { registerBuiltInHandlers } from '@/lib/bridges';

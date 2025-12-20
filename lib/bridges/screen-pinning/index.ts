@@ -13,15 +13,26 @@ import { Platform } from 'react-native';
 // 네이티브 모듈 인터페이스
 // ========================================
 
-const ScreenPinningModule = Platform.OS === 'android' 
-  ? requireNativeModule('ScreenPinning')
-  : null;
-
 export interface ScreenPinningStatus {
   /** 앱 고정 활성화 여부 */
   isPinned: boolean;
   /** Lock Task 모드 상태 (0: none, 1: pinned, 2: locked) */
   lockTaskModeState: number;
+}
+
+interface NativeScreenPinningModule {
+  isScreenPinned(): Promise<ScreenPinningStatus>;
+  startScreenPinning(): Promise<{ success: boolean; error?: string }>;
+  stopScreenPinning(): Promise<{ success: boolean; error?: string }>;
+}
+
+let ScreenPinningModule: NativeScreenPinningModule | null = null;
+if (Platform.OS === 'android') {
+  try {
+    ScreenPinningModule = requireNativeModule('ScreenPinning');
+  } catch (error) {
+    console.warn('[ScreenPinning] Native module not found. Screen pinning features will be disabled.', error);
+  }
 }
 
 /**
