@@ -236,23 +236,18 @@ export const sendToWeb = <T = unknown>(action: string, payload?: T) => {
     timestamp: Date.now(),
   };
 
-  const script = `
-    (function() {
-      window.dispatchEvent(new CustomEvent('nativeMessage', { 
-        detail: ${JSON.stringify(message)} 
-      }));
-      if (window.onNativeMessage) {
-        window.onNativeMessage(${JSON.stringify(message)});
-      }
-    })();
-    true;
-  `;
+  // JSON.stringify를 한 번만 실행하여 최적화
+  const messageJSON = JSON.stringify(message);
+
+  // IIFE로 즉시 실행 후 메모리에서 제거됨
+  // 이벤트만 발생시키고 코드는 GC됨
+  const script = `(function(){var e=new CustomEvent('nativeMessage',{detail:${messageJSON}});window.dispatchEvent(e);window.onNativeMessage&&window.onNativeMessage(${messageJSON})})();true;`;
 
   webViewInstance.injectJavaScript(script);
   
   // 로그 출력 조건: base64 데이터나 cameraFrame 같은 대용량 데이터는 로그 제외
   const shouldLog = !action.includes('cameraFrame') && 
-    !JSON.stringify(payload || {}).includes('base64');
+    !messageJSON.includes('base64');
   
   if (shouldLog) {
     console.log(`[Bridge] Sent to web: ${action}`, payload);
