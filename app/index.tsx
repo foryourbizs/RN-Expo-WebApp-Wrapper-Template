@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppCameraView } from '@/components/camera-view';
+// import { AppCameraView } from '@/components/camera-view';
 import OfflineScreen from '@/components/offline-screen';
 import WebViewContainer, { webViewControls } from '@/components/webview-container';
 import { APP_CONFIG } from '@/constants/app-config';
@@ -125,10 +125,10 @@ export default function HomeScreen() {
       )}
 
       {/* 카메라 뷰 (항상 마운트되어 있어야 함) */}
-      <AppCameraView 
+      {/* <AppCameraView 
         visible={cameraVisible} 
         onClose={() => setCameraVisible(false)} 
-      />
+      /> */}
     </View>
   );
 }
