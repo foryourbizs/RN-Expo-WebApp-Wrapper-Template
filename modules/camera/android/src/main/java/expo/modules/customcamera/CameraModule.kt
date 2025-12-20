@@ -1,4 +1,4 @@
-package expo.modules.camera
+package expo.modules.customcamera
 
 import android.Manifest
 import android.content.Context
