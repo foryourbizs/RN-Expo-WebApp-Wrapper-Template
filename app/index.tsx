@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppCameraView } from '@/components/camera-view';
 import OfflineScreen from '@/components/offline-screen';
 import WebViewContainer, { webViewControls } from '@/components/webview-container';
 import { APP_CONFIG } from '@/constants/app-config';
@@ -23,6 +24,9 @@ export default function HomeScreen() {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wasOffline = useRef(false);
   const hasReloaded = useRef(false);
+
+  // 카메라 상태
+  const [cameraVisible, setCameraVisible] = useState(false);
 
   // 오프라인 상태 감지
   useEffect(() => {
@@ -119,6 +123,12 @@ export default function HomeScreen() {
           isReconnecting={isReconnecting}
         />
       )}
+
+      {/* 카메라 뷰 (항상 마운트되어 있어야 함) */}
+      <AppCameraView 
+        visible={cameraVisible} 
+        onClose={() => setCameraVisible(false)} 
+      />
     </View>
   );
 }

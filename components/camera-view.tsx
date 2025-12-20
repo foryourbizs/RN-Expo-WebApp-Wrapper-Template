@@ -15,47 +15,71 @@ export interface CameraViewProps {
 }
 
 export function AppCameraView({ visible, facing = 'back', onClose }: CameraViewProps) {
-  const [cameraRef, setCameraRefState] = useState<CameraView | null>(null);
+  const [cameraRefState, setCameraRefState] = useState<CameraView | null>(null);
 
+  // Always set camera ref (even when not visible)
   useEffect(() => {
-    // Set camera ref for bridge handlers
-    if (cameraRef) {
-      setCameraRef(cameraRef);
+    if (cameraRefState) {
+      setCameraRef(cameraRefState);
     }
     return () => {
       setCameraRef(null);
     };
-  }, [cameraRef]);
+  }, [cameraRefState]);
 
-  if (!visible) {
-    return null;
-  }
-
+  // Render camera in background even when not visible
   return (
-    <Modal
-      visible={visible}
-      transparent={false}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <CameraView
-          ref={(ref) => setCameraRefState(ref)}
-          style={styles.camera}
-          facing={facing}
-        />
-        
-        {onClose && (
-          <Pressable style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>✕</Text>
-          </Pressable>
-        )}
-      </View>
-    </Modal>
+    <>
+      {/* Hidden camera for ref initialization */}
+      {!visible && (
+        <View style={styles.hidden}>
+          <CameraView
+            ref={(ref) => setCameraRefState(ref)}
+            style={styles.hiddenCamera}
+            facing={facing}
+          />
+        </View>
+      )}
+
+      {/* Visible camera modal */}
+      {visible && (
+        <Modal
+          visible={visible}
+          transparent={false}
+          animationType="slide"
+          onRequestClose={onClose}
+        >
+          <View style={styles.container}>
+            <CameraView
+              ref={(ref) => setCameraRefState(ref)}
+              style={styles.camera}
+              facing={facing}
+            />
+            
+            {onClose && (
+              <Pressable style={styles.closeButton} onPress={onClose}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            )}
+          </View>
+        </Modal>
+      )}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  hidden: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+    pointerEvents: 'none',
+  },
+  hiddenCamera: {
+    width: 1,
+    height: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#000',

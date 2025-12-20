@@ -74,12 +74,25 @@ export const startCamera: BridgeHandler = async (payload, respond) => {
   const params = (payload || {}) as { facing?: string; eventKey?: string; frameInterval?: number };
   const { facing = 'back', eventKey, frameInterval = 100 } = params;
 
-  // Check permission first
-  const { status } = await Camera.getCameraPermissionsAsync();
+  // Check and request permission if needed
+  let { status } = await Camera.getCameraPermissionsAsync();
   if (status !== 'granted') {
+    const result = await Camera.requestCameraPermissionsAsync();
+    status = result.status;
+    
+    if (status !== 'granted') {
+      respond({
+        success: false,
+        error: 'Camera permission denied',
+      });
+      return;
+    }
+  }
+
+  if (!cameraRef) {
     respond({
       success: false,
-      error: 'Camera permission not granted',
+      error: 'Camera component not initialized. Please add <AppCameraView> to your app.',
     });
     return;
   }
@@ -188,18 +201,24 @@ export const takePhoto: BridgeHandler = async (payload, respond) => {
   if (!cameraRef) {
     respond({
       success: false,
-      error: 'Camera ref not set',
+      error: 'Camera component not initialized. Please add <AppCameraView> to your app.',
     });
     return;
   }
 
-  const { status } = await Camera.getCameraPermissionsAsync();
+  // Check and request permission if needed
+  let { status } = await Camera.getCameraPermissionsAsync();
   if (status !== 'granted') {
-    respond({
-      success: false,
-      error: 'Camera permission not granted',
-    });
-    return;
+    const result = await Camera.requestCameraPermissionsAsync();
+    status = result.status;
+    
+    if (status !== 'granted') {
+      respond({
+        success: false,
+        error: 'Camera permission denied',
+      });
+      return;
+    }
   }
 
   try {
