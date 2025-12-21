@@ -21,16 +21,8 @@ export const registerCameraHandlers = () => {
     return;
   }
 
-  // Expo 모듈 이벤트 리스너 초기화
-  try {
-    if (Camera) {
-      Camera.addListener('onCameraFrame', (data: any) => {
-        sendToWeb('onCameraFrame', data);
-      });
-    }
-  } catch (error) {
-    console.error('[Bridge] Failed to setup camera event listeners:', error);
-  }
+  // 이벤트 리스너 구독 객체 저장 (메모리 누수 방지)
+  let frameSubscription: any = null;
 
   // 카메라 권한 확인
   registerHandler('checkCameraPermission', async (_payload, respond) => {
@@ -73,14 +65,17 @@ export const registerCameraHandlers = () => {
   });
 
   // 사진 촬영
-  registerHandler('takePhoto', async (_payload, respond) => {
+  registerHandler('takePhoto', async (payload, respond) => {
     try {
       if (!Camera) {
         respond({ success: false, error: 'Camera module not available' });
         return;
       }
       
-      const result = await Camera.takePhoto();
+      const options = payload as { facing?: 'front' | 'back' };
+      const facing = options?.facing || 'back';  // 기본값: 후면 카메라
+      
+      const result = await Camera.takePhoto(facing);
       respond(result);
     } catch (error) {
       respond({ 
@@ -96,6 +91,24 @@ export const registerCameraHandlers = () => {
       if (!Camera) {
         respond({ success: false, error: 'Camera module not available' });
         return;
+      }
+      
+      // 기존 리스너 정리 (중복 방지)
+      if (frameSubscription) {
+        try {
+          frameSubscription.remove();
+        } catch (e) {
+          console.warn('[Bridge] Failed to remove existing listener:', e);
+        }
+      }
+      
+      // 새 리스너 등록
+      try {
+        frameSubscription = Camera.addListener('onCameraFrame', (data: any) => {
+          sendToWeb('onCameraFrame', data);
+        });
+      } catch (e) {
+        console.error('[Bridge] Failed to register frame listener:', e);
       }
       
       const options = payload as { facing?: 'front' | 'back' };
@@ -119,6 +132,17 @@ export const registerCameraHandlers = () => {
       }
       
       const result = await Camera.stopCamera();
+      
+      // 이벤트 리스너 정리 (메모리 누수 방지)
+      if (frameSubscription) {
+        try {
+          frameSubscription.remove();
+          frameSubscription = null;
+        } catch (e) {
+          console.warn('[Bridge] Failed to remove frame listener:', e);
+        }
+      }
+      
       respond(result);
     } catch (error) {
       respond({ 

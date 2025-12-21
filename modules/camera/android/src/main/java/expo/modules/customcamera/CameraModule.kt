@@ -63,6 +63,13 @@ class CameraModule : Module() {
             try {
                 Log.d("CameraModule", "OnDestroy called")
                 cleanupCamera()
+                
+                // Executor 종료로 메모리 누수 방지
+                try {
+                    cameraExecutor.shutdown()
+                } catch (e: Exception) {
+                    Log.e("CameraModule", "Executor shutdown error", e)
+                }
             } catch (e: Exception) {
                 Log.e("CameraModule", "Destroy error", e)
             }
@@ -147,33 +154,139 @@ class CameraModule : Module() {
         }
 
         // 사진 촬영
-        AsyncFunction("takePhoto") { promise: Promise ->
+        // 사진 촬영 (1프레임 캡처 방식 - 파일 저장 없음)
+        AsyncFunction("takePhoto") { facingParam: String?, promise: Promise ->
             try {
-                if (imageCapture == null) {
-                    promise.resolve(mapOf("success" to false, "error" to "Camera not initialized"))
-                    return@AsyncFunction
-                }
-
-                val context = appContext.reactContext ?: run {
+                val facing = facingParam ?: "back"  // 기본값: 후면 카메라
+                
+                val context = appContext.reactContext
+                if (context == null) {
                     promise.resolve(mapOf("success" to false, "error" to "Context not available"))
                     return@AsyncFunction
                 }
 
-                val photoFile = File.createTempFile("photo_", ".jpg", context.cacheDir)
-                val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+                val activity = appContext.currentActivity
+                if (activity == null) {
+                    promise.resolve(mapOf("success" to false, "error" to "Activity not available"))
+                    return@AsyncFunction
+                }
+                
+                val lifecycleOwner = activity as? LifecycleOwner
+                if (lifecycleOwner == null) {
+                    promise.resolve(mapOf("success" to false, "error" to "LifecycleOwner not available"))
+                    return@AsyncFunction
+                }
+                
+                // 권한 체크
+                val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                if (cameraPermission != PackageManager.PERMISSION_GRANTED) {
+                    promise.resolve(mapOf("success" to false, "error" to "Camera permission not granted"))
+                    return@AsyncFunction
+                }
 
-                imageCapture?.takePicture(
-                    outputOptions,
-                    cameraExecutor,
-                    object : ImageCapture.OnImageSavedCallback {
-                        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                            promise.resolve(mapOf("success" to true, "path" to photoFile.absolutePath))
+                // 임시 카메라 설정 (1프레임 촬영용)
+                val tempCameraProviderFuture = ProcessCameraProvider.getInstance(activity)
+                
+                tempCameraProviderFuture.addListener({
+                    var tempCamera: Camera? = null
+                    var tempImageCapture: ImageCapture? = null
+                    
+                    try {
+                        val tempProvider = tempCameraProviderFuture.get()
+                        
+                        val cameraSelector = if (facing == "front") {
+                            CameraSelector.DEFAULT_FRONT_CAMERA
+                        } else {
+                            CameraSelector.DEFAULT_BACK_CAMERA
                         }
-                        override fun onError(exception: ImageCaptureException) {
-                            promise.resolve(mapOf("success" to false, "error" to exception.message))
+
+                        val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            activity.display?.rotation ?: Surface.ROTATION_0
+                        } else {
+                            @Suppress("DEPRECATION")
+                            activity.windowManager.defaultDisplay.rotation
                         }
+                        
+                        tempImageCapture = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .setTargetRotation(rotation)
+                            .build()
+
+                        tempCamera = tempProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            tempImageCapture
+                        )
+
+                        tempImageCapture?.takePicture(
+                            cameraExecutor,
+                            object : ImageCapture.OnImageCapturedCallback() {
+                                override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                                    try {
+                                        val bitmap = imageProxy.toBitmap()
+                                        val matrix = Matrix()
+                                        matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
+                                        
+                                        val rotatedBitmap = Bitmap.createBitmap(
+                                            bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                                        )
+                                        bitmap.recycle()
+
+                                        val base64: String
+                                        ByteArrayOutputStream().use { out ->
+                                            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                                            base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+                                        }
+                                        
+                                        val width = rotatedBitmap.width
+                                        val height = rotatedBitmap.height
+                                        rotatedBitmap.recycle()
+
+                                        // 임시 카메라 정리
+                                        mainHandler.post {
+                                            try {
+                                                tempProvider.unbindAll()
+                                            } catch (e: Exception) {
+                                                Log.e("CameraModule", "Error unbinding temp camera", e)
+                                            }
+                                        }
+
+                                        promise.resolve(mapOf(
+                                            "success" to true,
+                                            "base64" to "data:image/jpeg;base64,$base64",
+                                            "width" to width,
+                                            "height" to height,
+                                            "facing" to facing
+                                        ))
+                                    } catch (e: Exception) {
+                                        Log.e("CameraModule", "Image processing error", e)
+                                        promise.resolve(mapOf("success" to false, "error" to e.message))
+                                    } finally {
+                                        imageProxy.close()
+                                    }
+                                }
+
+                                override fun onError(exception: ImageCaptureException) {
+                                    // 임시 카메라 정리
+                                    mainHandler.post {
+                                        try {
+                                            tempProvider.unbindAll()
+                                        } catch (e: Exception) {
+                                            Log.e("CameraModule", "Error unbinding temp camera", e)
+                                        }
+                                    }
+                                    
+                                    Log.e("CameraModule", "Capture error", exception)
+                                    promise.resolve(mapOf("success" to false, "error" to exception.message))
+                                }
+                            }
+                        )
+                    } catch (e: Exception) {
+                        Log.e("CameraModule", "Temp camera setup error", e)
+                        promise.resolve(mapOf("success" to false, "error" to e.message))
                     }
-                )
+                }, ContextCompat.getMainExecutor(context))
+                
             } catch (e: Exception) {
                 Log.e("CameraModule", "takePhoto error", e)
                 promise.resolve(mapOf("success" to false, "error" to e.message))
@@ -298,14 +411,9 @@ class CameraModule : Module() {
         // 카메라 중지
         AsyncFunction("stopCamera") { promise: Promise ->
             try {
-                saveDebugLog("=== stopCamera called ===")
-                Log.d("CameraModule", "=== stopCamera called ===")
                 cleanupCamera()
-                saveDebugLog("✓ Camera stopped successfully")
-                Log.d("CameraModule", "✓ Camera stopped successfully")
                 promise.resolve(mapOf("success" to true))
             } catch (e: Exception) {
-                saveDebugLog("ERROR stopCamera: ${e.message}")
                 Log.e("CameraModule", "stopCamera error", e)
                 promise.resolve(mapOf("success" to false, "error" to e.message))
             }
@@ -544,14 +652,8 @@ class CameraModule : Module() {
     private fun processFrame(imageProxy: ImageProxy) {
         try {
             frameCounter++
-            if (frameCounter % 10 == 0) {
-                saveDebugLog("processFrame called #$frameCounter - isStreaming: $isStreaming")
-                Log.d("CameraModule", "processFrame called #$frameCounter - isStreaming: $isStreaming")
-            }
             
             if (!isStreaming) {
-                saveDebugLog("Frame skipped - streaming disabled (frame #$frameCounter)")
-                Log.w("CameraModule", "Frame skipped - streaming disabled (frame #$frameCounter)")
                 imageProxy.close()
                 return
             }
@@ -562,62 +664,47 @@ class CameraModule : Module() {
                 return
             }
             lastFrameTime = currentTime
-            
-            saveDebugLog("Processing frame - converting to bitmap...")
-            Log.d("CameraModule", "Processing frame - converting to bitmap...")
 
             val bitmap = imageProxy.toBitmap()
             val matrix = Matrix()
             matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
             
             val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-
-            val out = ByteArrayOutputStream()
-            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, out)
-            val base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
             
-            if (frameCounter % 10 == 0) {
-                saveDebugLog("Frame #$frameCounter encoded - size: ${base64.length} bytes, sending event...")
-                Log.d("CameraModule", "Frame #$frameCounter encoded - size: ${base64.length} bytes, sending event...")
-            }
+            // bitmap 즉시 해제 (rotatedBitmap이 복사본이므로 안전)
+            bitmap.recycle()
 
-            // 메인 스레드에서 이벤트 전송 (Expo 모듈 요구사항)
+            val base64: String
+            ByteArrayOutputStream().use { out ->
+                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, out)
+                base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+            }
+            
+            // 프레임 데이터 미리 준비 (width, height 캡처)
+            val width = rotatedBitmap.width
+            val height = rotatedBitmap.height
+            
+            // rotatedBitmap 즉시 해제
+            rotatedBitmap.recycle()
+
             mainHandler.post {
                 try {
-                    // 프레임 데이터 준비
                     val frameData = mapOf(
                         "type" to "cameraFrame",
                         "base64" to "data:image/jpeg;base64,$base64",
-                        "width" to rotatedBitmap.width,
-                        "height" to rotatedBitmap.height,
+                        "width" to width,
+                        "height" to height,
                         "frameNumber" to frameCounter,
                         "timestamp" to System.currentTimeMillis()
                     )
                     
-                    if (frameCounter % 10 == 0) {
-                        saveDebugLog("Sending frame #$frameCounter - data keys: ${frameData.keys.joinToString()}")
-                        Log.d("CameraModule", "Sending frame #$frameCounter - data keys: ${frameData.keys.joinToString()}")
-                    }
-                    
-                    // Expo sendEvent 호출 - 이벤트 이름은 Events()에 정의된 것과 정확히 일치해야 함
                     sendEvent("onCameraFrame", frameData)
-                    
-                    if (frameCounter % 10 == 0) {
-                        saveDebugLog("✓✓✓ Frame #$frameCounter SENT via onCameraFrame event ✓✓✓")
-                        Log.d("CameraModule", "✓✓✓ Frame #$frameCounter SENT via onCameraFrame event ✓✓✓")
-                    }
                 } catch (e: Exception) {
-                    saveDebugLog("❌ FAILED to send frame #$frameCounter: ${e.message}")
-                    Log.e("CameraModule", "❌ FAILED to send frame #$frameCounter event", e)
-                    e.printStackTrace()
+                    Log.e("CameraModule", "Failed to send frame event", e)
                 }
             }
 
-            bitmap.recycle()
-            rotatedBitmap.recycle()
-
         } catch (e: Exception) {
-            saveDebugLog("processFrame error: ${e.message}")
             Log.e("CameraModule", "processFrame error", e)
         } finally {
             imageProxy.close()
@@ -627,41 +714,27 @@ class CameraModule : Module() {
     // 안전한 카메라 정리 함수
     private fun cleanupCamera() {
         try {
-            saveDebugLog("=== cleanupCamera START ===")
-            Log.d("CameraModule", "=== cleanupCamera START ===")
-            
-            saveDebugLog("Setting isStreaming = false, resetting frameCounter")
             isStreaming = false
             frameCounter = 0
             
-            // ImageAnalyzer의 분석기를 먼저 제거
             imageAnalyzer?.let {
                 try {
-                    saveDebugLog("Clearing image analyzer...")
                     it.clearAnalyzer()
-                    saveDebugLog("✓ Image analyzer cleared")
                 } catch (e: Exception) {
-                    saveDebugLog("Error clearing analyzer: ${e.message}")
                     Log.e("CameraModule", "Error clearing analyzer", e)
                 }
             }
             
             cameraProvider?.let { provider ->
                 try {
-                    saveDebugLog("Unbinding all use cases...")
-                    // 메인 스레드에서 unbind 실행
                     mainHandler.post {
                         try {
                             provider.unbindAll()
-                            saveDebugLog("✓ Camera unbound")
-                            Log.d("CameraModule", "✓ Camera unbound")
                         } catch (e: Exception) {
-                            saveDebugLog("Error unbinding camera: ${e.message}")
                             Log.e("CameraModule", "Error unbinding camera", e)
                         }
                     }
                 } catch (e: Exception) {
-                    saveDebugLog("Error posting unbind: ${e.message}")
                     Log.e("CameraModule", "Error posting unbind", e)
                 }
             }
@@ -669,11 +742,7 @@ class CameraModule : Module() {
             camera = null
             imageCapture = null
             imageAnalyzer = null
-            
-            saveDebugLog("✓✓✓ Cleanup completed ✓✓✓")
-            Log.d("CameraModule", "✓✓✓ Cleanup completed ✓✓✓")
         } catch (e: Exception) {
-            saveDebugLog("ERROR in cleanupCamera: ${e.message}")
             Log.e("CameraModule", "Error in cleanupCamera", e)
         }
     }
@@ -719,10 +788,18 @@ class CameraModule : Module() {
     private fun saveCrashLog(context: String, throwable: Throwable) {
         try {
             val ctx = appContext.reactContext ?: return
+            val logsDir = ctx.getExternalFilesDir(null) ?: return
+            
+            // 오래된 크래시 로그 정리 (최대 10개 유지)
+            val crashFiles = logsDir.listFiles { file ->
+                file.name.startsWith("camera_crash_") && file.name.endsWith(".txt")
+            }?.sortedByDescending { it.lastModified() } ?: emptyList()
+            
+            crashFiles.drop(9).forEach { it.delete() }
             
             val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(Date())
             val fileName = "camera_crash_${timestamp}.txt"
-            val logFile = File(ctx.getExternalFilesDir(null), fileName)
+            val logFile = File(logsDir, fileName)
             
             FileWriter(logFile, true).use { writer ->
                 PrintWriter(writer).use { printer ->

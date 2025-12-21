@@ -105,8 +105,14 @@ export interface CrashLogsResult {
 export interface PhotoResult {
   /** 성공 여부 */
   success: boolean;
-  /** 사진 파일 경로 */
-  path?: string;
+  /** base64 인코딩된 이미지 */
+  base64?: string;
+  /** 이미지 너비 */
+  width?: number;
+  /** 이미지 높이 */
+  height?: number;
+  /** 사용된 카메라 방향 */
+  facing?: string;
   /** 오류 메시지 */
   error?: string;
 }
@@ -136,15 +142,16 @@ export async function requestCameraPermission(): Promise<CameraPermissionStatus>
 }
 
 /**
- * 사진 촬영
- * @returns 촬영 결과 및 파일 경로
+ * 사진 촬영 (1프레임 캡처)
+ * @param facing 카메라 방향 (front/back, 기본값: back)
+ * @returns 촬영 결과 및 base64 이미지
  */
-export async function takePhoto(): Promise<PhotoResult> {
+export async function takePhoto(facing?: 'front' | 'back'): Promise<PhotoResult> {
   const module = getCameraModule();
   if (!module) {
     return { success: false, error: 'Camera module not available' };
   }
-  return await module.takePhoto();
+  return await module.takePhoto(facing || 'back');
 }
 
 /**
