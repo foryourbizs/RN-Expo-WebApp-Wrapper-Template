@@ -12,16 +12,16 @@ import android.util.Base64
 import android.util.Log
 import android.util.Size
 import android.view.Surface
-import androidx.core.content.FileProvider
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import com.google.common.util.concurrent.ListenableFuture
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileWriter
@@ -185,73 +185,91 @@ class CameraModule : Module() {
 
         // 카메라 시작 - 가장 안정적이고 단순한 버전
         AsyncFunction("startCamera") { facing: String, eventKey: String?, promise: Promise ->
+            saveDebugLog("=== startCamera START ===")
+            saveDebugLog("Parameters - facing: $facing, eventKey: $eventKey")
             Log.d("CameraModule", "=== startCamera START ===")
             Log.d("CameraModule", "Parameters - facing: $facing, eventKey: $eventKey")
             
             try {
                 val context = appContext.reactContext
                 if (context == null) {
+                    saveDebugLog("ERROR: Context is null")
                     Log.e("CameraModule", "ERROR: Context is null")
                     promise.resolve(mapOf("success" to false, "error" to "Context not available"))
                     return@AsyncFunction
                 }
+                saveDebugLog("✓ Context OK")
                 Log.d("CameraModule", "✓ Context OK")
 
                 val activity = appContext.currentActivity
                 if (activity == null) {
+                    saveDebugLog("ERROR: Activity is null")
                     Log.e("CameraModule", "ERROR: Activity is null")
                     promise.resolve(mapOf("success" to false, "error" to "Activity not available"))
                     return@AsyncFunction
                 }
+                saveDebugLog("✓ Activity OK")
                 Log.d("CameraModule", "✓ Activity OK")
                 
                 val lifecycleOwner = activity as? LifecycleOwner
                 if (lifecycleOwner == null) {
+                    saveDebugLog("ERROR: LifecycleOwner is null")
                     Log.e("CameraModule", "ERROR: LifecycleOwner is null")
                     promise.resolve(mapOf("success" to false, "error" to "LifecycleOwner not available"))
                     return@AsyncFunction
                 }
+                saveDebugLog("✓ LifecycleOwner OK")
                 Log.d("CameraModule", "✓ LifecycleOwner OK")
                 
                 // 권한 체크
                 val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                 if (cameraPermission != PackageManager.PERMISSION_GRANTED) {
+                    saveDebugLog("ERROR: Camera permission not granted")
                     Log.e("CameraModule", "ERROR: Camera permission not granted")
                     promise.resolve(mapOf("success" to false, "error" to "Camera permission not granted"))
                     return@AsyncFunction
                 }
+                saveDebugLog("✓ Camera permission OK")
                 Log.d("CameraModule", "✓ Camera permission OK")
                 
                 currentFacing = facing
                 
                 // 기존 카메라 정리
+                saveDebugLog("Cleaning up previous camera...")
                 Log.d("CameraModule", "Cleaning up previous camera...")
                 cleanupCamera()
                 
+                saveDebugLog("Getting ProcessCameraProvider...")
                 Log.d("CameraModule", "Getting ProcessCameraProvider...")
                 // Activity Context를 사용해야 디스플레이 정보를 가져올 수 있음
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
                 
                 cameraProviderFuture.addListener({
                     try {
+                        saveDebugLog("Camera provider future completed")
                         Log.d("CameraModule", "Camera provider future completed")
                         cameraProvider = cameraProviderFuture.get()
+                        saveDebugLog("✓ CameraProvider obtained")
                         Log.d("CameraModule", "✓ CameraProvider obtained")
                         
                         // 모든 기존 바인딩 해제
                         cameraProvider?.unbindAll()
+                        saveDebugLog("✓ Previous bindings unbound")
                         Log.d("CameraModule", "✓ Previous bindings unbound")
 
                         // 카메라 선택
                         val cameraSelector = if (facing == "front") {
+                            saveDebugLog("Using FRONT camera")
                             Log.d("CameraModule", "Using FRONT camera")
                             CameraSelector.DEFAULT_FRONT_CAMERA
                         } else {
+                            saveDebugLog("Using BACK camera")
                             Log.d("CameraModule", "Using BACK camera")
                             CameraSelector.DEFAULT_BACK_CAMERA
                         }
 
                         // ImageCapture 설정 (가장 안정적인 설정)
+                        saveDebugLog("Creating ImageCapture...")
                         Log.d("CameraModule", "Creating ImageCapture...")
                         
                         // 화면 회전 가져오기 (deprecated 방지) - Activity에서 가져와야 함
@@ -266,12 +284,14 @@ class CameraModule : Module() {
                             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                             .setTargetRotation(rotation)
                             .build()
+                        saveDebugLog("✓ ImageCapture created")
                         Log.d("CameraModule", "✓ ImageCapture created")
 
                         val useCases = mutableListOf<UseCase>(imageCapture!!)
 
                         // 스트리밍이 필요한 경우에만 ImageAnalysis 추가
                         if (eventKey != null && eventKey.isNotEmpty()) {
+                            saveDebugLog("Setting up streaming with eventKey: $eventKey")
                             Log.d("CameraModule", "Setting up streaming with eventKey: $eventKey")
                             streamingEventName = eventKey
                             isStreaming = true
@@ -287,12 +307,15 @@ class CameraModule : Module() {
                             }
                             
                             useCases.add(imageAnalyzer!!)
+                            saveDebugLog("✓ ImageAnalyzer added")
                             Log.d("CameraModule", "✓ ImageAnalyzer added")
                         } else {
+                                    saveDebugLog("No streaming - ImageCapture only")
                                     Log.d("CameraModule", "No streaming - ImageCapture only")
                                 }
 
                                 // 카메라 바인딩
+                                saveDebugLog("Binding ${useCases.size} use cases to lifecycle...")
                                 Log.d("CameraModule", "Binding ${useCases.size} use cases to lifecycle...")
                                 camera = cameraProvider?.bindToLifecycle(
                                     lifecycleOwner,
@@ -301,6 +324,7 @@ class CameraModule : Module() {
                                 )
 
                                 if (camera != null) {
+                                    saveDebugLog("✓✓✓ Camera started successfully ✓✓✓")
                                     Log.d("CameraModule", "✓✓✓ Camera started successfully ✓✓✓")
                                     
                                     // 테스트 이벤트 발송 (이벤트 시스템 확인용)
@@ -310,8 +334,10 @@ class CameraModule : Module() {
                                             "message" to "Camera started - event system test",
                                             "timestamp" to System.currentTimeMillis()
                                         ))
+                                        saveDebugLog("✓ Test event sent")
                                         Log.d("CameraModule", "✓ Test event sent")
                                     } catch (e: Exception) {
+                                        saveDebugLog("Failed to send test event: ${e.message}")
                                         Log.e("CameraModule", "Failed to send test event", e)
                                     }
                                     
@@ -324,11 +350,14 @@ class CameraModule : Module() {
                                         "eventKey" to eventKey
                                     ))
                                 } else {
+                                    saveDebugLog("ERROR: Camera object is null after binding")
                                     Log.e("CameraModule", "ERROR: Camera object is null after binding")
                                     promise.resolve(mapOf("success" to false, "error" to "Camera binding returned null"))
                                 }
 
                             } catch (e: Exception) {
+                                saveDebugLog("ERROR in camera provider listener: ${e.message}")
+                                saveDebugLog("Stack trace: ${e.stackTraceToString()}")
                                 Log.e("CameraModule", "ERROR in camera provider listener", e)
                                 Log.e("CameraModule", "Stack trace: ${e.stackTraceToString()}")
                                 saveCrashLog("Camera binding error", e)
@@ -338,6 +367,8 @@ class CameraModule : Module() {
                     }, ContextCompat.getMainExecutor(context))
                     
             } catch (e: Exception) {
+                saveDebugLog("ERROR in startCamera: ${e.message}")
+                saveDebugLog("Stack trace: ${e.stackTraceToString()}")
                 Log.e("CameraModule", "ERROR in startCamera", e)
                 Log.e("CameraModule", "Stack trace: ${e.stackTraceToString()}")
                 saveCrashLog("startCamera error", e)
@@ -349,11 +380,14 @@ class CameraModule : Module() {
         // 카메라 중지
         AsyncFunction("stopCamera") { promise: Promise ->
             try {
+                saveDebugLog("=== stopCamera called ===")
                 Log.d("CameraModule", "=== stopCamera called ===")
                 cleanupCamera()
+                saveDebugLog("✓ Camera stopped successfully")
                 Log.d("CameraModule", "✓ Camera stopped successfully")
                 promise.resolve(mapOf("success" to true))
             } catch (e: Exception) {
+                saveDebugLog("ERROR stopCamera: ${e.message}")
                 Log.e("CameraModule", "stopCamera error", e)
                 promise.resolve(mapOf("success" to false, "error" to e.message))
             }
@@ -515,6 +549,113 @@ class CameraModule : Module() {
             }
         }
         
+        // 디버그 로그 가져오기
+        AsyncFunction("getDebugLog") { promise: Promise ->
+            try {
+                val context = appContext.reactContext ?: run {
+                    promise.resolve(mapOf("success" to false, "error" to "Context not available"))
+                    return@AsyncFunction
+                }
+                
+                val logsDir = context.getExternalFilesDir(null)
+                val logFile = File(logsDir, "camera_debug.log")
+                
+                if (!logFile.exists()) {
+                    promise.resolve(mapOf(
+                        "success" to true,
+                        "content" to "",
+                        "path" to logFile.absolutePath,
+                        "exists" to false
+                    ))
+                    return@AsyncFunction
+                }
+                
+                val content = logFile.readText()
+                
+                promise.resolve(mapOf(
+                    "success" to true,
+                    "content" to content,
+                    "path" to logFile.absolutePath,
+                    "size" to logFile.length(),
+                    "exists" to true
+                ))
+            } catch (e: Exception) {
+                Log.e("CameraModule", "getDebugLog error", e)
+                promise.resolve(mapOf("success" to false, "error" to e.message))
+            }
+        }
+        
+        // 디버그 로그 공유하기
+        AsyncFunction("shareDebugLog") { promise: Promise ->
+            try {
+                val context = appContext.reactContext ?: run {
+                    promise.resolve(mapOf("success" to false, "error" to "Context not available"))
+                    return@AsyncFunction
+                }
+                
+                val logsDir = context.getExternalFilesDir(null)
+                val logFile = File(logsDir, "camera_debug.log")
+                
+                if (!logFile.exists()) {
+                    promise.resolve(mapOf("success" to false, "error" to "Debug log file not found"))
+                    return@AsyncFunction
+                }
+                
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    logFile
+                )
+                
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Camera Debug Log")
+                    putExtra(Intent.EXTRA_TEXT, "카메라 디버그 로그입니다.")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                
+                val chooser = Intent.createChooser(shareIntent, "디버그 로그 공유").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                
+                context.startActivity(chooser)
+                
+                promise.resolve(mapOf("success" to true))
+            } catch (e: Exception) {
+                Log.e("CameraModule", "shareDebugLog error", e)
+                promise.resolve(mapOf("success" to false, "error" to e.message))
+            }
+        }
+        
+        // 디버그 로그 삭제
+        AsyncFunction("clearDebugLog") { promise: Promise ->
+            try {
+                val context = appContext.reactContext ?: run {
+                    promise.resolve(mapOf("success" to false, "error" to "Context not available"))
+                    return@AsyncFunction
+                }
+                
+                val logsDir = context.getExternalFilesDir(null)
+                val logFile = File(logsDir, "camera_debug.log")
+                
+                val deleted = if (logFile.exists()) {
+                    logFile.delete()
+                } else {
+                    true
+                }
+                
+                promise.resolve(mapOf(
+                    "success" to deleted,
+                    "message" to if (deleted) "Debug log cleared" else "Failed to delete debug log"
+                ))
+            } catch (e: Exception) {
+                Log.e("CameraModule", "clearDebugLog error", e)
+                promise.resolve(mapOf("success" to false, "error" to e.message))
+            }
+        }
+        
         // 모든 크래시 로그 삭제
         AsyncFunction("clearCrashLogs") { promise: Promise ->
             try {
@@ -596,9 +737,11 @@ class CameraModule : Module() {
 
     private fun processFrame(imageProxy: ImageProxy) {
         try {
+            saveDebugLog("processFrame called - isStreaming: $isStreaming, eventName: $streamingEventName")
             Log.d("CameraModule", "processFrame called - isStreaming: $isStreaming, eventName: $streamingEventName")
             
             if (!isStreaming || streamingEventName == null) {
+                saveDebugLog("Frame skipped - streaming disabled or no event name")
                 Log.w("CameraModule", "Frame skipped - streaming disabled or no event name")
                 imageProxy.close()
                 return
@@ -611,6 +754,7 @@ class CameraModule : Module() {
             }
             lastFrameTime = currentTime
             
+            saveDebugLog("Processing frame - converting to bitmap...")
             Log.d("CameraModule", "Processing frame - converting to bitmap...")
 
             val bitmap = imageProxy.toBitmap()
@@ -623,6 +767,7 @@ class CameraModule : Module() {
             rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, out)
             val base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
             
+            saveDebugLog("Frame encoded - size: ${base64.length} bytes, sending event...")
             Log.d("CameraModule", "Frame encoded - size: ${base64.length} bytes, sending event...")
 
             mainHandler.post {
@@ -633,8 +778,10 @@ class CameraModule : Module() {
                         "width" to rotatedBitmap.width,
                         "height" to rotatedBitmap.height
                     ))
+                    saveDebugLog("✓ Frame event sent successfully")
                     Log.d("CameraModule", "✓ Frame event sent successfully")
                 } catch (e: Exception) {
+                    saveDebugLog("Failed to send frame event: ${e.message}")
                     Log.e("CameraModule", "Failed to send frame event", e)
                 }
             }
@@ -643,6 +790,7 @@ class CameraModule : Module() {
             rotatedBitmap.recycle()
 
         } catch (e: Exception) {
+            saveDebugLog("processFrame error: ${e.message}")
             Log.e("CameraModule", "processFrame error", e)
         } finally {
             imageProxy.close()
@@ -652,16 +800,33 @@ class CameraModule : Module() {
     // 안전한 카메라 정리 함수
     private fun cleanupCamera() {
         try {
-            Log.d("CameraModule", "Cleaning up camera resources...")
+            saveDebugLog("=== cleanupCamera START ===")
+            Log.d("CameraModule", "=== cleanupCamera START ===")
             
+            saveDebugLog("Setting isStreaming = false")
             isStreaming = false
             streamingEventName = null
             
+            // ImageAnalyzer의 분석기를 먼저 제거
+            imageAnalyzer?.let {
+                try {
+                    saveDebugLog("Clearing image analyzer...")
+                    it.clearAnalyzer()
+                    saveDebugLog("✓ Image analyzer cleared")
+                } catch (e: Exception) {
+                    saveDebugLog("Error clearing analyzer: ${e.message}")
+                    Log.e("CameraModule", "Error clearing analyzer", e)
+                }
+            }
+            
             recording?.let {
                 try {
+                    saveDebugLog("Stopping recording...")
                     it.stop()
+                    saveDebugLog("✓ Recording stopped")
                     Log.d("CameraModule", "✓ Recording stopped")
                 } catch (e: Exception) {
+                    saveDebugLog("Error stopping recording: ${e.message}")
                     Log.e("CameraModule", "Error stopping recording", e)
                 }
             }
@@ -669,9 +834,12 @@ class CameraModule : Module() {
 
             cameraProvider?.let {
                 try {
+                    saveDebugLog("Unbinding all use cases...")
                     it.unbindAll()
+                    saveDebugLog("✓ Camera unbound")
                     Log.d("CameraModule", "✓ Camera unbound")
                 } catch (e: Exception) {
+                    saveDebugLog("Error unbinding camera: ${e.message}")
                     Log.e("CameraModule", "Error unbinding camera", e)
                 }
             }
@@ -681,8 +849,10 @@ class CameraModule : Module() {
             videoCapture = null
             imageAnalyzer = null
             
-            Log.d("CameraModule", "✓ Cleanup completed")
+            saveDebugLog("✓✓✓ Cleanup completed ✓✓✓")
+            Log.d("CameraModule", "✓✓✓ Cleanup completed ✓✓✓")
         } catch (e: Exception) {
+            saveDebugLog("ERROR in cleanupCamera: ${e.message}")
             Log.e("CameraModule", "Error in cleanupCamera", e)
         }
     }
@@ -699,6 +869,28 @@ class CameraModule : Module() {
             } finally {
                 defaultHandler?.uncaughtException(thread, throwable)
             }
+        }
+    }
+    
+    // 디버그 로그를 파일로 저장 (실시간 디버깅용)
+    private fun saveDebugLog(message: String) {
+        try {
+            val context = appContext.reactContext ?: return
+            val logsDir = context.getExternalFilesDir(null) ?: return
+            
+            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+            val logFile = File(logsDir, "camera_debug.log")
+            
+            // 파일이 너무 크면 새로 시작 (5MB 제한)
+            if (logFile.exists() && logFile.length() > 5 * 1024 * 1024) {
+                logFile.delete()
+            }
+            
+            FileWriter(logFile, true).use { writer ->
+                writer.appendLine("[$timestamp] $message")
+            }
+        } catch (e: Exception) {
+            Log.e("CameraModule", "saveDebugLog error", e)
         }
     }
     

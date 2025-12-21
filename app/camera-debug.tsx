@@ -1,7 +1,7 @@
 import * as Camera from '@/modules/camera';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Image, NativeEventEmitter, NativeModules, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, Image, NativeEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CameraDebugScreen() {
@@ -23,12 +23,19 @@ export default function CameraDebugScreen() {
 
   // 카메라 프레임 이벤트 리스너 설정
   useEffect(() => {
+    addLog('=== 이벤트 리스너 설정 시작 ===');
     try {
-      const { CustomCamera } = NativeModules;
-      if (CustomCamera) {
-        const eventEmitter = new NativeEventEmitter(CustomCamera);
+      const nativeModule = Camera.getNativeModule();
+      addLog(`CustomCamera 모듈: ${nativeModule ? '있음' : '없음'}`);
+      
+      if (nativeModule) {
+        addLog('NativeEventEmitter 생성 중...');
+        const eventEmitter = new NativeEventEmitter(nativeModule);
+        addLog('NativeEventEmitter 생성 완료');
         
         eventListenerRef.current = eventEmitter.addListener('onCameraFrame', (data) => {
+          addLog(`✓ 프레임 수신! type: ${data.type}, size: ${data.base64?.length || 0}`);
+          
           frameCountRef.current += 1;
           setFrameCount(frameCountRef.current);
           
@@ -43,10 +50,13 @@ export default function CameraDebugScreen() {
           }
         });
         
-        addLog('프레임 이벤트 리스너 등록됨');
+        addLog('✓ 프레임 이벤트 리스너 등록 완료');
+      } else {
+        addLog('ERROR: CustomCamera 모듈을 찾을 수 없음');
       }
     } catch (error) {
-      addLog(`이벤트 리스너 설정 실패: ${error}`);
+      addLog(`ERROR 이벤트 리스너 설정 실패: ${error}`);
+      console.error('Event listener setup error:', error);
     }
 
     return () => {
@@ -110,12 +120,20 @@ export default function CameraDebugScreen() {
 
   const stopCamera = async () => {
     try {
-      addLog('카메라 중지 중...');
+      addLog('=== 카메라 중지 요청 ===');
       const result = await Camera.stopCamera();
       addLog(`카메라 중지 결과: ${JSON.stringify(result)}`);
-      addLog(`총 수신 프레임: ${frameCountRef.current}개`);
+      
+      if (result.success) {
+        addLog(`✓ 카메라 중지 성공 (총 수신 프레임: ${frameCountRef.current}개)`);
+        Alert.alert('성공', `카메라가 중지되었습니다.\n총 ${frameCountRef.current}개의 프레임을 수신했습니다.`);
+      } else {
+        addLog(`ERROR: 카메라 중지 실패 - ${result.error}`);
+        Alert.alert('실패', result.error || '카메라 중지 중 오류 발생');
+      }
     } catch (error) {
-      addLog(`카메라 중지 실패: ${error}`);
+      addLog(`ERROR 카메라 중지 실패: ${error}`);
+      Alert.alert('오류', String(error));
     }
   };
 
@@ -196,6 +214,87 @@ export default function CameraDebugScreen() {
     }
   };
 
+  const getDebugLog = async () => {
+    try {
+      addLog('디버그 로그 조회 중...');
+      const result = await Camera.getDebugLog();
+      
+      if (result.success && result.content) {
+        // 로그 내용을 20줄씩 표시
+        const lines = result.content.split('\n');
+        const lastLines = lines.slice(-30).join('\n');
+        
+        Alert.alert(
+          '디버그 로그',
+          `총 ${lines.length}줄\n경로: ${result.path}\n\n최근 30줄:\n${lastLines}`,
+          [
+            { text: '공유하기', onPress: () => Camera.shareDebugLog() },
+            { text: '닫기' },
+          ],
+          { cancelable: true }
+        );
+        
+        addLog(`디버그 로그: ${lines.length}줄, ${Math.round((result.size || 0) / 1024)}KB`);
+      } else if (result.exists === false) {
+        Alert.alert('알림', '디버그 로그가 아직 생성되지 않았습니다.');
+        addLog('디버그 로그 없음');
+      } else {
+        Alert.alert('오류', result.error || '로그를 불러올 수 없습니다.');
+        addLog(`디버그 로그 조회 실패: ${result.error}`);
+      }
+    } catch (error) {
+      addLog(`디버그 로그 조회 실패: ${error}`);
+      Alert.alert('오류', String(error));
+    }
+  };
+
+  const shareDebugLog = async () => {
+    try {
+      addLog('디버그 로그 공유 중...');
+      const result = await Camera.shareDebugLog();
+      
+      if (result.success) {
+        addLog('디버그 로그 공유 창 열림');
+      } else {
+        Alert.alert('실패', result.error || '공유 중 오류 발생');
+        addLog(`디버그 로그 공유 실패: ${result.error}`);
+      }
+    } catch (error) {
+      addLog(`디버그 로그 공유 실패: ${error}`);
+      Alert.alert('오류', String(error));
+    }
+  };
+
+  const clearDebugLog = async () => {
+    try {
+      Alert.alert(
+        '디버그 로그 삭제',
+        '디버그 로그를 삭제하시겠습니까?',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: async () => {
+              addLog('디버그 로그 삭제 중...');
+              const result = await Camera.clearDebugLog();
+              if (result.success) {
+                addLog('디버그 로그 삭제됨');
+                Alert.alert('완료', result.message || '디버그 로그를 삭제했습니다.');
+              } else {
+                addLog(`삭제 실패: ${result.error}`);
+                Alert.alert('실패', result.error || '삭제 중 오류 발생');
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      addLog(`디버그 로그 삭제 실패: ${error}`);
+      Alert.alert('오류', String(error));
+    }
+  };
+
   const clearLogs = () => {
     setLogs([]);
     addLog('로그 클리어됨');
@@ -246,6 +345,15 @@ export default function CameraDebugScreen() {
         <Button title="3. 카메라 시작" onPress={startCamera} />
         <Button title="4. 카메라 중지" onPress={stopCamera} />
         <Button title="5. 카메라 상태 확인" onPress={checkCameraStatus} color="#4CAF50" />
+        
+        <View style={styles.separator} />
+        
+        <Button title="📝 디버그 로그 보기" onPress={getDebugLog} color="#2196F3" />
+        <Button title="📤 디버그 로그 공유" onPress={shareDebugLog} color="#03A9F4" />
+        <Button title="🗑️ 디버그 로그 삭제" onPress={clearDebugLog} color="#FF9800" />
+        
+        <View style={styles.separator} />
+        
         <Button title="크래시 로그 보기" onPress={getCrashLogs} color="#ff6b6b" />
         <Button title="크래시 로그 삭제" onPress={clearCrashLogs} color="#d32f2f" />
         <Button title="로그 클리어" onPress={clearLogs} color="#999" />
@@ -329,6 +437,9 @@ const styles = StyleSheet.create({
   buttons: {
     gap: 10,
     marginBottom: 20,
+  },
+  separator: {
+    height: 5,
   },
   logContainer: {
     flex: 1,

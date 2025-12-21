@@ -233,5 +233,59 @@ export const registerCameraHandlers = () => {
     }
   });
 
+  // 디버그 로그 가져오기
+  registerHandler('getDebugLog', async (_payload, respond) => {
+    try {
+      if (!Camera) {
+        respond({ success: false, error: 'Camera module not available' });
+        return;
+      }
+      
+      const result = await Camera.getDebugLog();
+      respond(result);
+    } catch (error) {
+      respond({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to get debug log' 
+      });
+    }
+  });
+
+  // 디버그 로그 공유하기
+  registerHandler('shareDebugLog', async (_payload, respond) => {
+    try {
+      if (!Camera) {
+        respond({ success: false, error: 'Camera module not available' });
+        return;
+      }
+      
+      const result = await Camera.shareDebugLog();
+      respond(result);
+    } catch (error) {
+      respond({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to share debug log' 
+      });
+    }
+  });
+
+  // 디버그 로그 삭제
+  registerHandler('clearDebugLog', async (_payload, respond) => {
+    try {
+      if (!Camera) {
+        respond({ success: false, error: 'Camera module not available' });
+        return;
+      }
+      
+      const result = await Camera.clearDebugLog();
+      respond(result);
+    } catch (error) {
+      respond({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to clear debug log' 
+      });
+    }
+  });
+
   console.log('[Bridge] Camera handlers registered');
 };

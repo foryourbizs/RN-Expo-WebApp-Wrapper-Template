@@ -27,6 +27,14 @@ function getCameraModule() {
   return CameraModule === undefined ? null : CameraModule;
 }
 
+/**
+ * Get the native module directly (for NativeEventEmitter)
+ * @returns The native CustomCamera module
+ */
+export function getNativeModule() {
+  return getCameraModule();
+}
+
 export interface CameraPermissionStatus {
   /** 권한 승인 여부 */
   granted: boolean;
@@ -76,6 +84,23 @@ export interface CrashLog {
   size: number;
   /** 생성 날짜 (timestamp) */
   date: number;
+}
+
+export interface DebugLogResult {
+  /** 성공 여부 */
+  success: boolean;
+  /** 로그 내용 */
+  content?: string;
+  /** 파일 경로 */
+  path?: string;
+  /** 파일 크기 */
+  size?: number;
+  /** 파일 존재 여부 */
+  exists?: boolean;
+  /** 오류 메시지 */
+  error?: string;
+  /** 메시지 */
+  message?: string;
 }
 
 export interface CrashLogsResult {
@@ -213,5 +238,41 @@ export async function clearCrashLogs(): Promise<{ success: boolean; deleted?: nu
     return { success: false, error: 'Camera module not available' };
   }
   return await module.clearCrashLogs();
+}
+
+/**
+ * 디버그 로그 가져오기
+ * @returns 디버그 로그 내용
+ */
+export async function getDebugLog(): Promise<DebugLogResult> {
+  const module = getCameraModule();
+  if (!module) {
+    return { success: false, error: 'Camera module not available' };
+  }
+  return await module.getDebugLog();
+}
+
+/**
+ * 디버그 로그 공유하기
+ * @returns 공유 성공 여부
+ */
+export async function shareDebugLog(): Promise<{ success: boolean; error?: string }> {
+  const module = getCameraModule();
+  if (!module) {
+    return { success: false, error: 'Camera module not available' };
+  }
+  return await module.shareDebugLog();
+}
+
+/**
+ * 디버그 로그 삭제
+ * @returns 삭제 성공 여부
+ */
+export async function clearDebugLog(): Promise<{ success: boolean; error?: string; message?: string }> {
+  const module = getCameraModule();
+  if (!module) {
+    return { success: false, error: 'Camera module not available' };
+  }
+  return await module.clearDebugLog();
 }
 
