@@ -253,15 +253,32 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 화면 절전 방지 비활성화 |
 | `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | 카메라 권한 확인 |
 | `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | 카메라 권한 요청 |
-| `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | 사진 촬영 (1프레임, facing: 'front'|'back', 기본값: 'back') |
-| `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | 카메라 스트리밍 시작 (실시간 프레임 전송) |
+| `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | 사진 촬영 (1프레임, facing: 'front'\|'back', 기본값: 'back') |
+| `startCamera` | `{ facing?, fps?, quality?, maxWidth?, maxHeight? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | 카메라 스트리밍 시작 (실시간 프레임 전송) |
 | `stopCamera` | - | `{ success }` | ✅ | ✅ | 카메라 스트리밍 종료 |
 | `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | 카메라 상태 조회 |
+| `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | 마이크 권한 확인 |
+| `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | 마이크 권한 요청 |
+| `startRecording` | - | `{ success }` | ✅ | ✅ | 음성 녹음 시작 (실시간 오디오 스트리밍) |
+| `stopRecording` | - | `{ success }` | ✅ | ✅ | 음성 녹음 중지 |
+| `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | 마이크 상태 조회 |
+
+**startCamera 파라미터:**
+- `facing`: 카메라 방향 ('front' | 'back', 기본값: 'back')
+- `fps`: 프레임레이트 (1-30, 기본값: 10)
+- `quality`: JPEG 품질 (1-100, 기본값: 30)
+- `maxWidth`: 최대 너비 (px, 미지정시 원본 유지)
+- `maxHeight`: 최대 높이 (px, 미지정시 원본 유지)
 
 **카메라 이벤트:**
 - `onCameraFrame`: 카메라 프레임 수신 (startCamera 후 자동 발생)
   - 페이로드: `{ type: 'cameraFrame', base64, width, height, frameNumber, timestamp }`
-  - 초당 약 10프레임 전송
+  - 프레임레이트는 startCamera의 fps 파라미터로 설정
+
+**마이크 이벤트:**
+- `onAudioChunk`: 오디오 청크 수신 (startRecording 후 자동 발생)
+  - 페이로드: `{ type: 'audioChunk', base64, chunkSize, chunkNumber, timestamp, sampleRate, encoding }`
+  - 실시간 PCM 16bit 오디오 데이터 전송 (44.1kHz)
 
 > ✅ 지원 | ⚠️ 부분 지원 | ❌ 미지원
 

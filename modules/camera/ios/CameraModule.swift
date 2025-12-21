@@ -10,8 +10,14 @@ public class CameraModule: Module {
     private var currentCamera: AVCaptureDevice?
     private var isStreaming = false
     private var lastFrameTime: TimeInterval = 0
-    private let targetFPS: Double = 10.0
+    
+    // 설정 가능한 파라미터 (기본값)
+    private var targetFPS: Double = 10.0
+    private var jpegQuality: CGFloat = 0.3
+    private var maxWidth: Int?
+    private var maxHeight: Int?
     private var frameInterval: TimeInterval { 1.0 / targetFPS }
+    
     private var frameCounter = 0
     private var currentFacing: String = "back"
     
@@ -109,9 +115,19 @@ public class CameraModule: Module {
         }
         
         // 카메라 스트리밍 시작
-        AsyncFunction("startCamera") { (facing: String, promise: Promise) in
+        AsyncFunction("startCamera") { (params: [String: Any], promise: Promise) in
             self.sessionQueue.async {
                 do {
+                    // 파라미터 파싱 (호환성 유지)
+                    let facing = params["facing"] as? String ?? "back"
+                    self.targetFPS = (params["fps"] as? Double ?? 10.0).clamped(to: 1.0...30.0)
+                    
+                    let qualityValue = (params["quality"] as? Int ?? 30).clamped(to: 1...100)
+                    self.jpegQuality = CGFloat(qualityValue) / 100.0
+                    
+                    self.maxWidth = params["maxWidth"] as? Int
+                    self.maxHeight = params["maxHeight"] as? Int
+                    
                     try self.startCameraSession(facing: facing)
                     
                     promise.resolve([
@@ -237,10 +253,19 @@ extension CameraModule: AVCaptureVideoDataOutputSampleBufferDelegate {
             return
         }
         
-        let uiImage = UIImage(cgImage: cgImage)
+        var uiImage = UIImage(cgImage: cgImage)
+        
+        // 리사이즈 처리
+        if let maxW = maxWidth, let maxH = maxHeight {
+            uiImage = resizeImage(image: uiImage, maxWidth: CGFloat(maxW), maxHeight: CGFloat(maxH))
+        } else if let maxW = maxWidth {
+            uiImage = resizeImage(image: uiImage, maxWidth: CGFloat(maxW), maxHeight: .greatestFiniteMagnitude)
+        } else if let maxH = maxHeight {
+            uiImage = resizeImage(image: uiImage, maxWidth: .greatestFiniteMagnitude, maxHeight: CGFloat(maxH))
+        }
         
         // JPEG 압축
-        guard let imageData = uiImage.jpegData(compressionQuality: 0.3) else {
+        guard let imageData = uiImage.jpegData(compressionQuality: jpegQuality) else {
             return
         }
         
@@ -256,6 +281,36 @@ extension CameraModule: AVCaptureVideoDataOutputSampleBufferDelegate {
                 "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
             ])
         }
+    }
+    
+    // 이미지 리사이즈 헬퍼
+    private func resizeImage(image: UIImage, maxWidth: CGFloat, maxHeight: CGFloat) -> UIImage {
+        let size = image.size
+        
+        let widthRatio = maxWidth / size.width
+        let heightRatio = maxHeight / size.height
+        let ratio = min(widthRatio, heightRatio, 1.0)
+        
+        if ratio >= 1.0 {
+            return image
+        }
+        
+        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return resizedImage ?? image
+    }
+}
+
+// MARK: - Extensions
+
+extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        return min(max(self, range.lowerBound), range.upperBound)
     }
 }
 

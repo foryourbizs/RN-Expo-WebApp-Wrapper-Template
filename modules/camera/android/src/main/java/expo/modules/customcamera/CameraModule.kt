@@ -38,8 +38,14 @@ class CameraModule : Module() {
     private var imageAnalyzer: ImageAnalysis? = null
     private var isStreaming = false
     private var lastFrameTime = 0L
-    private val TARGET_FPS = 10.0
-    private val FRAME_INTERVAL_MS = (1000.0 / TARGET_FPS).toLong()
+    
+    // 설정 가능한 파라미터 (기본값)
+    private var targetFps = 10.0
+    private var jpegQuality = 30
+    private var maxWidth: Int? = null
+    private var maxHeight: Int? = null
+    private val frameIntervalMs: Long
+        get() = (1000.0 / targetFps).toLong()
     
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
@@ -282,8 +288,19 @@ class CameraModule : Module() {
         }
 
         // 카메라 시작
-        AsyncFunction("startCamera") { facing: String, promise: Promise ->
+        AsyncFunction("startCamera") { payloadMap: Map<String, Any?>, promise: Promise ->
             try {
+                // 파라미터 파싱 (호환성 유지)
+                val facing = payloadMap["facing"] as? String ?: "back"
+                targetFps = (payloadMap["fps"] as? Number)?.toDouble() ?: 10.0
+                jpegQuality = (payloadMap["quality"] as? Number)?.toInt() ?: 30
+                maxWidth = (payloadMap["maxWidth"] as? Number)?.toInt()
+                maxHeight = (payloadMap["maxHeight"] as? Number)?.toInt()
+                
+                // 값 범위 체크
+                targetFps = targetFps.coerceIn(1.0, 30.0)
+                jpegQuality = jpegQuality.coerceIn(1, 100)
+                
                 val context = appContext.reactContext
                 if (context == null) {
                     Log.e("CameraModule", "Context not available")
@@ -647,24 +664,44 @@ class CameraModule : Module() {
             }
 
             val currentTime = System.currentTimeMillis()
-            if (currentTime - lastFrameTime < FRAME_INTERVAL_MS) {
+            if (currentTime - lastFrameTime < frameIntervalMs) {
                 imageProxy.close()
                 return
             }
             lastFrameTime = currentTime
 
             val bitmap = imageProxy.toBitmap()
+            
+            // 리사이즈 처리
+            val resizedBitmap = if (maxWidth != null || maxHeight != null) {
+                val srcWidth = bitmap.width
+                val srcHeight = bitmap.height
+                val scale = calculateScale(srcWidth, srcHeight, maxWidth, maxHeight)
+                
+                if (scale < 1.0) {
+                    val newWidth = (srcWidth * scale).toInt()
+                    val newHeight = (srcHeight * scale).toInt()
+                    Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true).also {
+                        bitmap.recycle()
+                    }
+                } else {
+                    bitmap
+                }
+            } else {
+                bitmap
+            }
+            
             val matrix = Matrix()
             matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
             
-            val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            val rotatedBitmap = Bitmap.createBitmap(resizedBitmap, 0, 0, resizedBitmap.width, resizedBitmap.height, matrix, true)
             
-            // bitmap 즉시 해제 (rotatedBitmap이 복사본이므로 안전)
-            bitmap.recycle()
+            // resizedBitmap 즉시 해제
+            resizedBitmap.recycle()
 
             val base64: String
             ByteArrayOutputStream().use { out ->
-                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, out)
+                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, out)
                 base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
             }
             
@@ -748,6 +785,16 @@ class CameraModule : Module() {
                 defaultHandler?.uncaughtException(thread, throwable)
             }
         }
+    }
+    
+    // 리사이즈 스케일 계산
+    private fun calculateScale(srcWidth: Int, srcHeight: Int, maxWidth: Int?, maxHeight: Int?): Double {
+        if (maxWidth == null && maxHeight == null) return 1.0
+        
+        val widthScale = maxWidth?.let { srcWidth.toDouble() / it } ?: Double.MAX_VALUE
+        val heightScale = maxHeight?.let { srcHeight.toDouble() / it } ?: Double.MAX_VALUE
+        
+        return 1.0 / Math.max(widthScale, heightScale).coerceAtLeast(1.0)
     }
     
     // 디버그 로그를 파일로 저장 (실시간 디버깅용)

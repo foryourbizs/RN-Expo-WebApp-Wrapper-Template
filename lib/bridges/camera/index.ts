@@ -111,8 +111,16 @@ export const registerCameraHandlers = () => {
         console.error('[Bridge] Failed to register frame listener:', e);
       }
       
-      const options = payload as { facing?: 'front' | 'back' };
-      const result = await Camera.startCamera(options?.facing || 'back');
+      // 파라미터 정규화 (호환성 유지)
+      const options = payload as { 
+        facing?: 'front' | 'back';
+        fps?: number;
+        quality?: number;
+        maxWidth?: number;
+        maxHeight?: number;
+      };
+      
+      const result = await Camera.startCamera(options);
       respond(result);
     } catch (error) {
       console.error('[Bridge] startCamera error:', error);

@@ -42,8 +42,14 @@ export interface CameraPermissionStatus {
 export interface CameraRecordingOptions {
   /** 카메라 방향 (front/back) */
   facing?: 'front' | 'back';
-  /** 이벤트 키 (프레임 스트리밍용) */
-  eventKey?: string;
+  /** 프레임레이트 (1-30, 기본값: 10) */
+  fps?: number;
+  /** JPEG 압축 품질 (1-100, 기본값: 30) */
+  quality?: number;
+  /** 최대 가로 해상도 (px) */
+  maxWidth?: number;
+  /** 최대 세로 해상도 (px) */
+  maxHeight?: number;
 }
 
 export interface RecordingResult {
@@ -157,16 +163,25 @@ export async function takePhoto(facing?: 'front' | 'back'): Promise<PhotoResult>
 
 /**
  * 카메라 스트리밍 시작
- * @param facing 카메라 방향 (front/back)
+ * @param options 카메라 옵션
  * @returns 시작 결과
  */
-export async function startCamera(facing?: 'front' | 'back'): Promise<RecordingResult> {
+export async function startCamera(options?: CameraRecordingOptions): Promise<RecordingResult> {
   const module = getCameraModule();
   if (!module) {
     return { success: false, error: 'Camera module not available' };
   }
   
-  return await module.startCamera(facing || 'back');
+  // 파라미터 정규화 (호환성 유지)
+  const params = {
+    facing: options?.facing || 'back',
+    fps: options?.fps,
+    quality: options?.quality,
+    maxWidth: options?.maxWidth,
+    maxHeight: options?.maxHeight,
+  };
+  
+  return await module.startCamera(params);
 }
 
 /**
