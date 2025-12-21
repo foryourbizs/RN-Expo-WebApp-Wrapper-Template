@@ -254,9 +254,9 @@ class CameraModule : Module() {
                         // ImageCapture 설정 (가장 안정적인 설정)
                         Log.d("CameraModule", "Creating ImageCapture...")
                         
-                        // 화면 회전 가져오기 (deprecated 방지)
+                        // 화면 회전 가져오기 (deprecated 방지) - Activity에서 가져와야 함
                         val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            context.display?.rotation ?: Surface.ROTATION_0
+                            activity.display?.rotation ?: Surface.ROTATION_0
                         } else {
                             @Suppress("DEPRECATION")
                             activity.windowManager.defaultDisplay.rotation
@@ -604,7 +604,7 @@ class CameraModule : Module() {
             val base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
 
             mainHandler.post {
-                sendEvent(streamingEventName!!, mapOf(
+                sendEvent("onCameraFrame", mapOf(
                     "type" to "cameraFrame",
                     "base64" to "data:image/jpeg;base64,$base64",
                     "width" to rotatedBitmap.width,

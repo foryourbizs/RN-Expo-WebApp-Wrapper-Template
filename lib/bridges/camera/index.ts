@@ -2,8 +2,8 @@
  * 카메라 관련 핸들러
  */
 
-import { registerHandler } from '@/lib/bridge';
-import { Platform } from 'react-native';
+import { registerHandler, sendToWeb } from '@/lib/bridge';
+import { Platform, NativeEventEmitter, NativeModules } from 'react-native';
 
 export const registerCameraHandlers = () => {
   // Android가 아니면 카메라 기능을 등록하지 않음
@@ -19,6 +19,33 @@ export const registerCameraHandlers = () => {
   } catch (error) {
     console.error('[Bridge] Failed to load camera module:', error);
     return;
+  }
+
+  // 네이티브 이벤트 리스너 설정
+  try {
+    const { CustomCamera } = NativeModules;
+    if (CustomCamera) {
+      const eventEmitter = new NativeEventEmitter(CustomCamera);
+      
+      // 카메라 프레임 이벤트를 웹으로 전달
+      eventEmitter.addListener('onCameraFrame', (data) => {
+        sendToWeb('onCameraFrame', data);
+      });
+      
+      // 녹화 완료 이벤트
+      eventEmitter.addListener('onRecordingFinished', (data) => {
+        sendToWeb('onRecordingFinished', data);
+      });
+      
+      // 녹화 에러 이벤트
+      eventEmitter.addListener('onRecordingError', (data) => {
+        sendToWeb('onRecordingError', data);
+      });
+      
+      console.log('[Bridge] Camera event listeners registered');
+    }
+  } catch (error) {
+    console.error('[Bridge] Failed to setup camera event listeners:', error);
   }
 
   // 카메라 권한 확인
