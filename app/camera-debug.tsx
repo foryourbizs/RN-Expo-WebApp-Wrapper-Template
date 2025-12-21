@@ -1,13 +1,18 @@
 import * as Camera from '@/modules/camera';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, Button, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Image, NativeEventEmitter, NativeModules, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CameraDebugScreen() {
   const [status, setStatus] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
   const [crashLogs, setCrashLogs] = useState<any[]>([]);
+  const [frameCount, setFrameCount] = useState<number>(0);
+  const [lastFrame, setLastFrame] = useState<string | null>(null);
+  const [frameInfo, setFrameInfo] = useState<{ width: number; height: number; size: number } | null>(null);
+  const frameCountRef = useRef<number>(0);
+  const eventListenerRef = useRef<any>(null);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -15,6 +20,42 @@ export default function CameraDebugScreen() {
     console.log(logMessage);
     setLogs(prev => [...prev, logMessage].slice(-20)); // 최근 20개만
   };
+
+  // 카메라 프레임 이벤트 리스너 설정
+  useEffect(() => {
+    try {
+      const { CustomCamera } = NativeModules;
+      if (CustomCamera) {
+        const eventEmitter = new NativeEventEmitter(CustomCamera);
+        
+        eventListenerRef.current = eventEmitter.addListener('onCameraFrame', (data) => {
+          frameCountRef.current += 1;
+          setFrameCount(frameCountRef.current);
+          
+          if (data.base64) {
+            setLastFrame(data.base64);
+            const base64Size = data.base64.length;
+            setFrameInfo({
+              width: data.width || 0,
+              height: data.height || 0,
+              size: Math.round(base64Size / 1024) // KB
+            });
+          }
+        });
+        
+        addLog('프레임 이벤트 리스너 등록됨');
+      }
+    } catch (error) {
+      addLog(`이벤트 리스너 설정 실패: ${error}`);
+    }
+
+    return () => {
+      if (eventListenerRef.current) {
+        eventListenerRef.current.remove();
+        addLog('프레임 이벤트 리스너 해제됨');
+      }
+    };
+  }, []);
 
   const checkPermission = async () => {
     try {
@@ -47,11 +88,17 @@ export default function CameraDebugScreen() {
   const startCamera = async () => {
     try {
       addLog('카메라 시작 중...');
-      const result = await Camera.startCamera({ facing: 'back' });
+      // 프레임 카운터 초기화
+      frameCountRef.current = 0;
+      setFrameCount(0);
+      setLastFrame(null);
+      setFrameInfo(null);
+      
+      const result = await Camera.startCamera({ facing: 'back', eventKey: 'cameraStream' });
       addLog(`카메라 시작 결과: ${JSON.stringify(result)}`);
       
       if (result.success) {
-        Alert.alert('성공', '카메라가 시작되었습니다!');
+        addLog('프레임 수신 대기 중...');
       } else {
         Alert.alert('실패', result.error || '알 수 없는 오류');
       }
@@ -66,6 +113,7 @@ export default function CameraDebugScreen() {
       addLog('카메라 중지 중...');
       const result = await Camera.stopCamera();
       addLog(`카메라 중지 결과: ${JSON.stringify(result)}`);
+      addLog(`총 수신 프레임: ${frameCountRef.current}개`);
     } catch (error) {
       addLog(`카메라 중지 실패: ${error}`);
     }
@@ -120,6 +168,30 @@ export default function CameraDebugScreen() {
         </View>
         <Text style={styles.status}>{status}</Text>
 
+        {/* 프레임 정보 */}
+        <View style={styles.frameInfo}>
+          <Text style={styles.frameInfoTitle}>📹 프레임 정보</Text>
+          <Text style={styles.frameInfoText}>수신 프레임: {frameCount}개</Text>
+          {frameInfo && (
+            <>
+              <Text style={styles.frameInfoText}>
+                해상도: {frameInfo.width} x {frameInfo.height}
+              </Text>
+              <Text style={styles.frameInfoText}>크기: ~{frameInfo.size} KB</Text>
+            </>
+          )}
+          {lastFrame && (
+            <View style={styles.framePreview}>
+              <Text style={styles.framePreviewTitle}>최신 프레임:</Text>
+              <Image 
+                source={{ uri: lastFrame }} 
+                style={styles.frameImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+        </View>
+
       <View style={styles.buttons}>
         <Button title="1. 권한 확인" onPress={checkPermission} />
         <Button title="2. 권한 요청" onPress={requestPermission} />
@@ -170,8 +242,39 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: 18,
-    marginBottom: 20,
+    marginBottom: 10,
     color: '#333',
+  },
+  frameInfo: {
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  frameInfoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  frameInfoText: {
+    fontSize: 14,
+    marginBottom: 4,
+    color: '#666',
+  },
+  framePreview: {
+    marginTop: 10,
+  },
+  framePreviewTitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
+  },
+  frameImage: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#000',
+    borderRadius: 4,
   },
   buttons: {
     gap: 10,
