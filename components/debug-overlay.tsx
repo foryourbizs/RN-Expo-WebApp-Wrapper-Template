@@ -3,7 +3,6 @@
  * 웹뷰 위에 오버레이로 로그를 표시
  */
 
-import { router } from 'expo-router';
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   Dimensions,
