@@ -251,12 +251,12 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 | `getKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Get keep awake status |
 | `activateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Activate keep awake |
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Deactivate keep awake |
-| `checkCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ❌ | Check camera/microphone permissions |
-| `requestCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ❌ | Request camera/microphone permissions |
-| `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ❌ | Take photo (1 frame, facing: 'front'\|'back', default: 'back') |
-| `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ❌ | Start camera streaming (real-time frame transmission) |
-| `stopCamera` | - | `{ success }` | ✅ | ❌ | Stop camera streaming |
-| `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ❌ | Get camera status |
+| `checkCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | Check camera/microphone permissions |
+| `requestCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | Request camera/microphone permissions |
+| `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | Take photo (1 frame, facing: 'front'\|'back', default: 'back') |
+| `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | Start camera streaming (real-time frame transmission) |
+| `stopCamera` | - | `{ success }` | ✅ | ✅ | Stop camera streaming |
+| `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | Get camera status |
 
 **Camera Events:**
 - `onCameraFrame`: Receive camera frames (auto-triggered after startCamera)
@@ -264,8 +264,6 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
   - Approx. 10 frames per second
 
 > ✅ Supported | ⚠️ Partial | ❌ Not supported
->
-> **Note:** Camera features are currently supported on Android only.
 
 
 ---
