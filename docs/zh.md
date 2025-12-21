@@ -251,8 +251,8 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `getKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 获取屏幕常亮状态 |
 | `activateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 激活屏幕常亮 |
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 停用屏幕常亮 |
-| `checkCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | 检查相机/麦克风权限 |
-| `requestCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | 请求相机/麦克风权限 |
+| `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | 检查相机权限 |
+| `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | 请求相机权限 |
 | `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | 拍照 (1帧, facing: 'front'|'back', 默认值: 'back') |
 | `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | 启动相机流 (实时帧传输) |
 | `stopCamera` | - | `{ success }` | ✅ | ✅ | 停止相机流 |

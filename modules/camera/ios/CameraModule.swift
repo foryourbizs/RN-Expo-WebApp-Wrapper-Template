@@ -33,16 +33,11 @@ public class CameraModule: Module {
         // 권한 확인
         AsyncFunction("checkCameraPermission") { (promise: Promise) in
             let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
-            let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
-            
             let cameraGranted = cameraStatus == .authorized
-            let micGranted = micStatus == .authorized
             
             promise.resolve([
-                "granted": cameraGranted && micGranted,
-                "cameraGranted": cameraGranted,
-                "micGranted": micGranted,
-                "status": (cameraGranted && micGranted) ? "granted" : "denied"
+                "granted": cameraGranted,
+                "status": cameraGranted ? "granted" : "denied"
             ])
         }
         
@@ -50,13 +45,10 @@ public class CameraModule: Module {
         AsyncFunction("requestCameraPermission") { (promise: Promise) in
             Task {
                 let cameraGranted = await AVCaptureDevice.requestAccess(for: .video)
-                let micGranted = await AVCaptureDevice.requestAccess(for: .audio)
                 
                 promise.resolve([
-                    "granted": cameraGranted && micGranted,
-                    "cameraGranted": cameraGranted,
-                    "micGranted": micGranted,
-                    "status": (cameraGranted && micGranted) ? "granted" : "denied"
+                    "granted": cameraGranted,
+                    "status": cameraGranted ? "granted" : "denied"
                 ])
             }
         }

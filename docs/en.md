@@ -251,8 +251,8 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 | `getKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Get keep awake status |
 | `activateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Activate keep awake |
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Deactivate keep awake |
-| `checkCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | Check camera/microphone permissions |
-| `requestCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | Request camera/microphone permissions |
+| `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | Check camera permission |
+| `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | Request camera permission |
 | `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | Take photo (1 frame, facing: 'front'\|'back', default: 'back') |
 | `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | Start camera streaming (real-time frame transmission) |
 | `stopCamera` | - | `{ success }` | ✅ | ✅ | Stop camera streaming |

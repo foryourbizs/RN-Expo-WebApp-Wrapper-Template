@@ -251,8 +251,8 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `getKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | スリープ防止状態を取得 |
 | `activateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | スリープ防止を有効化 |
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | スリープ防止を無効化 |
-| `checkCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | カメラ/マイク権限を確認 |
-| `requestCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | カメラ/マイク権限を要求 |
+| `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | カメラ権限を確認 |
+| `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | カメラ権限を要求 |
 | `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | 写真を撮影 (1フレーム, facing: 'front'|'back', デフォルト: 'back') |
 | `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | カメラストリーミングを起動 (リアルタイムフレーム送信) |
 | `stopCamera` | - | `{ success }` | ✅ | ✅ | カメラストリーミングを停止 |

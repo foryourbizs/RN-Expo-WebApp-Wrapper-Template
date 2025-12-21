@@ -251,8 +251,8 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `getKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 화면 절전 방지 상태 조회 |
 | `activateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 화면 절전 방지 활성화 |
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | 화면 절전 방지 비활성화 |
-| `checkCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | 카메라/마이크 권한 확인 |
-| `requestCameraPermission` | - | `{ success, granted, cameraGranted, micGranted, status }` | ✅ | ✅ | 카메라/마이크 권한 요청 |
+| `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | 카메라 권한 확인 |
+| `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | 카메라 권한 요청 |
 | `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | 사진 촬영 (1프레임, facing: 'front'|'back', 기본값: 'back') |
 | `startCamera` | `{ facing? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | 카메라 스트리밍 시작 (실시간 프레임 전송) |
 | `stopCamera` | - | `{ success }` | ✅ | ✅ | 카메라 스트리밍 종료 |

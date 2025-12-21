@@ -90,13 +90,10 @@ class CameraModule : Module() {
                 }
                 
                 val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 
                 promise.resolve(mapOf(
-                    "granted" to (cameraGranted && micGranted),
-                    "cameraGranted" to cameraGranted,
-                    "micGranted" to micGranted,
-                    "status" to if (cameraGranted && micGranted) "granted" else "denied"
+                    "granted" to cameraGranted,
+                    "status" to if (cameraGranted) "granted" else "denied"
                 ))
             } catch (e: Exception) {
                 Log.e("CameraModule", "checkCameraPermission error", e)
@@ -104,7 +101,7 @@ class CameraModule : Module() {
             }
         }
         
-        // 권한 요청 (Expo Permissions 사용)
+        // 권한 요청
         AsyncFunction("requestCameraPermission") { promise: Promise ->
             try {
                 val activity = appContext.currentActivity
@@ -121,30 +118,21 @@ class CameraModule : Module() {
                 
                 // 이미 권한이 있는지 확인
                 val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 
-                if (cameraGranted && micGranted) {
+                if (cameraGranted) {
                     promise.resolve(mapOf(
                         "granted" to true,
-                        "cameraGranted" to true,
-                        "micGranted" to true,
                         "status" to "granted"
                     ))
                     return@AsyncFunction
                 }
                 
                 // 권한 요청
-                val permissions = mutableListOf<String>()
-                if (!cameraGranted) permissions.add(Manifest.permission.CAMERA)
-                if (!micGranted) permissions.add(Manifest.permission.RECORD_AUDIO)
-                
-                activity.requestPermissions(permissions.toTypedArray(), CAMERA_PERMISSION_REQUEST_CODE)
+                activity.requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
                 
                 // 결과는 즉시 반환 (실제 권한 상태는 다시 checkCameraPermission으로 확인해야 함)
                 promise.resolve(mapOf(
                     "granted" to false,
-                    "cameraGranted" to cameraGranted,
-                    "micGranted" to micGranted,
                     "status" to "requesting"
                 ))
             } catch (e: Exception) {
