@@ -259,7 +259,7 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | カメラ状態を取得 |
 | `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | マイク権限を確認 |
 | `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | マイク権限を要求 |
-| `startRecording` | - | `{ success }` | ✅ | ✅ | 音声録音を開始 (リアルタイムストリーミング) |
+| `startRecording` | `{ sampleRate?, chunkSize? }` | `{ success }` | ✅ | ✅ | 音声録音を開始 (リアルタイムストリーミング) |
 | `stopRecording` | - | `{ success }` | ✅ | ✅ | 音声録音を停止 |
 | `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | マイク状態を取得 |
 
@@ -269,6 +269,10 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 - `quality`: JPEG品質 (1-100, デフォルト: 30)
 - `maxWidth`: 最大幅 (px, 未指定の場合は元のまま)
 - `maxHeight`: 最大高さ (px, 未指定の場合は元のまま)
+
+**startRecordingパラメータ:**
+- `sampleRate`: サンプルレート (8000-48000, デフォルト: 44100)
+- `chunkSize`: チャンクサイズ (512-8192 bytes, デフォルト: 2048, 約23ms遅延)
 
 **カメライベント:**
 - `onCameraFrame`: カメラフレームを受信 (startCamera後に自動発生)

@@ -22,16 +22,18 @@ import java.io.File
 import java.io.FileInputStream
 
 private const val MICROPHONE_PERMISSION_REQUEST_CODE = 1002
-private const val SAMPLE_RATE = 44100
 private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
 private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-private const val CHUNK_SIZE = 4096 // 청크 크기 (바이트)
 
 class MicrophoneModule : Module() {
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
     private var isStreaming = false
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    
+    // 설정 가능한 파라미터
+    private var sampleRate = 44100  // 44.1kHz (기본값)
+    private var chunkSize = 2048    // 약 23ms 지연 (실시간성과 성능의 균형)
     private val context: Context
         get() = appContext.reactContext ?: throw IllegalStateException("React context is null")
 
@@ -96,11 +98,28 @@ class MicrophoneModule : Module() {
         }
 
         // 녹음 시작
-        AsyncFunction("startRecording") { promise: Promise ->
+        AsyncFunction("startRecording") { payloadMap: Map<String, Any?>, promise: Promise ->
             try {
                 if (isStreaming) {
                     promise.resolve(mapOf("success" to false, "error" to "Already streaming"))
                     return@AsyncFunction
+                }
+
+                // 파라미터 파싱
+                sampleRate = (payloadMap["sampleRate"] as? Number)?.toInt() ?: 44100
+                chunkSize = (payloadMap["chunkSize"] as? Number)?.toInt() ?: 2048
+                
+                // 파라미터 범위 검증
+                sampleRate = when {
+                    sampleRate < 8000 -> 8000
+                    sampleRate > 48000 -> 48000
+                    else -> sampleRate
+                }
+                
+                chunkSize = when {
+                    chunkSize < 512 -> 512
+                    chunkSize > 8192 -> 8192
+                    else -> chunkSize
                 }
 
                 // 권한 확인
@@ -110,7 +129,7 @@ class MicrophoneModule : Module() {
                     return@AsyncFunction
                 }
 
-                val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
+                val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, CHANNEL_CONFIG, AUDIO_FORMAT)
                 if (minBufferSize == AudioRecord.ERROR || minBufferSize == AudioRecord.ERROR_BAD_VALUE) {
                     promise.resolve(mapOf("success" to false, "error" to "Audio recording not supported"))
                     return@AsyncFunction
@@ -122,7 +141,7 @@ class MicrophoneModule : Module() {
                     AudioRecord.Builder()
                         .setAudioSource(MediaRecorder.AudioSource.MIC)
                         .setAudioFormat(AudioFormat.Builder()
-                            .setSampleRate(SAMPLE_RATE)
+                            .setSampleRate(sampleRate)
                             .setChannelMask(CHANNEL_CONFIG)
                             .setEncoding(AUDIO_FORMAT)
                             .build())
@@ -132,7 +151,7 @@ class MicrophoneModule : Module() {
                     @Suppress("DEPRECATION")
                     AudioRecord(
                         MediaRecorder.AudioSource.MIC,
-                        SAMPLE_RATE,
+                        sampleRate,
                         CHANNEL_CONFIG,
                         AUDIO_FORMAT,
                         bufferSize
@@ -190,12 +209,12 @@ class MicrophoneModule : Module() {
     }
 
     private fun streamAudio() {
-        val audioData = ByteArray(CHUNK_SIZE)
+        val audioData = ByteArray(chunkSize)
         var chunkNumber = 0
 
         while (isStreaming && recordingJob?.isActive == true) {
             try {
-                val readSize = audioRecord?.read(audioData, 0, CHUNK_SIZE) ?: 0
+                val readSize = audioRecord?.read(audioData, 0, chunkSize) ?: 0
                 if (readSize > 0) {
                     chunkNumber++
                     
@@ -209,7 +228,7 @@ class MicrophoneModule : Module() {
                         "chunkSize" to readSize,
                         "chunkNumber" to chunkNumber,
                         "timestamp" to System.currentTimeMillis(),
-                        "sampleRate" to SAMPLE_RATE,
+                        "sampleRate" to sampleRate,
                         "encoding" to "pcm_16bit"
                     ))
                 }

@@ -259,7 +259,7 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 | `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | 카메라 상태 조회 |
 | `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | 마이크 권한 확인 |
 | `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | 마이크 권한 요청 |
-| `startRecording` | - | `{ success }` | ✅ | ✅ | 음성 녹음 시작 (실시간 오디오 스트리밍) |
+| `startRecording` | `{ sampleRate?, chunkSize? }` | `{ success }` | ✅ | ✅ | 음성 녹음 시작 (실시간 오디오 스트리밍) |
 | `stopRecording` | - | `{ success }` | ✅ | ✅ | 음성 녹음 중지 |
 | `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | 마이크 상태 조회 |
 
@@ -269,6 +269,10 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 - `quality`: JPEG 품질 (1-100, 기본값: 30)
 - `maxWidth`: 최대 너비 (px, 미지정시 원본 유지)
 - `maxHeight`: 최대 높이 (px, 미지정시 원본 유지)
+
+**startRecording 파라미터:**
+- `sampleRate`: 샘플레이트 (8000-48000, 기본값: 44100)
+- `chunkSize`: 청크 크기 (512-8192 bytes, 기본값: 2048, 약 23ms 지연)
 
 **카메라 이벤트:**
 - `onCameraFrame`: 카메라 프레임 수신 (startCamera 후 자동 발생)

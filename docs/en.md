@@ -259,7 +259,7 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 | `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | Get camera status |
 | `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | Check microphone permission |
 | `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | Request microphone permission |
-| `startRecording` | - | `{ success }` | ✅ | ✅ | Start audio recording (real-time streaming) |
+| `startRecording` | `{ sampleRate?, chunkSize? }` | `{ success }` | ✅ | ✅ | Start audio recording (real-time streaming) |
 | `stopRecording` | - | `{ success }` | ✅ | ✅ | Stop audio recording |
 | `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | Get microphone status |
 
@@ -269,6 +269,10 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 - `quality`: JPEG quality (1-100, default: 30)
 - `maxWidth`: Maximum width (px, original if not specified)
 - `maxHeight`: Maximum height (px, original if not specified)
+
+**startRecording Parameters:**
+- `sampleRate`: Sample rate (8000-48000, default: 44100)
+- `chunkSize`: Chunk size (512-8192 bytes, default: 2048, ~23ms latency)
 
 **Camera Events:**
 - `onCameraFrame`: Receive camera frames (auto-triggered after startCamera)

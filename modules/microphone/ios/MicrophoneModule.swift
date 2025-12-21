@@ -8,6 +8,10 @@ public class MicrophoneModule: Module {
     private var isStreaming = false
     private var chunkNumber = 0
     
+    // 설정 가능한 파라미터
+    private var targetSampleRate: Double = 44100.0  // 44.1kHz (기본값)
+    private var maxChunkSize: Int = 2048  // 약 23ms 지연 (실시간성과 성능의 균형)
+    
     public func definition() -> ModuleDefinition {
         Name("Microphone")
         
@@ -45,10 +49,23 @@ public class MicrophoneModule: Module {
         }
         
         // 녹음 시작
-        AsyncFunction("startRecording") { (promise: Promise) in
+        AsyncFunction("startRecording") { (params: [String: Any], promise: Promise) in
             if self.isStreaming {
                 promise.resolve(["success": false, "error": "Already streaming"])
                 return
+            }
+            
+            // 파라미터 파싱
+            if let sampleRate = params["sampleRate"] as? Double {
+                self.targetSampleRate = sampleRate.clamped(to: 8000.0...48000.0)
+            } else {
+                self.targetSampleRate = 44100.0
+            }
+            
+            if let chunkSize = params["chunkSize"] as? Int {
+                self.maxChunkSize = chunkSize.clamped(to: 512...8192)
+            } else {
+                self.maxChunkSize = 2048
             }
             
             // 권한 확인
@@ -166,5 +183,12 @@ extension MicrophoneModule: AVCaptureAudioDataOutputSampleBufferDelegate {
             "sampleRate": Int(sampleRate),
             "encoding": "pcm_16bit"
         ])
+    }
+}
+
+// Comparable extension for clamping values
+extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        return min(max(self, range.lowerBound), range.upperBound)
     }
 }

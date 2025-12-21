@@ -259,7 +259,7 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | 获取相机状态 |
 | `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | 检查麦克风权限 |
 | `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | 请求麦克风权限 |
-| `startRecording` | - | `{ success }` | ✅ | ✅ | 开始录音 (实时流) |
+| `startRecording` | `{ sampleRate?, chunkSize? }` | `{ success }` | ✅ | ✅ | 开始录音 (实时流) |
 | `stopRecording` | - | `{ success }` | ✅ | ✅ | 停止录音 |
 | `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | 获取麦克风状态 |
 
@@ -269,6 +269,10 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 - `quality`: JPEG质量 (1-100, 默认值: 30)
 - `maxWidth`: 最大宽度 (px, 未指定时保持原始)
 - `maxHeight`: 最大高度 (px, 未指定时保持原始)
+
+**startRecording参数：**
+- `sampleRate`: 采样率 (8000-48000, 默认值: 44100)
+- `chunkSize`: 块大小 (512-8192 bytes, 默认值: 2048, 约23ms延迟)
 
 **相机事件：**
 - `onCameraFrame`: 接收相机帧 (startCamera后自动触发)

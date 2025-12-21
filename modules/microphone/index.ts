@@ -22,6 +22,11 @@ export interface AudioChunkEvent {
   encoding: 'pcm_16bit';
 }
 
+export interface MicrophoneRecordingOptions {
+  sampleRate?: number;  // 8000-48000, 기본값: 44100
+  chunkSize?: number;   // 512-8192 bytes, 기본값: 2048 (약 23ms)
+}
+
 export function getMicrophoneModule() {
   if (!MicrophoneModule) {
     throw new Error('Microphone module is not available');
@@ -39,9 +44,16 @@ export async function requestMicrophonePermission(): Promise<MicrophonePermissio
   return await module.requestMicrophonePermission();
 }
 
-export async function startRecording(): Promise<{ success: boolean; error?: string }> {
+export async function startRecording(options?: MicrophoneRecordingOptions): Promise<{ success: boolean; error?: string }> {
   const module = getMicrophoneModule();
-  return await module.startRecording();
+  
+  // 파라미터 정규화
+  const params = {
+    sampleRate: options?.sampleRate,
+    chunkSize: options?.chunkSize,
+  };
+  
+  return await module.startRecording(params);
 }
 
 export async function stopRecording(): Promise<{ success: boolean; error?: string }> {

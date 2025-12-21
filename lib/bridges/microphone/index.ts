@@ -39,7 +39,13 @@ export function registerMicrophoneHandlers() {
   // 녹음 시작 (스트리밍)
   registerHandler('startRecording', async (payload, respond) => {
     try {
-      const result = await startRecording();
+      // 파라미터 정규화
+      const options = payload as {
+        sampleRate?: number;
+        chunkSize?: number;
+      };
+      
+      const result = await startRecording(options);
       
       if (result.success) {
         // 오디오 청크 이벤트 리스너 등록
