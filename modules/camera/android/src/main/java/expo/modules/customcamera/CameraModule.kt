@@ -38,7 +38,7 @@ class CameraModule : Module() {
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
 
     override fun definition() = ModuleDefinition {
-        Name("Camera")
+        Name("CustomCamera")
         Events("onCameraFrame", "onRecordingFinished", "onRecordingError")
 
         OnCreate {

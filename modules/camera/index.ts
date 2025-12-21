@@ -16,9 +16,9 @@ function getCameraModule() {
   
   if (CameraModule === null) {
     try {
-      CameraModule = requireNativeModule('Camera');
+      CameraModule = requireNativeModule('CustomCamera');
     } catch (error) {
-      console.error('[Camera] Failed to load native module:', error);
+      console.error('[CustomCamera] Failed to load native module:', error);
       CameraModule = undefined; // 재시도 방지
       return null;
     }

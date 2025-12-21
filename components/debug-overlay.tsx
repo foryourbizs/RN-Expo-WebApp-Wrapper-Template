@@ -12,6 +12,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { documentDirectory, writeAsStringAsync } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 import { APP_CONFIG } from '@/constants/app-config';
 
@@ -28,6 +30,7 @@ export interface LogEntry {
 export interface DebugOverlayRef {
   log: (level: LogLevel, message: string, details?: string) => void;
   clear: () => void;
+  exportLogs: () => Promise<void>;
 }
 
 interface DebugOverlayProps {
@@ -62,15 +65,25 @@ export const debugLog = (level: LogLevel, message: string, details?: string) => 
   globalDebugRef?.log(level, message, details);
 };
 
-export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>(
+const DebugOverlayComponent = React.forwardRef<DebugOverlayRef, DebugOverlayProps>(
   ({ visible = true }, ref) => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [isMinimized, setIsMinimized] = useState(true); // 기본값: 최소화 상태로 시작
+    const [isMinimized, setIsMinimized] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     
     const { debug } = APP_CONFIG;
     const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+    // 시간 포맷
+    const formatTime = (date: Date) => {
+      return date.toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
+    };
 
     // 로그 추가
     const addLog = useCallback((level: LogLevel, message: string, details?: string) => {
@@ -84,14 +97,12 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
 
       setLogs(prevLogs => {
         const newLogs = [...prevLogs, newLog];
-        // 최대 라인 수 초과 시 오래된 로그 제거
         if (newLogs.length > debug.maxLogLines) {
           return newLogs.slice(-debug.maxLogLines);
         }
         return newLogs;
       });
 
-      // 자동 스크롤
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -102,19 +113,66 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
       setLogs([]);
     }, []);
 
+    // 로그를 파일로 저장
+    const exportLogs = useCallback(async () => {
+      try {
+        if (logs.length === 0) {
+          addLog('warn', '저장할 로그가 없습니다');
+          return;
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `debug-log-${timestamp}.txt`;
+        const filePath = `${documentDirectory}${fileName}`;
+
+        let content = `=== DEBUG LOG EXPORT ===\n`;
+        content += `생성 시간: ${new Date().toLocaleString('ko-KR')}\n`;
+        content += `총 로그: ${logs.length}개\n`;
+        content += `에러: ${logs.filter(l => l.level === 'error').length}개\n`;
+        content += `경고: ${logs.filter(l => l.level === 'warn').length}개\n`;
+        content += `=========================\n\n`;
+
+        logs.forEach(log => {
+          const time = formatTime(log.timestamp);
+          const level = log.level.toUpperCase().padEnd(7);
+          content += `[${time}] ${level} ${log.message}\n`;
+          if (log.details) {
+            content += `  └─ ${log.details}\n`;
+          }
+          content += '\n';
+        });
+
+        await writeAsStringAsync(filePath, content);
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(filePath, {
+            mimeType: 'text/plain',
+            dialogTitle: '디버그 로그 내보내기',
+          });
+          addLog('success', `로그를 파일로 저장했습니다: ${fileName}`);
+        } else {
+          addLog('success', `로그를 저장했습니다: ${filePath}`);
+        }
+      } catch (error) {
+        console.error('로그 저장 실패:', error);
+        addLog('error', '로그 저장 실패', String(error));
+      }
+    }, [logs, addLog, formatTime]);
+
     // ref로 메서드 노출
     useImperativeHandle(ref, () => ({
       log: addLog,
       clear: clearLogs,
-    }), [addLog, clearLogs]);
+      exportLogs,
+    }), [addLog, clearLogs, exportLogs]);
 
     // 전역 ref 설정
     useEffect(() => {
-      globalDebugRef = { log: addLog, clear: clearLogs };
+      globalDebugRef = { log: addLog, clear: clearLogs, exportLogs };
       return () => {
         globalDebugRef = null;
       };
-    }, [addLog, clearLogs]);
+    }, [addLog, clearLogs, exportLogs]);
 
     // 초기 로그
     useEffect(() => {
@@ -125,16 +183,6 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
     if (!debug.enabled || !visible) {
       return null;
     }
-
-    // 시간 포맷
-    const formatTime = (date: Date) => {
-      return date.toLocaleTimeString('ko-KR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
-    };
 
     // 레벨별 색상
     const getLevelColor = (level: LogLevel) => {
@@ -154,7 +202,7 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
       }
     };
 
-    // 최소화 상태 - 우측 하단에 플로팅 버튼
+    // 최소화 상태
     if (isMinimized) {
       return (
         <View style={styles.minimizedContainer}>
@@ -189,7 +237,6 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
           },
         ]}
       >
-        {/* 헤더 */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🐛 Debug Log</Text>
           <View style={styles.headerButtons}>
@@ -199,6 +246,13 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
               activeOpacity={0.6}
             >
               <Text style={styles.headerButtonText}>{isExpanded ? '▼' : '▲'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={exportLogs} 
+              style={styles.headerButton}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.headerButtonText}>💾</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={clearLogs} 
@@ -217,7 +271,6 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
           </View>
         </View>
 
-        {/* 로그 목록 */}
         <ScrollView
           ref={scrollViewRef}
           style={[styles.logList, { backgroundColor: `rgba(0,0,0,${debug.overlayOpacity})` }]}
@@ -260,7 +313,6 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
           )}
         </ScrollView>
 
-        {/* 상태 바 */}
         <View style={styles.statusBar}>
           <Text style={styles.statusText}>
             📊 {logs.filter(l => l.level === 'error').length} errors | 
@@ -273,7 +325,9 @@ export const DebugOverlay = React.forwardRef<DebugOverlayRef, DebugOverlayProps>
   }
 );
 
-DebugOverlay.displayName = 'DebugOverlay';
+DebugOverlayComponent.displayName = 'DebugOverlay';
+
+export const DebugOverlay = DebugOverlayComponent;
 
 const styles = StyleSheet.create({
   container: {
