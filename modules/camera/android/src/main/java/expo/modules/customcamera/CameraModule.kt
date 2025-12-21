@@ -182,94 +182,51 @@ class CameraModule : Module() {
 
         // 카메라 시작
         AsyncFunction("startCamera") { facing: String, promise: Promise ->
-            saveDebugLog("=== startCamera START ===")
-            saveDebugLog("Parameters - facing: $facing")
-            Log.d("CameraModule", "=== startCamera START ===")
-            Log.d("CameraModule", "Parameters - facing: $facing")
-            
             try {
                 val context = appContext.reactContext
                 if (context == null) {
-                    saveDebugLog("ERROR: Context is null")
-                    Log.e("CameraModule", "ERROR: Context is null")
+                    Log.e("CameraModule", "Context not available")
                     promise.resolve(mapOf("success" to false, "error" to "Context not available"))
                     return@AsyncFunction
                 }
-                saveDebugLog("✓ Context OK")
-                Log.d("CameraModule", "✓ Context OK")
 
                 val activity = appContext.currentActivity
                 if (activity == null) {
-                    saveDebugLog("ERROR: Activity is null")
-                    Log.e("CameraModule", "ERROR: Activity is null")
+                    Log.e("CameraModule", "Activity not available")
                     promise.resolve(mapOf("success" to false, "error" to "Activity not available"))
                     return@AsyncFunction
                 }
-                saveDebugLog("✓ Activity OK")
-                Log.d("CameraModule", "✓ Activity OK")
                 
                 val lifecycleOwner = activity as? LifecycleOwner
                 if (lifecycleOwner == null) {
-                    saveDebugLog("ERROR: LifecycleOwner is null")
-                    Log.e("CameraModule", "ERROR: LifecycleOwner is null")
+                    Log.e("CameraModule", "LifecycleOwner not available")
                     promise.resolve(mapOf("success" to false, "error" to "LifecycleOwner not available"))
                     return@AsyncFunction
                 }
-                saveDebugLog("✓ LifecycleOwner OK")
-                Log.d("CameraModule", "✓ LifecycleOwner OK")
                 
-                // 권한 체크
                 val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                 if (cameraPermission != PackageManager.PERMISSION_GRANTED) {
-                    saveDebugLog("ERROR: Camera permission not granted")
-                    Log.e("CameraModule", "ERROR: Camera permission not granted")
+                    Log.e("CameraModule", "Camera permission not granted")
                     promise.resolve(mapOf("success" to false, "error" to "Camera permission not granted"))
                     return@AsyncFunction
                 }
-                saveDebugLog("✓ Camera permission OK")
-                Log.d("CameraModule", "✓ Camera permission OK")
                 
                 currentFacing = facing
-                
-                // 기존 카메라 정리
-                saveDebugLog("Cleaning up previous camera...")
-                Log.d("CameraModule", "Cleaning up previous camera...")
                 cleanupCamera()
                 
-                saveDebugLog("Getting ProcessCameraProvider...")
-                Log.d("CameraModule", "Getting ProcessCameraProvider...")
-                // Activity Context를 사용해야 디스플레이 정보를 가져올 수 있음
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
                 
                 cameraProviderFuture.addListener({
                     try {
-                        saveDebugLog("Camera provider future completed")
-                        Log.d("CameraModule", "Camera provider future completed")
                         cameraProvider = cameraProviderFuture.get()
-                        saveDebugLog("✓ CameraProvider obtained")
-                        Log.d("CameraModule", "✓ CameraProvider obtained")
-                        
-                        // 모든 기존 바인딩 해제
                         cameraProvider?.unbindAll()
-                        saveDebugLog("✓ Previous bindings unbound")
-                        Log.d("CameraModule", "✓ Previous bindings unbound")
 
-                        // 카메라 선택
                         val cameraSelector = if (facing == "front") {
-                            saveDebugLog("Using FRONT camera")
-                            Log.d("CameraModule", "Using FRONT camera")
                             CameraSelector.DEFAULT_FRONT_CAMERA
                         } else {
-                            saveDebugLog("Using BACK camera")
-                            Log.d("CameraModule", "Using BACK camera")
                             CameraSelector.DEFAULT_BACK_CAMERA
                         }
 
-                        // ImageCapture 설정 (가장 안정적인 설정)
-                        saveDebugLog("Creating ImageCapture...")
-                        Log.d("CameraModule", "Creating ImageCapture...")
-                        
-                        // 화면 회전 가져오기 (deprecated 방지) - Activity에서 가져와야 함
                         val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             activity.display?.rotation ?: Surface.ROTATION_0
                         } else {
@@ -281,14 +238,9 @@ class CameraModule : Module() {
                             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                             .setTargetRotation(rotation)
                             .build()
-                        saveDebugLog("✓ ImageCapture created")
-                        Log.d("CameraModule", "✓ ImageCapture created")
 
                         val useCases = mutableListOf<UseCase>(imageCapture!!)
 
-                        // 프레임 스트리밍 설정
-                        saveDebugLog("Setting up frame streaming...")
-                        Log.d("CameraModule", "Setting up frame streaming...")
                         isStreaming = true
                         lastFrameTime = 0L
 
@@ -302,12 +254,6 @@ class CameraModule : Module() {
                         }
                         
                         useCases.add(imageAnalyzer!!)
-                        saveDebugLog("✓ ImageAnalyzer added")
-                        Log.d("CameraModule", "✓ ImageAnalyzer added")
-
-                        // 카메라 바인딩
-                        saveDebugLog("Binding ${useCases.size} use cases to lifecycle...")
-                        Log.d("CameraModule", "Binding ${useCases.size} use cases to lifecycle...")
                         camera = cameraProvider?.bindToLifecycle(
                             lifecycleOwner,
                             cameraSelector,
@@ -315,9 +261,6 @@ class CameraModule : Module() {
                         )
 
                         if (camera != null) {
-                            saveDebugLog("✓✓✓ Camera started successfully ✓✓✓")
-                            Log.d("CameraModule", "✓✓✓ Camera started successfully ✓✓✓")
-                            
                             promise.resolve(mapOf(
                                 "success" to true,
                                 "isActive" to true,
@@ -326,8 +269,7 @@ class CameraModule : Module() {
                                 "isStreaming" to isStreaming
                             ))
                         } else {
-                            saveDebugLog("ERROR: Camera object is null after binding")
-                            Log.e("CameraModule", "ERROR: Camera object is null after binding")
+                            Log.e("CameraModule", "Camera binding returned null")
                             promise.resolve(mapOf("success" to false, "error" to "Camera binding returned null"))
                         }
 

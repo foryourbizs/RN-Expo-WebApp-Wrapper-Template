@@ -27,14 +27,6 @@ function getCameraModule() {
   return CameraModule === undefined ? null : CameraModule;
 }
 
-/**
- * Get the native module directly (for NativeEventEmitter)
- * @returns The native CustomCamera module
- */
-export function getNativeModule() {
-  return getCameraModule();
-}
-
 export interface CameraPermissionStatus {
   /** 권한 승인 여부 */
   granted: boolean;
@@ -270,3 +262,17 @@ export async function clearDebugLog(): Promise<{ success: boolean; error?: strin
   return await module.clearDebugLog();
 }
 
+/**
+ * Add listener for camera events (Expo module style)
+ * @param eventName Event name to listen to (e.g., 'onCameraFrame')
+ * @param listener Callback function to handle the event
+ * @returns Subscription object with remove() method
+ */
+export function addListener(eventName: string, listener: (event: any) => void): { remove: () => void } {
+  const module = getCameraModule();
+  if (!module || !module.addListener) {
+    console.error('[CustomCamera] addListener not available');
+    return { remove: () => {} };
+  }
+  return module.addListener(eventName, listener);
+}

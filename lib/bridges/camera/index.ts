@@ -3,7 +3,7 @@
  */
 
 import { registerHandler, sendToWeb } from '@/lib/bridge';
-import { NativeEventEmitter, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 export const registerCameraHandlers = () => {
   // Android가 아니면 카메라 기능을 등록하지 않음
@@ -21,27 +21,12 @@ export const registerCameraHandlers = () => {
     return;
   }
 
-  let eventEmitter: any = null;
-
-  // 네이티브 이벤트 이미터 초기화
+  // Expo 모듈 이벤트 리스너 초기화
   try {
-    const nativeModule = Camera.getNativeModule();
-    console.log('[Bridge] Native module:', nativeModule ? 'available' : 'not found');
-    
-    if (nativeModule) {
-      eventEmitter = new NativeEventEmitter(nativeModule);
-      
-      // 프레임 데이터 수신 - 고정 이벤트로 Web에 전달
-      eventEmitter.addListener('onCameraFrame', (data: any) => {
-        console.log(`[Bridge] ✓ Frame received - type: ${data?.type}, size: ${data?.base64?.length || 0}`);
-        console.log(`[Bridge] Calling sendToWeb('onCameraFrame', ...)`);
+    if (Camera) {
+      Camera.addListener('onCameraFrame', (data: any) => {
         sendToWeb('onCameraFrame', data);
-        console.log(`[Bridge] sendToWeb call completed`);
       });
-      
-      console.log('[Bridge] ✓ Camera event listeners registered');
-    } else {
-      console.warn('[Bridge] Native module not available, event listeners not registered');
     }
   } catch (error) {
     console.error('[Bridge] Failed to setup camera event listeners:', error);
@@ -115,7 +100,6 @@ export const registerCameraHandlers = () => {
       
       const options = payload as { facing?: 'front' | 'back' };
       const result = await Camera.startCamera(options?.facing || 'back');
-      
       respond(result);
     } catch (error) {
       console.error('[Bridge] startCamera error:', error);
