@@ -332,10 +332,11 @@ class CameraModule : Module() {
                                         sendEvent("onCameraFrame", mapOf(
                                             "type" to "test",
                                             "message" to "Camera started - event system test",
+                                            "eventKey" to eventKey,
                                             "timestamp" to System.currentTimeMillis()
                                         ))
-                                        saveDebugLog("✓ Test event sent")
-                                        Log.d("CameraModule", "✓ Test event sent")
+                                        saveDebugLog("✓ Test event sent (onCameraFrame with eventKey: ${eventKey})")
+                                        Log.d("CameraModule", "✓ Test event sent (onCameraFrame with eventKey: ${eventKey})")
                                     } catch (e: Exception) {
                                         saveDebugLog("Failed to send test event: ${e.message}")
                                         Log.e("CameraModule", "Failed to send test event", e)
@@ -772,14 +773,16 @@ class CameraModule : Module() {
 
             mainHandler.post {
                 try {
+                    val eventKey = streamingEventName ?: "cameraStream"
                     sendEvent("onCameraFrame", mapOf(
                         "type" to "cameraFrame",
+                        "eventKey" to eventKey,
                         "base64" to "data:image/jpeg;base64,$base64",
                         "width" to rotatedBitmap.width,
                         "height" to rotatedBitmap.height
                     ))
-                    saveDebugLog("✓ Frame event sent successfully")
-                    Log.d("CameraModule", "✓ Frame event sent successfully")
+                    saveDebugLog("✓ Frame sent via onCameraFrame (eventKey: ${eventKey})")
+                    Log.d("CameraModule", "✓ Frame sent via onCameraFrame (eventKey: ${eventKey})")
                 } catch (e: Exception) {
                     saveDebugLog("Failed to send frame event: ${e.message}")
                     Log.e("CameraModule", "Failed to send frame event", e)
@@ -832,15 +835,23 @@ class CameraModule : Module() {
             }
             recording = null
 
-            cameraProvider?.let {
+            cameraProvider?.let { provider ->
                 try {
                     saveDebugLog("Unbinding all use cases...")
-                    it.unbindAll()
-                    saveDebugLog("✓ Camera unbound")
-                    Log.d("CameraModule", "✓ Camera unbound")
+                    // 메인 스레드에서 unbind 실행
+                    mainHandler.post {
+                        try {
+                            provider.unbindAll()
+                            saveDebugLog("✓ Camera unbound")
+                            Log.d("CameraModule", "✓ Camera unbound")
+                        } catch (e: Exception) {
+                            saveDebugLog("Error unbinding camera: ${e.message}")
+                            Log.e("CameraModule", "Error unbinding camera", e)
+                        }
+                    }
                 } catch (e: Exception) {
-                    saveDebugLog("Error unbinding camera: ${e.message}")
-                    Log.e("CameraModule", "Error unbinding camera", e)
+                    saveDebugLog("Error posting unbind: ${e.message}")
+                    Log.e("CameraModule", "Error posting unbind", e)
                 }
             }
             

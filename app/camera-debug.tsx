@@ -12,7 +12,8 @@ export default function CameraDebugScreen() {
   const [lastFrame, setLastFrame] = useState<string | null>(null);
   const [frameInfo, setFrameInfo] = useState<{ width: number; height: number; size: number } | null>(null);
   const frameCountRef = useRef<number>(0);
-  const eventListenerRef = useRef<any>(null);
+  const eventListenersRef = useRef<Map<string, any>>(new Map());
+  const eventEmitterRef = useRef<any>(null);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -21,51 +22,98 @@ export default function CameraDebugScreen() {
     setLogs(prev => [...prev, logMessage].slice(-20)); // 최근 20개만
   };
 
-  // 카메라 프레임 이벤트 리스너 설정
+  // NativeEventEmitter 초기화 (1회만)
   useEffect(() => {
-    addLog('=== 이벤트 리스너 설정 시작 ===');
+    addLog('=== NativeEventEmitter 초기화 ===');
     try {
       const nativeModule = Camera.getNativeModule();
       addLog(`CustomCamera 모듈: ${nativeModule ? '있음' : '없음'}`);
       
       if (nativeModule) {
-        addLog('NativeEventEmitter 생성 중...');
-        const eventEmitter = new NativeEventEmitter(nativeModule);
-        addLog('NativeEventEmitter 생성 완료');
+        eventEmitterRef.current = new NativeEventEmitter(nativeModule);
+        addLog('✓ NativeEventEmitter 생성 완료');
         
-        eventListenerRef.current = eventEmitter.addListener('onCameraFrame', (data) => {
-          addLog(`✓ 프레임 수신! type: ${data.type}, size: ${data.base64?.length || 0}`);
+        // onCameraFrame 기본 리스너 등록 (Native가 항상 이 이름으로 보냄)
+        const baseListener = eventEmitterRef.current.addListener('onCameraFrame', (data: any) => {
+          const eventKey = data?.eventKey || 'onCameraFrame';
+          addLog(`✓✓✓ [onCameraFrame] 수신! eventKey: ${eventKey}, size: ${data.base64?.length || 0}`);
           
-          frameCountRef.current += 1;
-          setFrameCount(frameCountRef.current);
-          
-          if (data.base64) {
-            setLastFrame(data.base64);
-            const base64Size = data.base64.length;
-            setFrameInfo({
-              width: data.width || 0,
-              height: data.height || 0,
-              size: Math.round(base64Size / 1024) // KB
-            });
+          // eventKey가 일치하는지 확인
+          const targetListener = eventListenersRef.current.get(eventKey);
+          if (targetListener) {
+            targetListener(data);
           }
         });
         
-        addLog('✓ 프레임 이벤트 리스너 등록 완료');
+        // 기본 리스너도 Map에 저장
+        eventListenersRef.current.set('__base__', baseListener);
+        addLog('✓ onCameraFrame 기본 리스너 등록 완료');
       } else {
         addLog('ERROR: CustomCamera 모듈을 찾을 수 없음');
       }
     } catch (error) {
-      addLog(`ERROR 이벤트 리스너 설정 실패: ${error}`);
-      console.error('Event listener setup error:', error);
+      addLog(`ERROR 이벤트 이미터 설정 실패: ${error}`);
+      console.error('Event emitter setup error:', error);
     }
 
     return () => {
-      if (eventListenerRef.current) {
-        eventListenerRef.current.remove();
-        addLog('프레임 이벤트 리스너 해제됨');
-      }
+      // 모든 리스너 해제
+      eventListenersRef.current.forEach((listener, key) => {
+        if (typeof listener === 'object' && listener.remove) {
+          listener.remove();
+        }
+        addLog(`✓ 리스너 해제: ${key}`);
+      });
+      eventListenersRef.current.clear();
     };
   }, []);
+
+  // 동적 이벤트 리스너 추가
+  const addFrameListener = (eventKey: string) => {
+    addLog(`[addFrameListener] 시작: ${eventKey}`);
+    
+    if (!eventEmitterRef.current) {
+      addLog('ERROR: EventEmitter가 초기화되지 않음');
+      Alert.alert('오류', 'EventEmitter가 초기화되지 않았습니다.');
+      return;
+    }
+
+    // 이미 등록된 리스너가 있으면 제거
+    const existing = eventListenersRef.current.get(eventKey);
+    if (existing && typeof existing === 'function') {
+      addLog(`기존 핸들러 제거: ${eventKey}`);
+    }
+
+    // 프레임 처리 핸들러 (실제 리스너가 아닌 콜백 함수)
+    const frameHandler = (data: any) => {
+      addLog(`✓✓✓ [${eventKey}] 프레임 처리! size: ${data.base64?.length || 0}`);
+      
+      frameCountRef.current += 1;
+      setFrameCount(frameCountRef.current);
+      
+      if (data.base64) {
+        setLastFrame(data.base64);
+        const base64Size = data.base64.length;
+        setFrameInfo({
+          width: data.width || 0,
+          height: data.height || 0,
+          size: Math.round(base64Size / 1024)
+        });
+      }
+    };
+
+    eventListenersRef.current.set(eventKey, frameHandler);
+    addLog(`✓ 프레임 핸들러 등록 완료: ${eventKey} (총 ${eventListenersRef.current.size}개)`);
+  };
+
+  // 리스너 제거
+  const removeFrameListener = (eventKey: string) => {
+    const handler = eventListenersRef.current.get(eventKey);
+    if (handler) {
+      eventListenersRef.current.delete(eventKey);
+      addLog(`✓ 프레임 핸들러 해제: ${eventKey}`);
+    }
+  };
 
   const checkPermission = async () => {
     try {
@@ -97,23 +145,33 @@ export default function CameraDebugScreen() {
 
   const startCamera = async () => {
     try {
-      addLog('카메라 시작 중...');
+      addLog('=== 카메라 시작 요청 ===');
       // 프레임 카운터 초기화
       frameCountRef.current = 0;
       setFrameCount(0);
       setLastFrame(null);
       setFrameInfo(null);
       
-      const result = await Camera.startCamera({ facing: 'back', eventKey: 'cameraStream' });
-      addLog(`카메라 시작 결과: ${JSON.stringify(result)}`);
+      const eventKey = 'cameraStream';
+      addLog(`eventKey 설정: ${eventKey}`);
+      
+      // eventKey에 대한 리스너 등록
+      addLog(`리스너 등록 중... (${eventKey})`);
+      addFrameListener(eventKey);
+      addLog(`리스너 등록 완료, 현재 활성 리스너 수: ${eventListenersRef.current.size}`);
+      
+      addLog('Native startCamera 호출 중...');
+      const result = await Camera.startCamera({ facing: 'back', eventKey });
+      addLog(`startCamera 응답: ${JSON.stringify(result)}`);
       
       if (result.success) {
-        addLog('프레임 수신 대기 중...');
+        addLog(`✓ 카메라 시작 성공 - 프레임 대기 중 (${eventKey})`);
       } else {
+        addLog(`✗ 카메라 시작 실패: ${result.error}`);
         Alert.alert('실패', result.error || '알 수 없는 오류');
       }
     } catch (error: any) {
-      addLog(`카메라 시작 실패: ${error.message || error}`);
+      addLog(`ERROR 카메라 시작 실패: ${error.message || error}`);
       Alert.alert('크래시', `에러: ${error.message || error}`);
     }
   };
@@ -121,6 +179,10 @@ export default function CameraDebugScreen() {
   const stopCamera = async () => {
     try {
       addLog('=== 카메라 중지 요청 ===');
+      
+      // 리스너 제거
+      removeFrameListener('cameraStream');
+      
       const result = await Camera.stopCamera();
       addLog(`카메라 중지 결과: ${JSON.stringify(result)}`);
       

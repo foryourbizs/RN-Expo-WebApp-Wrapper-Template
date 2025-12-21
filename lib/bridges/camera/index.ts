@@ -3,7 +3,7 @@
  */
 
 import { registerHandler, sendToWeb } from '@/lib/bridge';
-import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import { NativeEventEmitter, Platform } from 'react-native';
 
 export const registerCameraHandlers = () => {
   // Android가 아니면 카메라 기능을 등록하지 않음
@@ -21,28 +21,37 @@ export const registerCameraHandlers = () => {
     return;
   }
 
-  // 네이티브 이벤트 리스너 설정
+  let eventEmitter: any = null;
+
+  // 네이티브 이벤트 이미터 초기화
   try {
-    const { CustomCamera } = NativeModules;
-    if (CustomCamera) {
-      const eventEmitter = new NativeEventEmitter(CustomCamera);
+    const nativeModule = Camera.getNativeModule();
+    console.log('[Bridge] Native module:', nativeModule ? 'available' : 'not found');
+    
+    if (nativeModule) {
+      eventEmitter = new NativeEventEmitter(nativeModule);
       
-      // 카메라 프레임 이벤트를 웹으로 전달
-      eventEmitter.addListener('onCameraFrame', (data) => {
-        sendToWeb('onCameraFrame', data);
-      });
-      
-      // 녹화 완료 이벤트
-      eventEmitter.addListener('onRecordingFinished', (data) => {
+      // 녹화 완료/에러 이벤트
+      eventEmitter.addListener('onRecordingFinished', (data: any) => {
+        console.log('[Bridge] Recording finished event received');
         sendToWeb('onRecordingFinished', data);
       });
       
-      // 녹화 에러 이벤트
-      eventEmitter.addListener('onRecordingError', (data) => {
+      eventEmitter.addListener('onRecordingError', (data: any) => {
+        console.log('[Bridge] Recording error event received');
         sendToWeb('onRecordingError', data);
       });
       
-      console.log('[Bridge] Camera event listeners registered');
+      // 프레임 데이터 수신 - eventKey로 Web에 전달
+      eventEmitter.addListener('onCameraFrame', (data: any) => {
+        const targetEventKey = data?.eventKey || 'onCameraFrame';
+        console.log(`[Bridge] ✓ Frame received, forwarding to web as: ${targetEventKey}`);
+        sendToWeb(targetEventKey, data);
+      });
+      
+      console.log('[Bridge] ✓ Camera event listeners registered');
+    } else {
+      console.warn('[Bridge] Native module not available, event listeners not registered');
     }
   } catch (error) {
     console.error('[Bridge] Failed to setup camera event listeners:', error);
@@ -106,22 +115,28 @@ export const registerCameraHandlers = () => {
     }
   });
 
-  // 카메라 녹화 시작
+  // 카메라 스트리밍 시작
   registerHandler('startCamera', async (payload, respond) => {
     try {
+      console.log('[Bridge] startCamera called, payload:', JSON.stringify(payload));
+      
       if (!Camera) {
         respond({ success: false, error: 'Camera module not available' });
         return;
       }
       
       const options = payload as { facing?: 'front' | 'back'; eventKey?: string };
-      // eventKey는 필수 - 없으면 기본값 사용
-      const result = await Camera.startCamera({
-        facing: options?.facing || 'back',
-        eventKey: options?.eventKey || 'cameraStream'
-      });
+      const eventKey = options?.eventKey || 'cameraFrame';
+      
+      console.log(`[Bridge] Starting camera - eventKey: ${eventKey}, facing: ${options?.facing || 'back'}`);
+      
+      // Native에 eventKey 전달 (Native가 데이터에 포함시켜 보냄)
+      const result = await Camera.startCamera(options?.facing || 'back', eventKey);
+      
+      console.log('[Bridge] Camera started:', JSON.stringify(result));
       respond(result);
     } catch (error) {
+      console.error('[Bridge] startCamera error:', error);
       respond({ 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to start camera' 
@@ -129,7 +144,7 @@ export const registerCameraHandlers = () => {
     }
   });
 
-  // 카메라 녹화 중지
+  // 카메라 중지
   registerHandler('stopCamera', async (_payload, respond) => {
     try {
       if (!Camera) {
