@@ -115,10 +115,10 @@ export const registerCameraHandlers = () => {
       }
       
       const options = payload as { facing?: 'front' | 'back'; eventKey?: string };
-      // startCamera는 개별 파라미터로 전달해야 함
+      // eventKey는 필수 - 없으면 기본값 사용
       const result = await Camera.startCamera({
         facing: options?.facing || 'back',
-        eventKey: options?.eventKey
+        eventKey: options?.eventKey || 'cameraStream'
       });
       respond(result);
     } catch (error) {
