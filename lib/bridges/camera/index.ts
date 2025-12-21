@@ -6,9 +6,9 @@ import { registerHandler, sendToWeb } from '@/lib/bridge';
 import { Platform } from 'react-native';
 
 export const registerCameraHandlers = () => {
-  // Android가 아니면 카메라 기능을 등록하지 않음
-  if (Platform.OS !== 'android') {
-    console.log('[Bridge] Camera handlers skipped (Android only)');
+  // Android와 iOS만 지원
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
+    console.log('[Bridge] Camera handlers skipped (Android/iOS only)');
     return;
   }
 

@@ -1,6 +1,7 @@
 /**
- * Camera Module (Android Only)
- * 카메라 권한 및 녹화 기능 제공
+ * Camera Module (Cross-Platform)
+ * 카메라 권한 및 촬영 기능 제공
+ * Supports: Android, iOS
  */
 
 import { requireNativeModule } from 'expo-modules-core';
@@ -10,7 +11,7 @@ import { Platform } from 'react-native';
 let CameraModule: any = null;
 
 function getCameraModule() {
-  if (Platform.OS !== 'android') {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     return null;
   }
   
