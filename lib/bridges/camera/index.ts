@@ -3,7 +3,7 @@
  */
 
 import { registerHandler, sendToWeb } from '@/lib/bridge';
-import { Platform, NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 
 export const registerCameraHandlers = () => {
   // Android가 아니면 카메라 기능을 등록하지 않음
@@ -115,7 +115,11 @@ export const registerCameraHandlers = () => {
       }
       
       const options = payload as { facing?: 'front' | 'back'; eventKey?: string };
-      const result = await Camera.startCamera(options);
+      // startCamera는 개별 파라미터로 전달해야 함
+      const result = await Camera.startCamera({
+        facing: options?.facing || 'back',
+        eventKey: options?.eventKey
+      });
       respond(result);
     } catch (error) {
       respond({ 
