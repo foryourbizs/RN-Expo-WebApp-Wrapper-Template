@@ -224,8 +224,12 @@ export const handleBridgeMessage = (messageData: string): boolean => {
  * 앱에서 웹으로 메시지 전송
  */
 export const sendToWeb = <T = unknown>(action: string, payload?: T) => {
+  console.log(`[Bridge] sendToWeb called - action: ${action}, webView: ${webViewInstance ? 'available' : 'NULL'}`);
+  
   if (!webViewInstance) {
-    console.warn('[Bridge] WebView not available');
+    console.error('[Bridge] ⚠️⚠️⚠️ WebView is NULL! Cannot send to web!');
+    console.error(`[Bridge] - action: ${action}`);
+    console.error(`[Bridge] - payload type: ${typeof payload}`);
     return;
   }
 
@@ -241,7 +245,7 @@ export const sendToWeb = <T = unknown>(action: string, payload?: T) => {
 
   // IIFE로 즉시 실행 후 메모리에서 제거됨
   // 이벤트만 발생시키고 코드는 GC됨
-  const script = `(function(){var e=new CustomEvent('nativeMessage',{detail:${messageJSON}});window.dispatchEvent(e);window.onNativeMessage&&window.onNativeMessage(${messageJSON})})();true;`;
+  const script = `(function(){console.log('[Bridge-Inject] Sending message, action: ${action}');var msg=${messageJSON};console.log('[Bridge-Inject] Message object:', msg);var e=new CustomEvent('nativeMessage',{detail:msg});window.dispatchEvent(e);console.log('[Bridge-Inject] Event dispatched');window.onNativeMessage&&window.onNativeMessage(msg)})();true;`;
 
   webViewInstance.injectJavaScript(script);
   
@@ -250,7 +254,12 @@ export const sendToWeb = <T = unknown>(action: string, payload?: T) => {
     !messageJSON.includes('base64');
   
   if (shouldLog) {
-    console.log(`[Bridge] Sent to web: ${action}`, payload);
+    console.log(`[Bridge] ✓ Sent to web: ${action}`, payload);
+  } else {
+    // cameraFrame도 첫 10개는 로그 출력
+    if (action.includes('cameraFrame') || action.includes('cameraStream')) {
+      console.log(`[Bridge] ✓ Frame sent to web via action: '${action}' (payload size: ${messageJSON.length} bytes)`);
+    }
   }
 };
 

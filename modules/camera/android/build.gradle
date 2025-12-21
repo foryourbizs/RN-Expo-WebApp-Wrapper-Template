@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'maven-publish'
 
-group = 'expo.modules.camera'
+group = 'expo.modules.customcamera'
 version = '1.0.0'
 
 buildscript {
@@ -32,7 +32,7 @@ afterEvaluate {
 }
 
 android {
-  namespace "expo.modules.camera"
+  namespace "expo.modules.customcamera"
   compileSdkVersion safeExtGet("compileSdkVersion", 34)
 
   defaultConfig {

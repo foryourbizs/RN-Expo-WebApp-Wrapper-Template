@@ -1,6 +1,9 @@
 {
-  "platforms": ["android"],
+  "platforms": ["android", "ios"],
   "android": {
-    "modules": ["expo.modules.camera.CameraModule"]
+    "modules": ["expo.modules.customcamera.CameraModule"]
+  },
+  "ios": {
+    "modules": ["CameraModule"]
   }
 }

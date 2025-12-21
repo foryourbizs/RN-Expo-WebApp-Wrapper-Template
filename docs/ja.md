@@ -253,10 +253,32 @@ sendToWeb('notification', { title: '通知', body: '内容' });
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | スリープ防止を無効化 |
 | `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | カメラ権限を確認 |
 | `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | カメラ権限を要求 |
-| `startCamera` | `{ facing?, eventKey?, frameInterval? }` | `{ success, isActive, facing, eventKey }` | ✅ | ✅ | カメラを起動 (リアルタイムフレームストリーミング) |
-| `stopCamera` | - | `{ success, isActive }` | ✅ | ✅ | カメラを停止 |
-| `getCameraStatus` | - | `{ success, isActive, facing, eventKey, hasRef }` | ✅ | ✅ | カメラ状態を取得 |
-| `takePhoto` | `{ quality? }` | `{ success, uri, base64, width, height }` | ✅ | ✅ | 写真を撮影 (一回性) |
+| `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | 写真を撮影 (1フレーム, facing: 'front'|'back', デフォルト: 'back') |
+| `startCamera` | `{ facing?, fps?, quality?, maxWidth?, maxHeight? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | カメラストリーミングを起動 (リアルタイムフレーム送信) |
+| `stopCamera` | - | `{ success }` | ✅ | ✅ | カメラストリーミングを停止 |
+| `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | カメラ状態を取得 |
+| `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | マイク権限を確認 |
+| `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | マイク権限を要求 |
+| `startRecording` | - | `{ success }` | ✅ | ✅ | 音声録音を開始 (リアルタイムストリーミング) |
+| `stopRecording` | - | `{ success }` | ✅ | ✅ | 音声録音を停止 |
+| `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | マイク状態を取得 |
+
+**startCameraパラメータ:**
+- `facing`: カメラ方向 ('front' | 'back', デフォルト: 'back')
+- `fps`: フレームレート (1-30, デフォルト: 10)
+- `quality`: JPEG品質 (1-100, デフォルト: 30)
+- `maxWidth`: 最大幅 (px, 未指定の場合は元のまま)
+- `maxHeight`: 最大高さ (px, 未指定の場合は元のまま)
+
+**カメライベント:**
+- `onCameraFrame`: カメラフレームを受信 (startCamera後に自動発生)
+  - ペイロード: `{ type: 'cameraFrame', base64, width, height, frameNumber, timestamp }`
+  - フレームレートはstartCameraのfpsパラメータで設定
+
+**マイクイベント:**
+- `onAudioChunk`: オーディオチャンク受信 (startRecording後に自動発生)
+  - ペイロード: `{ type: 'audioChunk', base64, chunkSize, chunkNumber, timestamp, sampleRate, encoding }`
+  - リアルタイムPCM 16bitオーディオデータ (44.1kHz)
 
 > ✅ 対応 | ⚠️ 一部対応 | ❌ 非対応
 

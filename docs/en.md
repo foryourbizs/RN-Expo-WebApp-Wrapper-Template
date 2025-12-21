@@ -253,10 +253,32 @@ sendToWeb('notification', { title: 'Notification', body: 'Content' });
 | `deactivateKeepAwake` | - | `{ success, isActive }` | ✅ | ✅ | Deactivate keep awake |
 | `checkCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | Check camera permission |
 | `requestCameraPermission` | - | `{ success, granted, status }` | ✅ | ✅ | Request camera permission |
-| `startCamera` | `{ facing?, eventKey?, frameInterval? }` | `{ success, isActive, facing, eventKey }` | ✅ | ✅ | Start camera (real-time frame streaming) |
-| `stopCamera` | - | `{ success, isActive }` | ✅ | ✅ | Stop camera |
-| `getCameraStatus` | - | `{ success, isActive, facing, eventKey, hasRef }` | ✅ | ✅ | Get camera status |
-| `takePhoto` | `{ quality? }` | `{ success, uri, base64, width, height }` | ✅ | ✅ | Take photo (one-time) |
+| `takePhoto` | `{ facing? }` | `{ success, base64, width, height, facing }` | ✅ | ✅ | Take photo (1 frame, facing: 'front'\|'back', default: 'back') |
+| `startCamera` | `{ facing?, fps?, quality?, maxWidth?, maxHeight? }` | `{ success, isActive, facing, isRecording, isStreaming }` | ✅ | ✅ | Start camera streaming (real-time frame transmission) |
+| `stopCamera` | - | `{ success }` | ✅ | ✅ | Stop camera streaming |
+| `getCameraStatus` | - | `{ isStreaming, facing, hasCamera }` | ✅ | ✅ | Get camera status |
+| `checkMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | Check microphone permission |
+| `requestMicrophonePermission` | - | `{ success, granted, status }` | ✅ | ✅ | Request microphone permission |
+| `startRecording` | - | `{ success }` | ✅ | ✅ | Start audio recording (real-time streaming) |
+| `stopRecording` | - | `{ success }` | ✅ | ✅ | Stop audio recording |
+| `getMicrophoneStatus` | - | `{ success, isStreaming, hasMicrophone }` | ✅ | ✅ | Get microphone status |
+
+**startCamera Parameters:**
+- `facing`: Camera direction ('front' | 'back', default: 'back')
+- `fps`: Frame rate (1-30, default: 10)
+- `quality`: JPEG quality (1-100, default: 30)
+- `maxWidth`: Maximum width (px, original if not specified)
+- `maxHeight`: Maximum height (px, original if not specified)
+
+**Camera Events:**
+- `onCameraFrame`: Receive camera frames (auto-triggered after startCamera)
+  - Payload: `{ type: 'cameraFrame', base64, width, height, frameNumber, timestamp }`
+  - Frame rate is set by startCamera fps parameter
+
+**Microphone Events:**
+- `onAudioChunk`: Receive audio chunks (auto-triggered after startRecording)
+  - Payload: `{ type: 'audioChunk', base64, chunkSize, chunkNumber, timestamp, sampleRate, encoding }`
+  - Real-time PCM 16bit audio data (44.1kHz)
 
 > ✅ Supported | ⚠️ Partial | ❌ Not supported
 

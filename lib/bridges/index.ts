@@ -7,6 +7,7 @@ import { registerCameraHandlers } from './camera';
 import { registerClipboardHandlers } from './clipboard';
 import { registerDeviceHandlers } from './device';
 import { registerKeepAwakeHandlers } from './keep-awake';
+import { registerMicrophoneHandlers } from './microphone';
 import { registerNavigationBarHandlers } from './navigation-bar';
 import { registerOrientationHandlers } from './orientation';
 import { registerScreenPinningHandlers } from './screen-pinning';
@@ -30,6 +31,7 @@ export const registerBuiltInHandlers = () => {
   registerScreenPinningHandlers();
   registerKeepAwakeHandlers();
   registerCameraHandlers();
+  registerMicrophoneHandlers();
 
   console.log('[Bridge] All built-in handlers registered');
 };
