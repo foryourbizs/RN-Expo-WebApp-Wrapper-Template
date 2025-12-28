@@ -2,18 +2,27 @@ const fs = require('fs');
 const path = require('path');
 
 const pluginsToSetup = [
-  'rnww-plugin-camera',
-  'rnww-plugin-microphone',
-  'rnww-plugin-screen-pinning'
+  {
+    name: 'rnww-plugin-camera',
+    keepModules: ['customcamera']
+  },
+  {
+    name: 'rnww-plugin-microphone',
+    keepModules: ['custommicrophone']
+  },
+  {
+    name: 'rnww-plugin-screen-pinning',
+    keepModules: ['screenpinning']
+  }
 ];
 
 console.log('🔧 Setting up Expo plugins for autolinking...');
 
-pluginsToSetup.forEach(pluginName => {
-  const pluginPath = path.join(__dirname, '..', 'node_modules', pluginName);
+pluginsToSetup.forEach(plugin => {
+  const pluginPath = path.join(__dirname, '..', 'node_modules', plugin.name);
   
   if (!fs.existsSync(pluginPath)) {
-    console.log(`⚠️  ${pluginName} not found, skipping...`);
+    console.log(`⚠️  ${plugin.name} not found, skipping...`);
     return;
   }
 
@@ -23,7 +32,7 @@ pluginsToSetup.forEach(pluginName => {
   
   if (fs.existsSync(configSource)) {
     fs.copyFileSync(configSource, configDest);
-    console.log(`✅ ${pluginName}: expo-module.config.json copied`);
+    console.log(`✅ ${plugin.name}: expo-module.config.json copied`);
   }
 
   // Copy android folder to package root
@@ -36,7 +45,23 @@ pluginsToSetup.forEach(pluginName => {
       fs.rmSync(androidDest, { recursive: true, force: true });
     }
     fs.cpSync(androidSource, androidDest, { recursive: true });
-    console.log(`✅ ${pluginName}: android folder copied`);
+    
+    // 불필요한 모듈 폴더 제거 (잘못 포함된 파일 정리)
+    const javaModulesPath = path.join(androidDest, 'src', 'main', 'java', 'expo', 'modules');
+    if (fs.existsSync(javaModulesPath)) {
+      const folders = fs.readdirSync(javaModulesPath);
+      folders.forEach(folder => {
+        if (!plugin.keepModules.includes(folder)) {
+          const folderPath = path.join(javaModulesPath, folder);
+          if (fs.statSync(folderPath).isDirectory()) {
+            fs.rmSync(folderPath, { recursive: true, force: true });
+            console.log(`   🧹 Removed invalid folder: ${folder}`);
+          }
+        }
+      });
+    }
+    
+    console.log(`✅ ${plugin.name}: android folder copied`);
   }
 
   // Copy ios folder to package root
@@ -49,7 +74,7 @@ pluginsToSetup.forEach(pluginName => {
       fs.rmSync(iosDest, { recursive: true, force: true });
     }
     fs.cpSync(iosSource, iosDest, { recursive: true });
-    console.log(`✅ ${pluginName}: ios folder copied`);
+    console.log(`✅ ${plugin.name}: ios folder copied`);
   }
 });
 
