@@ -8,7 +8,7 @@ import { registerMicrophoneHandlers as moduleRegister } from 'rnww-plugin-microp
 export const registerMicrophoneHandlers = () => {
   moduleRegister({
     bridge: { registerHandler, sendToWeb },
-    platform: Platform.OS as any
+    platform: { OS: Platform.OS }
   });
 }
 

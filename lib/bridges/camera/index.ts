@@ -11,7 +11,7 @@ export const registerCameraHandlers = () => {
   
   moduleRegister({
     bridge: {registerHandler, sendToWeb},
-    platform: Platform.OS as any
+    platform: { OS: Platform.OS }
   })
 };
 
