@@ -30,7 +30,11 @@ pluginsToSetup.forEach(pluginName => {
   const androidSource = path.join(pluginPath, 'src', 'modules', 'android');
   const androidDest = path.join(pluginPath, 'android');
   
-  if (fs.existsSync(androidSource) && !fs.existsSync(androidDest)) {
+  if (fs.existsSync(androidSource)) {
+    // android 폴더가 이미 존재하면 삭제
+    if (fs.existsSync(androidDest)) {
+      fs.rmSync(androidDest, { recursive: true, force: true });
+    }
     fs.cpSync(androidSource, androidDest, { recursive: true });
     console.log(`✅ ${pluginName}: android folder copied`);
   }
@@ -39,7 +43,11 @@ pluginsToSetup.forEach(pluginName => {
   const iosSource = path.join(pluginPath, 'src', 'modules', 'ios');
   const iosDest = path.join(pluginPath, 'ios');
   
-  if (fs.existsSync(iosSource) && !fs.existsSync(iosDest)) {
+  if (fs.existsSync(iosSource)) {
+    // ios 폴더가 이미 존재하면 삭제
+    if (fs.existsSync(iosDest)) {
+      fs.rmSync(iosDest, { recursive: true, force: true });
+    }
     fs.cpSync(iosSource, iosDest, { recursive: true });
     console.log(`✅ ${pluginName}: ios folder copied`);
   }
