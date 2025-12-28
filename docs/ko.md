@@ -300,8 +300,12 @@ sendToWeb('notification', { title: '알림', body: '내용' });
 - `rnww-plugin-microphone`: 마이크 기능 (음성 녹음, 실시간 오디오 스트리밍)
 - `rnww-plugin-screen-pinning`: 앱 고정 기능 (Android 전용)
 
+> **참고:** 이 템플릿은 위의 3개 플러그인이 기본으로 설치되어 있습니다. 불필요한 경우 `package.json`에서 해당 플러그인을 제거하고 `lib/bridges/index.ts`에서 관련 핸들러 등록 코드를 삭제하면 됩니다.
 
-### 1. 플러그인 패키지 설치 등
+
+### 1. 플러그인 패키지 설치
+
+템플릿에 기본 포함되어 있지만, 새로운 프로젝트에 추가하려면:
 
 ```bash
 npm install rnww-plugin-camera rnww-plugin-microphone rnww-plugin-screen-pinning
