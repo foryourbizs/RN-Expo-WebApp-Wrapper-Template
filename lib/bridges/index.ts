@@ -10,9 +10,11 @@ import { Platform } from 'react-native';
 import { registerHandler, sendToWeb } from '@/lib/bridge';
 import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
+import { registerBackgroundHandlers } from './background';
 import { registerCameraHandlers } from './camera';
 import { registerClipboardHandlers } from './clipboard';
 import { registerDeviceHandlers } from './device';
+import { registerGpsHandlers } from './gps';
 import { registerKeepAwakeHandlers } from './keep-awake';
 import { registerMicrophoneHandlers } from './microphone';
 import { registerNavigationBarHandlers } from './navigation-bar';
@@ -47,6 +49,8 @@ export const BUILTIN_NAMESPACES = {
   push: 'push',
   update: 'update',
   security: 'sec',
+  background: 'bg',
+  gps: 'gps',
 } as const;
 
 export type BuiltinNamespace = typeof BUILTIN_NAMESPACES[keyof typeof BUILTIN_NAMESPACES];
@@ -85,6 +89,8 @@ export const registerBuiltInHandlers = () => {
   registerPushHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.push), platform);
   registerUpdateHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.update), platform);
   registerSecurityHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.security), platform);
+  registerBackgroundHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.background), platform);
+  registerGpsHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.gps), platform);
 
   console.log('[Bridge] All built-in handlers registered');
 };
