@@ -13,6 +13,14 @@ const pluginsToSetup = [
   {
     name: 'rnww-plugin-screen-pinning',
     keepModules: ['screenpinning']
+  },
+  {
+    name: 'rnww-plugin-background',
+    keepModules: ['custombackground']
+  },
+  {
+    name: 'rnww-plugin-gps',
+    keepModules: ['customgps']
   }
 ];
 
