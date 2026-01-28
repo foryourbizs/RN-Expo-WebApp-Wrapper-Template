@@ -2,11 +2,14 @@
  * WebView 네비게이션 관련 핸들러
  */
 
-import { getWebViewInstance, registerHandler } from '@/lib/bridge';
+import { getWebViewInstance } from '@/lib/bridge';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
-export const registerWebviewHandlers = () => {
+export const registerWebviewHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
+  const { registerHandler } = bridge;
+
   // 외부 URL 열기
-  registerHandler<{ url: string }>('openExternalUrl', async ({ url }, respond) => {
+  registerHandler<{ url: string }>('openExternal', async ({ url }, respond) => {
     const { Linking } = await import('react-native');
     const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
@@ -32,5 +35,5 @@ export const registerWebviewHandlers = () => {
     getWebViewInstance()?.reload();
   });
 
-  console.log('[Bridge] WebView handlers registered');
+  console.log('[WebView] Handlers registered');
 };

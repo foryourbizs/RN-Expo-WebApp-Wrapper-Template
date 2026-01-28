@@ -2,16 +2,18 @@
  * 화면 방향 관련 핸들러
  */
 
-import { registerHandler } from '@/lib/bridge';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
-export const registerOrientationHandlers = () => {
+export const registerOrientationHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
+  const { registerHandler } = bridge;
+
   // 화면 방향 조회
-  registerHandler('getOrientation', async (_payload, respond) => {
+  registerHandler('get', async (_payload, respond) => {
     try {
       const ScreenOrientation = await import('expo-screen-orientation');
       const orientation = await ScreenOrientation.getOrientationAsync();
       const lockState = await ScreenOrientation.getOrientationLockAsync();
-      
+
       // orientation 숫자를 문자열로 변환
       const orientationMap: Record<number, string> = {
         [ScreenOrientation.Orientation.UNKNOWN]: 'unknown',
@@ -20,7 +22,7 @@ export const registerOrientationHandlers = () => {
         [ScreenOrientation.Orientation.LANDSCAPE_LEFT]: 'landscape-left',
         [ScreenOrientation.Orientation.LANDSCAPE_RIGHT]: 'landscape-right',
       };
-      
+
       // lock 상태를 문자열로 변환
       const lockMap: Record<number, string> = {
         [ScreenOrientation.OrientationLock.DEFAULT]: 'default',
@@ -46,11 +48,11 @@ export const registerOrientationHandlers = () => {
 
   // 화면 방향 설정
   registerHandler<{ mode: 'portrait' | 'landscape' | 'auto' | 'portrait-up' | 'portrait-down' | 'landscape-left' | 'landscape-right' }>(
-    'setOrientation',
+    'set',
     async ({ mode }, respond) => {
       try {
         const ScreenOrientation = await import('expo-screen-orientation');
-        
+
         const lockMap: Record<string, number> = {
           'auto': ScreenOrientation.OrientationLock.DEFAULT,
           'all': ScreenOrientation.OrientationLock.ALL,
@@ -77,7 +79,7 @@ export const registerOrientationHandlers = () => {
   );
 
   // 화면 방향 잠금 해제 (자동 회전 활성화)
-  registerHandler('unlockOrientation', async (_payload, respond) => {
+  registerHandler('unlock', async (_payload, respond) => {
     try {
       const ScreenOrientation = await import('expo-screen-orientation');
       await ScreenOrientation.unlockAsync();
@@ -87,5 +89,5 @@ export const registerOrientationHandlers = () => {
     }
   });
 
-  console.log('[Bridge] Orientation handlers registered');
+  console.log('[Orientation] Handlers registered');
 };

@@ -2,11 +2,13 @@
  * 클립보드 관련 핸들러
  */
 
-import { registerHandler } from '@/lib/bridge';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
-export const registerClipboardHandlers = () => {
+export const registerClipboardHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
+  const { registerHandler } = bridge;
+
   // 클립보드 복사 (expo-clipboard 필요: npx expo install expo-clipboard)
-  registerHandler<{ text: string }>('copyToClipboard', async ({ text }, respond) => {
+  registerHandler<{ text: string }>('copy', async ({ text }, respond) => {
     try {
       const Clipboard = await import('expo-clipboard');
       await Clipboard.setStringAsync(text);
@@ -17,7 +19,7 @@ export const registerClipboardHandlers = () => {
   });
 
   // 클립보드 읽기
-  registerHandler('getClipboard', async (_payload, respond) => {
+  registerHandler('read', async (_payload, respond) => {
     try {
       const Clipboard = await import('expo-clipboard');
       const text = await Clipboard.getStringAsync();
@@ -27,5 +29,5 @@ export const registerClipboardHandlers = () => {
     }
   });
 
-  console.log('[Bridge] Clipboard handlers registered');
+  console.log('[Clipboard] Handlers registered');
 };

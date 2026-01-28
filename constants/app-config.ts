@@ -3,6 +3,8 @@
  * 웹뷰 및 앱 전반적인 설정을 관리
  */
 
+declare const __DEV__: boolean;
+
 import Constants from 'expo-constants';
 
 // app.json에서 가져온 값들
@@ -248,9 +250,45 @@ export const APP_CONFIG = {
     // 오프라인 모드
     offlineMode: false,
   },
+
+  // 보안 설정
+  security: {
+    // 허용된 Origin 목록 (빈 배열이면 모든 Origin 허용 - 개발용)
+    allowedOrigins: [
+      'https://webapp-sample.example-page.cc',
+    ],
+
+    // 차단된 URL 스킴
+    blockedSchemes: ['data', 'blob', 'javascript', 'vbscript'],
+
+    // 허용된 URL 스킴
+    allowedSchemes: ['https', 'http', 'about'],
+
+    // 개발 환경에서 HTTP 허용
+    allowInsecureHttp: __DEV__,
+
+    // 락다운 지속 시간 (ms)
+    lockdownDurationMs: 30000,
+
+    // 메시지 최대 유효 시간 (ms)
+    messageMaxAgeMs: 30000,
+
+    // 네비게이션 Rate Limit 설정
+    navigationRateLimit: {
+      shortWindow: { windowMs: 1000, maxRequests: 30 },
+      longWindow: { windowMs: 10000, maxRequests: 100 },
+    },
+
+    // 리다이렉트 체인 최대 길이
+    maxRedirectChain: 5,
+
+    // 디버그 모드 (보안 로그 상세 출력)
+    debug: __DEV__,
+  },
 } as const;
 
 // 타입 추출
 export type AppConfig = typeof APP_CONFIG;
 export type WebviewConfig = typeof APP_CONFIG.webview;
 export type FeatureFlags = typeof APP_CONFIG.features;
+export type SecurityConfigType = typeof APP_CONFIG.security;

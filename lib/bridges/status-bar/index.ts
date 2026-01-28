@@ -2,18 +2,20 @@
  * 상태바(Status Bar) 관련 핸들러
  */
 
-import { registerHandler } from '@/lib/bridge';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
 // 저장된 상태바 상태
-let savedStatusBarState: { 
-  hidden: boolean; 
-  style: 'default' | 'light-content' | 'dark-content'; 
+let savedStatusBarState: {
+  hidden: boolean;
+  style: 'default' | 'light-content' | 'dark-content';
   color?: string;
 } | null = null;
 
-export const registerStatusBarHandlers = () => {
+export const registerStatusBarHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
+  const { registerHandler } = bridge;
+
   // 상태바 상태 조회
-  registerHandler('getStatusBar', async (_payload, respond) => {
+  registerHandler('get', async (_payload, respond) => {
     try {
       // React Native StatusBar는 상태 조회 API가 없어서 저장된 값 반환
       respond({
@@ -27,35 +29,35 @@ export const registerStatusBarHandlers = () => {
   });
 
   // 상태바 설정
-  registerHandler<{ 
-    hidden?: boolean; 
+  registerHandler<{
+    hidden?: boolean;
     style?: 'default' | 'light-content' | 'dark-content';
     color?: string;
     animated?: boolean;
-  }>('setStatusBar', async ({ hidden, style, color, animated = true }, respond) => {
+  }>('set', async ({ hidden, style, color, animated = true }, respond) => {
     try {
       const { StatusBar, Platform } = await import('react-native');
-      
+
       // 현재 상태 저장 (첫 호출 시)
       if (!savedStatusBarState) {
         savedStatusBarState = { hidden: false, style: 'default' };
       }
-      
+
       if (hidden !== undefined) {
         StatusBar.setHidden(hidden, animated ? 'fade' : 'none');
         savedStatusBarState.hidden = hidden;
       }
-      
+
       if (style) {
         StatusBar.setBarStyle(style, animated);
         savedStatusBarState.style = style;
       }
-      
+
       if (color && Platform.OS === 'android') {
         StatusBar.setBackgroundColor(color, animated);
         savedStatusBarState.color = color;
       }
-      
+
       respond({ success: true, hidden, style, color });
     } catch (error) {
       respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set status bar' });
@@ -63,10 +65,10 @@ export const registerStatusBarHandlers = () => {
   });
 
   // 상태바 원래 상태로 복원
-  registerHandler('restoreStatusBar', async (_payload, respond) => {
+  registerHandler('restore', async (_payload, respond) => {
     try {
       const { StatusBar, Platform } = await import('react-native');
-      
+
       if (savedStatusBarState) {
         StatusBar.setHidden(savedStatusBarState.hidden, 'fade');
         StatusBar.setBarStyle(savedStatusBarState.style, true);
@@ -85,5 +87,5 @@ export const registerStatusBarHandlers = () => {
     }
   });
 
-  console.log('[Bridge] StatusBar handlers registered');
+  console.log('[StatusBar] Handlers registered');
 };

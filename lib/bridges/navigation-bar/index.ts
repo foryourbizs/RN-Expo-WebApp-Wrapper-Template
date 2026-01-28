@@ -2,30 +2,32 @@
  * 네비게이션 바(Navigation Bar) 관련 핸들러 - Android 전용
  */
 
-import { registerHandler } from '@/lib/bridge';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
+import { isAndroid, unsupportedPlatformResponse } from '@/lib/utils/platform';
 
 // 저장된 네비게이션 바 상태
-let savedNavigationBarState: { 
-  visible: boolean; 
-  color?: string; 
+let savedNavigationBarState: {
+  visible: boolean;
+  color?: string;
   buttonStyle?: 'light' | 'dark';
 } | null = null;
 
-export const registerNavigationBarHandlers = () => {
+export const registerNavigationBarHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
+  const { registerHandler } = bridge;
+
   // 네비게이션 바 상태 조회 (Android 전용)
-  registerHandler('getNavigationBar', async (_payload, respond) => {
+  registerHandler('get', async (_payload, respond) => {
     try {
-      const { Platform } = await import('react-native');
-      if (Platform.OS !== 'android') {
-        respond({ success: false, error: 'Only supported on Android' });
+      if (!isAndroid()) {
+        respond(unsupportedPlatformResponse('Navigation Bar'));
         return;
       }
-      
+
       const NavigationBar = await import('expo-navigation-bar');
       const visibility = await NavigationBar.getVisibilityAsync();
       const buttonStyle = await NavigationBar.getButtonStyleAsync();
       const backgroundColor = await NavigationBar.getBackgroundColorAsync();
-      
+
       respond({
         success: true,
         visible: visibility === 'visible',
@@ -39,21 +41,20 @@ export const registerNavigationBarHandlers = () => {
   });
 
   // 네비게이션 바 설정 (Android 전용) - 통합 설정
-  registerHandler<{ 
-    visible?: boolean; 
-    color?: string; 
+  registerHandler<{
+    visible?: boolean;
+    color?: string;
     buttonStyle?: 'light' | 'dark';
     behavior?: 'overlay-swipe' | 'inset-swipe' | 'inset-touch';
-  }>('setNavigationBar', async ({ visible, color, buttonStyle, behavior = 'overlay-swipe' }, respond) => {
+  }>('set', async ({ visible, color, buttonStyle, behavior = 'overlay-swipe' }, respond) => {
     try {
-      const { Platform } = await import('react-native');
-      if (Platform.OS !== 'android') {
-        respond({ success: false, error: 'Only supported on Android' });
+      if (!isAndroid()) {
+        respond(unsupportedPlatformResponse('Navigation Bar'));
         return;
       }
-      
+
       const NavigationBar = await import('expo-navigation-bar');
-      
+
       // 현재 상태 저장 (첫 호출 시)
       if (!savedNavigationBarState) {
         savedNavigationBarState = {
@@ -62,22 +63,22 @@ export const registerNavigationBarHandlers = () => {
           color: await NavigationBar.getBackgroundColorAsync(),
         };
       }
-      
+
       if (visible !== undefined) {
         if (!visible) {
           await NavigationBar.setBehaviorAsync(behavior);
         }
         await NavigationBar.setVisibilityAsync(visible ? 'visible' : 'hidden');
       }
-      
+
       if (color) {
         await NavigationBar.setBackgroundColorAsync(color);
       }
-      
+
       if (buttonStyle) {
         await NavigationBar.setButtonStyleAsync(buttonStyle);
       }
-      
+
       respond({ success: true, visible, color, buttonStyle });
     } catch (error) {
       respond({ success: false, error: error instanceof Error ? error.message : 'Failed to set navigation bar' });
@@ -85,16 +86,15 @@ export const registerNavigationBarHandlers = () => {
   });
 
   // 네비게이션 바 원래 상태로 복원 (Android 전용)
-  registerHandler('restoreNavigationBar', async (_payload, respond) => {
+  registerHandler('restore', async (_payload, respond) => {
     try {
-      const { Platform } = await import('react-native');
-      if (Platform.OS !== 'android') {
-        respond({ success: false, error: 'Only supported on Android' });
+      if (!isAndroid()) {
+        respond(unsupportedPlatformResponse('Navigation Bar'));
         return;
       }
-      
+
       const NavigationBar = await import('expo-navigation-bar');
-      
+
       if (savedNavigationBarState) {
         await NavigationBar.setVisibilityAsync(savedNavigationBarState.visible ? 'visible' : 'hidden');
         if (savedNavigationBarState.color) {
@@ -114,5 +114,5 @@ export const registerNavigationBarHandlers = () => {
     }
   });
 
-  console.log('[Bridge] NavigationBar handlers registered');
+  console.log('[NavigationBar] Handlers registered');
 };

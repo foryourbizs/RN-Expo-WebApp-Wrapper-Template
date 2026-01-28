@@ -3,65 +3,26 @@
  * 이 코드를 웹사이트에 포함시키거나 injectedJavaScript로 주입
  */
 
-// UUID v4 생성 (RFC 4122 표준)
-const generateUUID = (): string => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
-// 간단한 해시 함수 (SHA-256 대체)
-const simpleHash = (str: string): string => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+/**
+ * 브릿지 클라이언트 스크립트 생성
+ * @param securityToken - SecurityEngine에서 전달받은 보안 토큰
+ *                        반드시 SecurityEngine.getInstance().getSecurityToken()으로 획득한 토큰 사용
+ */
+export const getBridgeClientScript = (securityToken: string): string => {
+  if (!securityToken || typeof securityToken !== 'string') {
+    throw new Error('[BridgeClient] Security token is required');
   }
-  // 더 긴 해시 생성
-  const hex = Math.abs(hash).toString(16);
-  const random = Math.random().toString(36).substring(2);
-  const random2 = Math.random().toString(36).substring(2);
-  return `${hex}${random}${random2}`.substring(0, 64);
-};
 
-// 보안 토큰 생성 (런타임에 랜덤 생성)
-// UUID v4 기반 + 해시로 중복 불가능한 토큰 생성
-const generateSecurityToken = (): string => {
-  // 1. UUID v4 생성 (128비트 암호학적 랜덤)
-  const uuid1 = generateUUID();
-  const uuid2 = generateUUID();
-  const uuid3 = generateUUID();
-  const uuid4 = generateUUID();
-  const uuid5 = generateUUID();
-  
-  // 2. 고정밀 타임스탬프 (나노초 수준)
-  const highResTime = Date.now() * 1000000 + Math.floor(Math.random() * 1000000);
-  
-  // 3. 추가 엔트로피 소스
-  const entropy1 = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-  const entropy2 = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-  const entropy3 = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-  
-  // 4. 모든 소스 결합
-  const combined = `RNW-BRIDGE-${uuid1}-${uuid2}-${uuid3}-${uuid4}-${uuid5}-${highResTime}-${entropy1}-${entropy2}-${entropy3}-${Date.now()}`;
-  
-  // 5. 해시로 최종 서명
-  const hash = simpleHash(combined);
-  
-  // 6. 최종 토큰: UUID + 해시 조합 (약 200자, 중복 확률 = 0)
-  return `${uuid1}-${hash}-${uuid2.substring(0, 8)}-${uuid3.substring(0, 8)}`;
-};
-
-// 즉시 생성
-const SECURITY_TOKEN = generateSecurityToken();
-
-// 브릿지 클라이언트 스크립트 생성
-export const getBridgeClientScript = (): string => {
   return `
 (function() {
+  'use strict';
+
+  // ========================================
+  // NOTE: L1 Security Boundary (eval/Function 무력화, Object.prototype 동결 등)는
+  // SecurityEngine.createWebViewHandlers().injectedJavaScriptBeforeContentLoaded
+  // 통해 별도로 적용됨
+  // ========================================
+
   // ========================================
   // beforeunload 경고창 완전 무력화
   // (폼 데이터 입력 중 페이지 이탈 시 경고창 방지)
@@ -100,11 +61,16 @@ export const getBridgeClientScript = (): string => {
   // 이미 초기화되었으면 스킵
   if (window.AppBridge) return;
 
-  // 보안 토큰 (주입 시 설정됨)
-  var BRIDGE_TOKEN = '${SECURITY_TOKEN}';
+  // 토큰을 Symbol 키로 은닉 (외부에서 접근 불가)
+  var _t = (function(){
+    var s = Symbol('_');
+    var o = {};
+    o[s] = '${securityToken}';
+    return function(){ return o[s]; };
+  })();
 
   // 응답 대기 맵
-  const pendingRequests = new Map();
+  var pendingRequests = new Map();
 
   // 파일/바이너리 데이터를 base64로 변환
   function toBase64(data) {
@@ -168,11 +134,12 @@ export const getBridgeClientScript = (): string => {
      */
     send: function(action, payload) {
       processPayload(payload || {}).then(function(processed) {
-        const message = {
+        var message = {
           protocol: 'app://' + action,
           payload: processed,
           timestamp: Date.now(),
-          __token: BRIDGE_TOKEN
+          __token: _t(),
+          __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
         };
         window.ReactNativeWebView.postMessage(JSON.stringify(message));
       }).catch(function(err) {
@@ -214,7 +181,8 @@ export const getBridgeClientScript = (): string => {
             payload: processed,
             requestId: requestId,
             timestamp: Date.now(),
-            __token: BRIDGE_TOKEN
+            __token: _t(),
+            __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
           };
           window.ReactNativeWebView.postMessage(JSON.stringify(message));
         });
@@ -348,13 +316,8 @@ export const getBridgeClientScript = (): string => {
       return !!window.ReactNativeWebView;
     },
 
-    // 보안 토큰 확인 (디버깅용)
-    getToken: function() {
-      return BRIDGE_TOKEN;
-    },
-
-    // 버전
-    version: '2.0.0'
+    // 버전 (getToken 제거됨 - 보안상 외부에서 토큰 접근 불가)
+    version: '2.1.0'
   };
 
   // 앱에서 온 메시지 수신 리스너
@@ -375,6 +338,3 @@ export const getBridgeClientScript = (): string => {
 true;
 `;
 };
-
-// 보안 토큰 getter
-export const getSecurityToken = () => SECURITY_TOKEN;

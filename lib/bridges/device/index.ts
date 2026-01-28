@@ -2,15 +2,17 @@
  * 디바이스/앱 정보 관련 핸들러
  */
 
-import { registerHandler } from '@/lib/bridge';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
-export const registerDeviceHandlers = () => {
+export const registerDeviceHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
+  const { registerHandler } = bridge;
+
   // 디바이스 정보 요청 (expo-device 사용 - 프로덕션 빌드에서도 동작)
-  registerHandler('getDeviceInfo', async (_payload, respond) => {
+  registerHandler('getInfo', async (_payload, respond) => {
     try {
       const { Platform } = await import('react-native');
       const Device = await import('expo-device');
-      
+
       respond({
         platform: Platform.OS,
         version: Platform.Version,
@@ -25,7 +27,7 @@ export const registerDeviceHandlers = () => {
         isDevice: Device.isDevice ?? null,
       });
     } catch (error) {
-      console.error('[Bridge] getDeviceInfo error:', error);
+      console.error('[Device] getInfo error:', error);
       respond({
         error: 'Failed to get device info',
         platform: null,
@@ -45,7 +47,7 @@ export const registerDeviceHandlers = () => {
         bundleId: Application.applicationId ?? null,
       });
     } catch (error) {
-      console.error('[Bridge] getAppInfo error:', error);
+      console.error('[Device] getAppInfo error:', error);
       respond({
         error: 'Failed to get app info',
         name: null,
@@ -54,5 +56,5 @@ export const registerDeviceHandlers = () => {
     }
   });
 
-  console.log('[Bridge] Device handlers registered');
+  console.log('[Device] Handlers registered');
 };

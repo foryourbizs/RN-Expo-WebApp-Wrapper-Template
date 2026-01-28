@@ -4,7 +4,55 @@
  */
 
 import type { WebView } from 'react-native-webview';
-import { getSecurityToken } from './bridge-client';
+import { SecurityEngine } from '@/lib/security';
+import { APP_CONFIG } from '@/constants/app-config';
+
+/**
+ * 민감 액션 목록
+ * 이 액션들은 추가 보안 검증이 필요할 수 있음
+ */
+export const SENSITIVE_ACTIONS: readonly string[] = [
+  // 카메라 (cam:* 네임스페이스)
+  'cam:start',
+  'cam:stop',
+  'cam:capture',
+  'cam:startStream',
+  'cam:stopStream',
+
+  // 마이크 (mic:* 네임스페이스)
+  'mic:start',
+  'mic:stop',
+  'mic:record',
+
+  // 클립보드 (쓰기만 민감)
+  'writeClipboard',
+
+  // 파일 시스템
+  'fs:write',
+  'fs:delete',
+] as const;
+
+/**
+ * 민감 액션 패턴 (와일드카드 지원)
+ */
+const SENSITIVE_PATTERNS = [
+  /^cam:/,   // 모든 카메라 액션
+  /^mic:/,   // 모든 마이크 액션
+  /^fs:/,    // 모든 파일시스템 액션
+];
+
+/**
+ * 민감 액션 여부 확인
+ */
+export const isSensitiveAction = (action: string): boolean => {
+  // 직접 매칭
+  if (SENSITIVE_ACTIONS.includes(action)) {
+    return true;
+  }
+
+  // 패턴 매칭
+  return SENSITIVE_PATTERNS.some(pattern => pattern.test(action));
+};
 
 // base64 디코딩 헬퍼
 const decodeBase64Data = (data: any): any => {
@@ -152,15 +200,18 @@ export const clearHandlers = () => {
 export const handleBridgeMessage = (messageData: string): boolean => {
   try {
     const data = JSON.parse(messageData);
-    
+
     // app:// 프로토콜 체크
     if (!data.protocol || !data.protocol.startsWith('app://')) {
       return false; // 브릿지 메시지가 아님
     }
 
-    // 보안 토큰 검증 (외부에서 보낸 메시지 차단)
-    if (data.__token !== getSecurityToken()) {
-      console.warn('[Bridge] Invalid security token. Message rejected.');
+    // SecurityEngine으로 메시지 검증
+    // Note: APP_CONFIG.security is readonly, but SecurityEngine expects mutable Partial<SecurityConfig>
+    const securityEngine = SecurityEngine.getInstance(APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]);
+    const securityDecision = securityEngine.validateBridgeMessage(data);
+    if (!securityDecision.allowed) {
+      console.warn('[Bridge] Security validation failed:', securityDecision.reason);
       return false;
     }
 
@@ -177,6 +228,12 @@ export const handleBridgeMessage = (messageData: string): boolean => {
     };
 
     console.log(`[Bridge] Received: ${action}`, message.payload);
+
+    // 민감 액션 로깅
+    if (isSensitiveAction(action)) {
+      console.log(`[Bridge] ⚠️ Sensitive action called: ${action}`);
+      // 향후 추가 검증 로직 (서명 검증 등) 추가 가능
+    }
 
     const handler = handlers.get(action);
     if (handler) {
@@ -294,4 +351,11 @@ export const callWeb = <T = unknown, R = unknown>(
     // 웹으로 요청 전송
     sendToWeb(action, { ...payload as object, requestId, responseAction: responseHandler });
   });
+};
+
+/**
+ * 보안 토큰 획득 (SecurityEngine에서)
+ */
+export const getSecurityToken = () => {
+  return SecurityEngine.getInstance(APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]).getSecurityToken();
 };

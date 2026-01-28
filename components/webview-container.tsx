@@ -4,7 +4,7 @@
  */
 
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -33,9 +33,7 @@ import {
 } from '@/lib/bridge';
 import { getBridgeClientScript } from '@/lib/bridge-client';
 import { registerBuiltInHandlers } from '@/lib/bridges';
-
-// 브릿지 스크립트 즉시 생성
-const BRIDGE_CLIENT_SCRIPT = getBridgeClientScript();
+import { SecurityEngine } from '@/lib/security';
 
 // WebView 인스턴스를 전역에서 접근 가능하도록 (네비게이션 제어용)
 export let webViewRef: React.RefObject<WebView | null>;
@@ -70,7 +68,37 @@ export default function WebViewContainer() {
   const emptyBodyRetryCount = useRef(0); // 빈 body 재시도 카운터
   const MAX_EMPTY_BODY_RETRIES = 2; // 일반 재시도 횟수
 
-  const { webview, theme, debug } = APP_CONFIG;
+  const { webview, theme, debug, security } = APP_CONFIG;
+
+  // SecurityEngine 인스턴스 초기화
+  // security 설정을 mutable 객체로 변환하여 전달
+  const securityEngine = useMemo(() => {
+    const mutableConfig = {
+      allowedOrigins: [...security.allowedOrigins],
+      blockedSchemes: [...security.blockedSchemes],
+      allowedSchemes: [...security.allowedSchemes],
+      allowInsecureHttp: security.allowInsecureHttp,
+      lockdownDurationMs: security.lockdownDurationMs,
+      messageMaxAgeMs: security.messageMaxAgeMs,
+      navigationRateLimit: {
+        shortWindow: { ...security.navigationRateLimit.shortWindow },
+        longWindow: { ...security.navigationRateLimit.longWindow },
+      },
+      maxRedirectChain: security.maxRedirectChain,
+      debug: security.debug,
+    };
+    return SecurityEngine.getInstance(mutableConfig);
+  }, []);
+
+  // WebView 보안 핸들러 생성
+  const securityHandlers = useMemo(() => {
+    return securityEngine.createWebViewHandlers();
+  }, [securityEngine]);
+
+  // 브릿지 클라이언트 스크립트 생성 (SecurityEngine 토큰 사용)
+  const bridgeClientScript = useMemo(() => {
+    return getBridgeClientScript(securityEngine.getSecurityToken());
+  }, [securityEngine]);
 
   // 컴포넌트 마운트 시 초기화
   useEffect(() => {
@@ -80,64 +108,55 @@ export default function WebViewContainer() {
 
   /**
    * URL이 허용된 패턴과 일치하는지 확인
-   * allowedUrlPatterns에 정의된 패턴과 매칭
-   * - 와일드카드(*) 지원: https://*.example.com
-   * - 정확한 도메인 매칭: https://example.com
+   * SecurityEngine을 사용하여 URL 검증
    */
   const isUrlAllowed = useCallback((url: string): boolean => {
-    const patterns = webview.allowedUrlPatterns as readonly string[];
-    
-    // 패턴이 비어있으면 모든 URL 허용
-    if (!patterns || patterns.length === 0) {
-      return true;
+    // SecurityEngine을 통한 URL 검증
+    const decision = securityEngine.validateUrl(url);
+    if (!decision.allowed) {
+      debugLog('error', 'URL 차단', decision.reason || url);
+      return false;
     }
-
-    // 특수 스킴은 항상 허용 (javascript:, about:, data: 등)
-    const specialSchemes = ['javascript:', 'about:', 'data:', 'blob:'];
-    if (specialSchemes.some(scheme => url.startsWith(scheme))) {
-      return true;
-    }
-
-    // 브릿지 프로토콜은 항상 허용
-    if (url.startsWith('app://')) {
-      return true;
-    }
-
-    // 각 패턴과 매칭 확인
-    return patterns.some(pattern => {
-      // 와일드카드 패턴을 정규표현식으로 변환
-      // https://*.example.com -> https://[^/]+\.example\.com
-      const regexPattern = pattern
-        .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // 특수문자 이스케이프
-        .replace(/\\\*/g, '[^/]+'); // * -> [^/]+ (슬래시 제외 모든 문자)
-      
-      const regex = new RegExp(`^${regexPattern}`, 'i');
-      return regex.test(url);
-    });
-  }, [webview.allowedUrlPatterns]);
+    return true;
+  }, [securityEngine]);
 
   /**
    * URL 요청 처리
+   * - SecurityEngine을 통한 네비게이션 검증
    * - 허용된 URL: WebView 내에서 로드
    * - 허용되지 않은 URL: 외부 브라우저로 열기
    */
   const handleShouldStartLoadWithRequest = useCallback((request: ShouldStartLoadRequest): boolean => {
-    const { url } = request;
-    
-    // 허용된 URL이면 WebView에서 로드
-    if (isUrlAllowed(url)) {
-      return true;
+    const { url, mainDocumentURL, navigationType } = request;
+
+    // SecurityEngine을 통한 네비게이션 검증
+    // ShouldStartLoadRequest에서 사용 가능한 속성만 전달
+    const decision = securityEngine.validateNavigation({
+      url,
+      mainDocumentURL,
+      navigationType,
+    });
+
+    if (!decision.allowed) {
+      debugLog('error', '네비게이션 차단', decision.reason || url);
+
+      // 외부 브라우저로 열기 시도 (보안 스킴이 아닌 경우)
+      const isBlockedScheme = security.blockedSchemes.some(
+        (scheme) => url.toLowerCase().startsWith(`${scheme}:`)
+      );
+
+      if (!isBlockedScheme && (url.startsWith('http://') || url.startsWith('https://'))) {
+        console.log('[WebView] Opening external URL:', url);
+        Linking.openURL(url).catch(err => {
+          console.error('[WebView] Failed to open URL:', err);
+        });
+      }
+
+      return false;
     }
 
-    // 허용되지 않은 URL은 외부 브라우저로 열기
-    console.log('[WebView] Opening external URL:', url);
-    Linking.openURL(url).catch(err => {
-      console.error('[WebView] Failed to open URL:', err);
-    });
-    
-    // WebView에서는 로드하지 않음
-    return false;
-  }, [isUrlAllowed]);
+    return true;
+  }, [securityEngine]);
 
   // 브릿지 초기화 (최초 1회)
   useEffect(() => {
@@ -506,7 +525,9 @@ export default function WebViewContainer() {
         cacheEnabled={cacheMode && webview.options.cacheEnabled}
         allowsInlineMediaPlayback={webview.options.allowsInlineMediaPlayback}
         allowsBackForwardNavigationGestures={webview.options.allowsBackForwardNavigationGestures}
-        allowFileAccess={webview.options.allowFileAccess}
+        // 보안 강화: 파일 접근 비활성화
+        allowFileAccess={false}
+        allowUniversalAccessFromFileURLs={false}
         // 세션 유지
         sharedCookiesEnabled={true}
         incognito={!cacheMode}
@@ -519,7 +540,10 @@ export default function WebViewContainer() {
         showsVerticalScrollIndicator={!webview.performance.hideScrollIndicators}
         allowsFullscreenVideo={webview.performance.allowsFullscreenVideo}
         startInLoadingState={false}
-        originWhitelist={['*']}
+        // 보안: 허용된 Origin만 허용 (빈 배열이면 모든 Origin 허용)
+        originWhitelist={security.allowedOrigins.length > 0
+          ? [...security.allowedOrigins]
+          : ['*']}
         // Android 추가 성능 옵션
         setSupportMultipleWindows={webview.performance.setSupportMultipleWindows}
         setBuiltInZoomControls={false}
@@ -536,8 +560,11 @@ export default function WebViewContainer() {
         // 렌더링 프로세스 종료 시 자동 재로드
         onRenderProcessGone={handleRenderProcessGone}
         onContentProcessDidTerminate={handleContentProcessDidTerminate}
-        // 브릿지 클라이언트 주입 (페이지 로드 전)
-        injectedJavaScriptBeforeContentLoaded={BRIDGE_CLIENT_SCRIPT}
+        // 보안 경계 + 브릿지 클라이언트 주입 (페이지 로드 전)
+        // L1 보안 경계가 먼저 주입된 후 브릿지 클라이언트가 로드됨
+        injectedJavaScriptBeforeContentLoaded={
+          securityHandlers.injectedJavaScriptBeforeContentLoaded + bridgeClientScript
+        }
         // 페이지 로드 후 스크립트
         injectedJavaScript={`
           (function() {

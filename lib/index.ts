@@ -3,6 +3,6 @@
  */
 
 export * from './bridge';
-export { BRIDGE_CLIENT_SCRIPT } from './bridge-client';
+export { getBridgeClientScript } from './bridge-client';
 export { registerBuiltInHandlers } from './bridges';
 

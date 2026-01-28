@@ -1,18 +1,18 @@
-import { registerHandler, sendToWeb } from '@/lib/bridge';
-import { Platform } from 'react-native';
+// lib/bridges/camera/index.ts
 import { registerCameraHandlers as moduleRegister } from 'rnww-plugin-camera';
+import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
 /**
- * 카메라 관련 핸들러
+ * 카메라 플러그인 키
  */
+export const CAMERA_PLUGIN_KEY = 'cam';
 
-
-export const registerCameraHandlers = () => {
-  
+/**
+ * 카메라 관련 핸들러 등록
+ */
+export const registerCameraHandlers = (bridge: BridgeAPI, platform: PlatformInfo) => {
   moduleRegister({
-    bridge: {registerHandler, sendToWeb},
-    platform: { OS: Platform.OS }
-  })
+    bridge,
+    platform: { OS: platform.OS },
+  });
 };
-
-
