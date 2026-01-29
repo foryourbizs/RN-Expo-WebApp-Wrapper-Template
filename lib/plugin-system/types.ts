@@ -48,3 +48,41 @@ export interface PluginRegistrationOptions {
   bridge: BridgeAPI;
   platform: PlatformInfo;
 }
+
+/**
+ * Auto 플러그인 설정 (npm 패키지)
+ */
+export interface AutoPluginConfig {
+  /** npm 패키지명 */
+  name: string;
+  /** 브릿지 네임스페이스 (예: 'cam' → 'cam:action') */
+  namespace: string;
+  /** 등록 메서드명 (기본: 'registerHandlers') */
+  method?: string;
+  /** 네이티브 빌드 시 유지할 모듈 폴더 */
+  keepModules: string[];
+}
+
+/**
+ * Manual 플러그인 설정 (로컬 구현)
+ */
+export interface ManualPluginConfig {
+  /** lib/bridges 기준 상대 경로 */
+  path: string;
+  /** 브릿지 네임스페이스 */
+  namespace: string;
+  /** 엔트리 파일명 (기본: 'index.ts') */
+  entry?: string;
+  /** 등록 메서드명 (기본: 'register{Namespace}Handlers') */
+  method?: string;
+}
+
+/**
+ * 플러그인 설정
+ */
+export interface PluginsConfig {
+  plugins: {
+    auto: AutoPluginConfig[];
+    manual: ManualPluginConfig[];
+  };
+}
