@@ -3,9 +3,14 @@ import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const constantsDir = path.resolve(__dirname, '../../../../constants');
+const projectRoot = path.resolve(__dirname, '../../../..');
 
 const router = express.Router();
 
@@ -69,6 +74,18 @@ router.put('/:type', async (req, res) => {
     const filePath = path.join(constantsDir, filename);
     const content = JSON.stringify(req.body, null, 2) + '\n';
     await fs.writeFile(filePath, content, 'utf-8');
+
+    // plugins.json 저장 시 레지스트리 재생성
+    if (type === 'plugins') {
+      try {
+        const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+        await execFileAsync(npmCmd, ['run', 'generate:plugins'], { cwd: projectRoot });
+        console.log('Plugin registry regenerated');
+      } catch (e) {
+        console.error('Failed to regenerate plugin registry:', e);
+      }
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error(`Failed to write ${filename}:`, error);
