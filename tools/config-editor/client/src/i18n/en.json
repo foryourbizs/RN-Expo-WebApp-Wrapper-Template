@@ -72,7 +72,8 @@
     "selected": "Selected",
     "version": "Version",
     "installAndAdd": "Install & Add",
-    "scanResults": "lib/bridges folder scan results"
+    "scanResults": "lib/bridges folder scan results",
+    "alreadyAdded": "Already added"
   },
   "common": {
     "save": "Save",

@@ -72,7 +72,8 @@
     "selected": "선택됨",
     "version": "버전",
     "installAndAdd": "설치 후 추가",
-    "scanResults": "lib/bridges 폴더 스캔 결과"
+    "scanResults": "lib/bridges 폴더 스캔 결과",
+    "alreadyAdded": "이미 추가됨"
   },
   "common": {
     "save": "저장",

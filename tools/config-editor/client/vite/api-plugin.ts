@@ -41,15 +41,22 @@ function isValidSearchQuery(query: string): boolean {
 
 // npm utilities
 async function searchNpmPackages(query: string) {
-  if (!isValidSearchQuery(query)) return [];
+  if (!isValidSearchQuery(query)) {
+    console.log('[api-plugin] Invalid search query:', query);
+    return [];
+  }
   try {
+    console.log('[api-plugin] Searching npm for:', query);
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const { stdout } = await execFileAsync(npmCmd, ['search', query, '--json'], {
       cwd: projectRoot,
-      timeout: 30000
+      timeout: 60000
     });
-    return JSON.parse(stdout);
-  } catch {
+    const results = JSON.parse(stdout);
+    console.log('[api-plugin] Search results count:', results.length);
+    return results;
+  } catch (error) {
+    console.error('[api-plugin] npm search error:', error);
     return [];
   }
 }
@@ -198,7 +205,12 @@ export function apiPlugin(): Plugin {
 
           // GET /api/plugins/installed
           if (url === '/api/plugins/installed' && req.method === 'GET') {
+            console.log('[api-plugin] Fetching installed packages...');
             const packages = await getInstalledPackages();
+            console.log('[api-plugin] Found', packages.length, 'installed packages');
+            // rnww-plugin-* 만 필터링
+            const rnwwPlugins = packages.filter(p => p.name.startsWith('rnww-plugin-'));
+            console.log('[api-plugin] RNWW plugins:', rnwwPlugins.map(p => p.name));
             const sorted = packages.sort((a, b) => {
               const aIsRnww = a.name.startsWith('rnww-plugin-');
               const bIsRnww = b.name.startsWith('rnww-plugin-');
@@ -212,15 +224,19 @@ export function apiPlugin(): Plugin {
 
           // GET /api/plugins/search?q=query
           if (url.startsWith('/api/plugins/search') && req.method === 'GET') {
+            console.log('[api-plugin] Search request URL:', url);
             const urlObj = new URL(url, 'http://localhost');
             const query = urlObj.searchParams.get('q') || 'rnww-plugin';
+            console.log('[api-plugin] Parsed query:', query);
 
             if (!isValidSearchQuery(query)) {
+              console.log('[api-plugin] Query validation failed');
               sendJson(res, 400, { error: 'Invalid search query' });
               return;
             }
 
             const results = await searchNpmPackages(query);
+            console.log('[api-plugin] Returning', results.length, 'results');
             sendJson(res, 200, results);
             return;
           }

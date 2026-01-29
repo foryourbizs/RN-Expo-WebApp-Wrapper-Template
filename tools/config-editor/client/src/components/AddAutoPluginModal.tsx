@@ -59,8 +59,9 @@ export default function AddAutoPluginModal({
 
   if (!isOpen) return null;
 
-  const filteredInstalled = installedPackages.filter(
-    p => !existingPlugins.includes(p.name)
+  // rnww-plugin-* 패키지만 필터링
+  const rnwwPlugins = installedPackages.filter(
+    p => p.name.startsWith('rnww-plugin-')
   );
 
   return (
@@ -75,24 +76,43 @@ export default function AddAutoPluginModal({
           {/* Installed Packages */}
           <div className="mb-4">
             <h3 className="text-sm font-medium text-gray-700 mb-2">
-              {t('plugins.installedPackages')}
+              {t('plugins.installedPackages')} ({rnwwPlugins.length})
             </h3>
             <div className="border rounded max-h-40 overflow-y-auto">
-              {filteredInstalled.map(pkg => (
-                <button
-                  key={pkg.name}
-                  onClick={() => setSelectedPackage(pkg.name)}
-                  className={`w-full px-3 py-2 text-left hover:bg-gray-50 flex justify-between items-center ${
-                    selectedPackage === pkg.name ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <span>
-                    {pkg.name.startsWith('rnww-plugin-') && '⭐ '}
-                    {pkg.name} (v{pkg.version})
-                  </span>
-                  <span className="text-sm text-blue-500">Select</span>
-                </button>
-              ))}
+              {loading ? (
+                <div className="p-3 text-center text-gray-500">{t('common.loading')}</div>
+              ) : rnwwPlugins.length === 0 ? (
+                <div className="p-3 text-center text-gray-500">
+                  No rnww-plugin-* packages installed
+                </div>
+              ) : (
+                rnwwPlugins.map(pkg => {
+                  const isAlreadyAdded = existingPlugins.includes(pkg.name);
+                  return (
+                    <button
+                      key={pkg.name}
+                      onClick={() => !isAlreadyAdded && setSelectedPackage(pkg.name)}
+                      disabled={isAlreadyAdded}
+                      className={`w-full px-3 py-2 text-left flex justify-between items-center ${
+                        isAlreadyAdded
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : selectedPackage === pkg.name
+                          ? 'bg-blue-50'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>
+                        ⭐ {pkg.name} (v{pkg.version})
+                      </span>
+                      {isAlreadyAdded ? (
+                        <span className="text-sm text-gray-400">{t('plugins.alreadyAdded')}</span>
+                      ) : (
+                        <span className="text-sm text-blue-500">Select</span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
