@@ -28,6 +28,7 @@ const DEFAULT_COLORS = {
 };
 
 const COLOR_KEYS = ['text', 'background', 'tint', 'icon', 'tabIconDefault', 'tabIconSelected'] as const;
+type ColorKey = typeof COLOR_KEYS[number];
 
 export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
   const { t } = useTranslation();
@@ -39,7 +40,7 @@ export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
     onUnsavedChange(hasChanges);
   }, [hasChanges, onUnsavedChange]);
 
-  const updateColor = useCallback((mode: 'light' | 'dark', key: string, value: string) => {
+  const updateColor = useCallback((mode: 'light' | 'dark', key: ColorKey, value: string) => {
     setData((prevData) => {
       if (!prevData) return prevData;
       return {
@@ -55,16 +56,18 @@ export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
     });
   }, [setData]);
 
-  const getColor = useCallback((mode: 'light' | 'dark', key: string) => {
-    return data?.colors?.[mode]?.[key as keyof typeof DEFAULT_COLORS.light] ||
-           DEFAULT_COLORS[mode][key as keyof typeof DEFAULT_COLORS.light];
+  const getColor = useCallback((mode: 'light' | 'dark', key: ColorKey) => {
+    return data?.colors?.[mode]?.[key] || DEFAULT_COLORS[mode][key];
   }, [data]);
 
   const handleReset = useCallback(() => {
-    setData((prevData) => ({
-      $schema: prevData?.$schema,
-      colors: { light: {}, dark: {} }
-    }));
+    setData((prevData) => {
+      if (!prevData) return prevData;
+      return {
+        ...prevData,
+        colors: { light: {}, dark: {} }
+      };
+    });
   }, [setData]);
 
   const handleSave = useCallback(async () => {
