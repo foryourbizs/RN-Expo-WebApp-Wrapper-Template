@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfig } from '../hooks/useConfig';
 import {
@@ -21,28 +22,34 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
     useConfig<AppConfig>('app');
 
   // 변경 사항 알림
-  if (hasChanges !== undefined) {
+  useEffect(() => {
     onUnsavedChange(hasChanges);
-  }
+  }, [hasChanges, onUnsavedChange]);
+
+  const updateField = useCallback(<T,>(path: string[], value: T) => {
+    setData((prevData) => {
+      if (!prevData) return prevData;
+      const newData = structuredClone(prevData);
+      let current: Record<string, unknown> = newData as Record<string, unknown>;
+      for (let i = 0; i < path.length - 1; i++) {
+        const key = path[i];
+        if (!current[key] || typeof current[key] !== 'object') {
+          current[key] = {};
+        }
+        current = current[key] as Record<string, unknown>;
+      }
+      current[path[path.length - 1]] = value;
+      return newData;
+    });
+  }, [setData]);
+
+  const handleSave = useCallback(async () => {
+    if (data) await saveConfig(data);
+  }, [data, saveConfig]);
 
   if (loading) return <div className="p-4">{t('common.loading')}</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
   if (!data) return null;
-
-  const updateField = <T,>(path: string[], value: T) => {
-    const newData = { ...data };
-    let current: any = newData;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (!current[path[i]]) current[path[i]] = {};
-      current = current[path[i]];
-    }
-    current[path[path.length - 1]] = value;
-    setData(newData);
-  };
-
-  const handleSave = async () => {
-    await saveConfig(data);
-  };
 
   return (
     <div>
