@@ -1,0 +1,88 @@
+{
+  "nav": {
+    "appSettings": "앱 설정",
+    "theme": "테마",
+    "plugins": "플러그인",
+    "build": "빌드"
+  },
+  "app": {
+    "webview": {
+      "title": "웹뷰 설정",
+      "baseUrl": "기본 URL",
+      "baseUrlDesc": "앱에서 로드할 웹사이트 URL",
+      "userAgent": "User-Agent",
+      "options": "옵션",
+      "performance": "성능"
+    },
+    "offline": {
+      "title": "오프라인 화면",
+      "enabled": "활성화",
+      "titleField": "제목",
+      "message": "메시지",
+      "retryButtonText": "재시도 버튼 텍스트"
+    },
+    "statusBar": {
+      "title": "상태바",
+      "visible": "표시",
+      "style": "스타일"
+    },
+    "navigationBar": {
+      "title": "네비게이션 바",
+      "visibility": "표시 모드"
+    },
+    "safeArea": {
+      "title": "Safe Area",
+      "enabled": "활성화",
+      "edges": "적용 영역"
+    },
+    "splash": {
+      "title": "스플래시 스크린",
+      "enabled": "활성화",
+      "minDisplayTime": "최소 표시 시간 (ms)",
+      "loadingText": "로딩 텍스트"
+    },
+    "security": {
+      "title": "보안",
+      "allowedOrigins": "허용된 Origin"
+    }
+  },
+  "theme": {
+    "light": "라이트 모드",
+    "dark": "다크 모드",
+    "reset": "기본값으로 초기화"
+  },
+  "plugins": {
+    "auto": "Auto 플러그인 (npm)",
+    "manual": "Manual 플러그인 (로컬)",
+    "installed": "설치됨",
+    "notInstalled": "미설치",
+    "active": "활성",
+    "inactive": "비활성",
+    "add": "추가",
+    "install": "설치",
+    "remove": "제거",
+    "deactivate": "비활성화",
+    "activate": "활성화",
+    "namespace": "네임스페이스",
+    "searchPlaceholder": "패키지 검색...",
+    "addAutoTitle": "Auto 플러그인 추가",
+    "addManualTitle": "Manual 플러그인 추가",
+    "installedPackages": "설치된 패키지",
+    "npmSearch": "npm 검색",
+    "selected": "선택됨",
+    "version": "버전",
+    "installAndAdd": "설치 후 추가",
+    "scanResults": "lib/bridges 폴더 스캔 결과"
+  },
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "revert": "되돌리기",
+    "reset": "초기화",
+    "lastSaved": "마지막 저장",
+    "unsaved": "저장되지 않음",
+    "loading": "로딩 중...",
+    "error": "오류",
+    "success": "성공"
+  }
+}

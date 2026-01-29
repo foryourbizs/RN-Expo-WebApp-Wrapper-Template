@@ -1,0 +1,88 @@
+{
+  "nav": {
+    "appSettings": "App Settings",
+    "theme": "Theme",
+    "plugins": "Plugins",
+    "build": "Build"
+  },
+  "app": {
+    "webview": {
+      "title": "Webview Settings",
+      "baseUrl": "Base URL",
+      "baseUrlDesc": "Website URL to load in app",
+      "userAgent": "User-Agent",
+      "options": "Options",
+      "performance": "Performance"
+    },
+    "offline": {
+      "title": "Offline Screen",
+      "enabled": "Enabled",
+      "titleField": "Title",
+      "message": "Message",
+      "retryButtonText": "Retry Button Text"
+    },
+    "statusBar": {
+      "title": "Status Bar",
+      "visible": "Visible",
+      "style": "Style"
+    },
+    "navigationBar": {
+      "title": "Navigation Bar",
+      "visibility": "Visibility Mode"
+    },
+    "safeArea": {
+      "title": "Safe Area",
+      "enabled": "Enabled",
+      "edges": "Edges"
+    },
+    "splash": {
+      "title": "Splash Screen",
+      "enabled": "Enabled",
+      "minDisplayTime": "Min Display Time (ms)",
+      "loadingText": "Loading Text"
+    },
+    "security": {
+      "title": "Security",
+      "allowedOrigins": "Allowed Origins"
+    }
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode",
+    "reset": "Reset to defaults"
+  },
+  "plugins": {
+    "auto": "Auto Plugins (npm)",
+    "manual": "Manual Plugins (local)",
+    "installed": "Installed",
+    "notInstalled": "Not installed",
+    "active": "Active",
+    "inactive": "Inactive",
+    "add": "Add",
+    "install": "Install",
+    "remove": "Remove",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "namespace": "Namespace",
+    "searchPlaceholder": "Search packages...",
+    "addAutoTitle": "Add Auto Plugin",
+    "addManualTitle": "Add Manual Plugin",
+    "installedPackages": "Installed Packages",
+    "npmSearch": "npm Search",
+    "selected": "Selected",
+    "version": "Version",
+    "installAndAdd": "Install & Add",
+    "scanResults": "lib/bridges folder scan results"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "revert": "Revert",
+    "reset": "Reset",
+    "lastSaved": "Last saved",
+    "unsaved": "Unsaved",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  }
+}
