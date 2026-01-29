@@ -3,11 +3,21 @@
 
 import type { Plugin, ViteDevServer } from 'vite';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
+import { exec, spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
+
+// Build process management
+interface BuildProcess {
+  process: ChildProcess;
+  output: Array<{ type: string; text: string; timestamp: number }>;
+  finished: boolean;
+}
+
+const buildProcesses: Map<string, BuildProcess> = new Map();
 
 // Project root (where package.json is)
 const projectRoot = path.resolve(__dirname, '../../../..');
@@ -142,6 +152,218 @@ function sendJson(res: any, status: number, data: any) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(data));
+}
+
+// ========== Build Functions ==========
+
+async function checkBuildEnvironment(): Promise<Array<{ name: string; status: string; message: string; detail?: string }>> {
+  const checks: Array<{ name: string; status: string; message: string; detail?: string }> = [];
+
+  // 1. Node.js
+  try {
+    const { stdout } = await execAsync('node -v');
+    checks.push({ name: 'Node.js', status: 'ok', message: stdout.trim() });
+  } catch {
+    checks.push({ name: 'Node.js', status: 'error', message: 'Not installed' });
+  }
+
+  // 2. npm
+  try {
+    const { stdout } = await execAsync('npm -v');
+    checks.push({ name: 'npm', status: 'ok', message: `v${stdout.trim()}` });
+  } catch {
+    checks.push({ name: 'npm', status: 'error', message: 'Not installed' });
+  }
+
+  // 3. Java
+  try {
+    const { stderr } = await execAsync('java -version');
+    const match = stderr.match(/version "([^"]+)"/);
+    const version = match ? match[1] : 'Unknown';
+    const major = parseInt(version.split('.')[0]);
+    if (major >= 17 && major <= 21) {
+      checks.push({ name: 'Java', status: 'ok', message: version });
+    } else if (major > 21) {
+      checks.push({ name: 'Java', status: 'warning', message: version, detail: 'JDK 17-21 recommended' });
+    } else {
+      checks.push({ name: 'Java', status: 'error', message: version, detail: 'JDK 17+ required' });
+    }
+  } catch {
+    checks.push({ name: 'Java', status: 'error', message: 'Not installed', detail: 'Install JDK 17+' });
+  }
+
+  // 4. JAVA_HOME
+  const javaHome = process.env.JAVA_HOME;
+  if (javaHome) {
+    checks.push({ name: 'JAVA_HOME', status: 'ok', message: javaHome });
+  } else {
+    checks.push({ name: 'JAVA_HOME', status: 'warning', message: 'Not set' });
+  }
+
+  // 5. Android SDK
+  const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  if (androidHome && fsSync.existsSync(path.join(androidHome, 'platform-tools'))) {
+    checks.push({ name: 'Android SDK', status: 'ok', message: androidHome });
+  } else if (androidHome) {
+    checks.push({ name: 'Android SDK', status: 'warning', message: androidHome, detail: 'platform-tools missing' });
+  } else {
+    checks.push({ name: 'Android SDK', status: 'error', message: 'Not found', detail: 'Set ANDROID_HOME' });
+  }
+
+  // 6. EAS CLI
+  try {
+    const { stdout } = await execAsync('npx eas --version');
+    checks.push({ name: 'EAS CLI', status: 'ok', message: stdout.trim() });
+  } catch {
+    checks.push({ name: 'EAS CLI', status: 'info', message: 'Not installed', detail: 'Required for cloud builds' });
+  }
+
+  // 7. android folder
+  if (fsSync.existsSync(path.join(projectRoot, 'android'))) {
+    checks.push({ name: 'Android Project', status: 'ok', message: 'Found' });
+  } else {
+    checks.push({ name: 'Android Project', status: 'info', message: 'Not found', detail: 'Run expo prebuild first' });
+  }
+
+  // 8. Keystore
+  const keystorePaths = [
+    path.join(projectRoot, 'android', 'app', 'release.keystore'),
+    path.join(projectRoot, 'android', 'app', 'my-release-key.keystore'),
+    path.join(projectRoot, 'android', 'keystores', 'release.keystore')
+  ];
+  const hasKeystore = keystorePaths.some(p => fsSync.existsSync(p));
+  if (hasKeystore) {
+    checks.push({ name: 'Release Keystore', status: 'ok', message: 'Found' });
+  } else {
+    checks.push({ name: 'Release Keystore', status: 'info', message: 'Not found', detail: 'Required for release builds' });
+  }
+
+  return checks;
+}
+
+function startBuildProcess(type: string, profile: string, buildId: string): BuildProcess {
+  const output: Array<{ type: string; text: string; timestamp: number }> = [];
+  let cmd: string;
+  let args: string[];
+
+  if (type === 'cloud') {
+    // EAS Cloud Build
+    cmd = 'npx';
+    args = ['eas', 'build', '--platform', 'android', '--profile', profile, '--non-interactive'];
+    output.push({ type: 'info', text: `Starting EAS cloud build (${profile})...`, timestamp: Date.now() });
+  } else {
+    // Local Build - need to run prebuild first, then gradle
+    const gradleTask = profile === 'debug' ? 'assembleDebug' :
+                       profile === 'release-apk' ? 'assembleRelease' :
+                       'bundleRelease';
+
+    // Create a batch script to run the full build sequence
+    cmd = process.platform === 'win32' ? 'cmd' : 'sh';
+    const buildScript = process.platform === 'win32'
+      ? `node scripts\\setup-plugins.js && npx expo prebuild --platform android && cd android && .\\gradlew ${gradleTask}`
+      : `node scripts/setup-plugins.js && npx expo prebuild --platform android && cd android && ./gradlew ${gradleTask}`;
+    args = process.platform === 'win32' ? ['/c', buildScript] : ['-c', buildScript];
+
+    output.push({ type: 'info', text: `Starting local build (${profile})...`, timestamp: Date.now() });
+    output.push({ type: 'info', text: `Gradle task: ${gradleTask}`, timestamp: Date.now() });
+  }
+
+  const proc = spawn(cmd, args, {
+    cwd: projectRoot,
+    shell: false,
+    env: { ...process.env, FORCE_COLOR: '0' }
+  });
+
+  const buildProcess: BuildProcess = { process: proc, output, finished: false };
+
+  proc.stdout?.on('data', (data: Buffer) => {
+    const text = data.toString().trim();
+    if (text) {
+      output.push({ type: 'stdout', text, timestamp: Date.now() });
+    }
+  });
+
+  proc.stderr?.on('data', (data: Buffer) => {
+    const text = data.toString().trim();
+    if (text) {
+      output.push({ type: 'stderr', text, timestamp: Date.now() });
+    }
+  });
+
+  proc.on('close', (code) => {
+    buildProcess.finished = true;
+    if (code === 0) {
+      output.push({ type: 'success', text: 'Build completed successfully!', timestamp: Date.now() });
+
+      // Show output path for local builds
+      if (type === 'local') {
+        const outputPath = profile === 'debug'
+          ? 'android/app/build/outputs/apk/debug/app-debug.apk'
+          : profile === 'release-apk'
+          ? 'android/app/build/outputs/apk/release/app-release.apk'
+          : 'android/app/build/outputs/bundle/release/app-release.aab';
+        output.push({ type: 'info', text: `Output: ${outputPath}`, timestamp: Date.now() });
+      }
+    } else {
+      output.push({ type: 'error', text: `Build failed with exit code ${code}`, timestamp: Date.now() });
+    }
+  });
+
+  proc.on('error', (err) => {
+    buildProcess.finished = true;
+    output.push({ type: 'error', text: `Process error: ${err.message}`, timestamp: Date.now() });
+  });
+
+  return buildProcess;
+}
+
+function startCleanProcess(buildId: string): BuildProcess {
+  const output: Array<{ type: string; text: string; timestamp: number }> = [];
+  output.push({ type: 'info', text: 'Cleaning Gradle cache...', timestamp: Date.now() });
+
+  const cmd = process.platform === 'win32' ? 'cmd' : 'sh';
+  const cleanScript = process.platform === 'win32'
+    ? 'cd android && .\\gradlew --stop && .\\gradlew clean'
+    : 'cd android && ./gradlew --stop && ./gradlew clean';
+  const args = process.platform === 'win32' ? ['/c', cleanScript] : ['-c', cleanScript];
+
+  const proc = spawn(cmd, args, {
+    cwd: projectRoot,
+    shell: false,
+    env: { ...process.env, FORCE_COLOR: '0' }
+  });
+
+  const buildProcess: BuildProcess = { process: proc, output, finished: false };
+
+  proc.stdout?.on('data', (data: Buffer) => {
+    const text = data.toString().trim();
+    if (text) {
+      output.push({ type: 'stdout', text, timestamp: Date.now() });
+    }
+  });
+
+  proc.stderr?.on('data', (data: Buffer) => {
+    const text = data.toString().trim();
+    if (text) {
+      output.push({ type: 'stderr', text, timestamp: Date.now() });
+    }
+  });
+
+  proc.on('close', (code) => {
+    buildProcess.finished = true;
+    if (code === 0) {
+      output.push({ type: 'success', text: 'Cache cleaned successfully!', timestamp: Date.now() });
+    } else {
+      output.push({ type: 'error', text: `Clean failed with exit code ${code}`, timestamp: Date.now() });
+    }
+  });
+
+  proc.on('error', (err) => {
+    buildProcess.finished = true;
+    output.push({ type: 'error', text: `Process error: ${err.message}`, timestamp: Date.now() });
+  });
+
+  return buildProcess;
 }
 
 export function apiPlugin(): Plugin {
@@ -284,6 +506,81 @@ export function apiPlugin(): Plugin {
               sendJson(res, 200, folders);
             } catch {
               sendJson(res, 500, { error: 'Failed to scan bridges folder' });
+            }
+            return;
+          }
+
+          // ========== Build API ==========
+
+          // GET /api/build/env-check - Environment verification
+          if (url === '/api/build/env-check' && req.method === 'GET') {
+            const checks = await checkBuildEnvironment();
+            sendJson(res, 200, { checks });
+            return;
+          }
+
+          // POST /api/build/start - Start build
+          if (url === '/api/build/start' && req.method === 'POST') {
+            const { type, profile } = await readBody(req);
+            const buildId = `build-${Date.now()}`;
+
+            try {
+              const buildProcess = startBuildProcess(type, profile, buildId);
+              buildProcesses.set(buildId, buildProcess);
+              sendJson(res, 200, { buildId });
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // GET /api/build/output/:id - Get build output
+          const outputMatch = url.match(/^\/api\/build\/output\/([a-z0-9-]+)$/);
+          if (outputMatch && req.method === 'GET') {
+            const buildId = outputMatch[1];
+            const build = buildProcesses.get(buildId);
+
+            if (!build) {
+              sendJson(res, 404, { error: 'Build not found' });
+              return;
+            }
+
+            // Get new lines since last fetch
+            const lines = build.output.splice(0, build.output.length);
+            sendJson(res, 200, { lines, finished: build.finished });
+
+            // Clean up finished builds after some time
+            if (build.finished) {
+              setTimeout(() => buildProcesses.delete(buildId), 60000);
+            }
+            return;
+          }
+
+          // POST /api/build/cancel/:id - Cancel build
+          const cancelMatch = url.match(/^\/api\/build\/cancel\/([a-z0-9-]+)$/);
+          if (cancelMatch && req.method === 'POST') {
+            const buildId = cancelMatch[1];
+            const build = buildProcesses.get(buildId);
+
+            if (build && !build.finished) {
+              build.process.kill();
+              build.finished = true;
+              build.output.push({ type: 'info', text: 'Build cancelled by user', timestamp: Date.now() });
+            }
+            sendJson(res, 200, { success: true });
+            return;
+          }
+
+          // POST /api/build/clean - Clean Gradle cache
+          if (url === '/api/build/clean' && req.method === 'POST') {
+            const buildId = `clean-${Date.now()}`;
+
+            try {
+              const buildProcess = startCleanProcess(buildId);
+              buildProcesses.set(buildId, buildProcess);
+              sendJson(res, 200, { buildId });
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
             }
             return;
           }

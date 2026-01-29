@@ -75,6 +75,24 @@
     "scanResults": "lib/bridges 폴더 스캔 결과",
     "alreadyAdded": "이미 추가됨"
   },
+  "build": {
+    "envCheck": "빌드 환경 확인",
+    "checkEnv": "환경 확인",
+    "cloudBuild": "클라우드 빌드 (EAS)",
+    "cloudBuildDesc": "Expo Application Services를 통한 클라우드 빌드",
+    "localBuild": "로컬 빌드 (Gradle)",
+    "localBuildDesc": "로컬 환경에서 직접 빌드",
+    "devBuildDesc": "개발용 빌드",
+    "previewBuildDesc": "테스트용 APK",
+    "prodBuildDesc": "배포용 AAB",
+    "debugApkDesc": "개발/테스트용",
+    "releaseApkDesc": "배포용 APK",
+    "releaseAabDesc": "Play Store용 AAB",
+    "utilities": "유틸리티",
+    "cleanCache": "Gradle 캐시 정리",
+    "cancel": "빌드 취소",
+    "output": "빌드 출력"
+  },
   "common": {
     "save": "저장",
     "cancel": "취소",

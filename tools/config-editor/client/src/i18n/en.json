@@ -75,6 +75,24 @@
     "scanResults": "lib/bridges folder scan results",
     "alreadyAdded": "Already added"
   },
+  "build": {
+    "envCheck": "Build Environment Check",
+    "checkEnv": "Check Environment",
+    "cloudBuild": "Cloud Build (EAS)",
+    "cloudBuildDesc": "Build via Expo Application Services",
+    "localBuild": "Local Build (Gradle)",
+    "localBuildDesc": "Build directly on local machine",
+    "devBuildDesc": "Development build",
+    "previewBuildDesc": "Test APK",
+    "prodBuildDesc": "Production AAB",
+    "debugApkDesc": "For dev/testing",
+    "releaseApkDesc": "Distribution APK",
+    "releaseAabDesc": "Play Store AAB",
+    "utilities": "Utilities",
+    "cleanCache": "Clean Gradle Cache",
+    "cancel": "Cancel Build",
+    "output": "Build Output"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

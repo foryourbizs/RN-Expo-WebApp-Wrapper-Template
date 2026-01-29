@@ -1,7 +1,29 @@
 {
   "$schema": "./schemas/plugins.schema.json",
   "plugins": {
-    "auto": [],
-    "manual": []
+    "auto": [
+      {
+        "name": "rnww-plugin-wifi",
+        "namespace": "wifi"
+      },
+      {
+        "name": "rnww-plugin-bluetooth",
+        "namespace": "blueto"
+      },
+      {
+        "name": "rnww-plugin-screen-pinning",
+        "namespace": "screen"
+      }
+    ],
+    "manual": [
+      {
+        "path": "./webview",
+        "namespace": "webvie"
+      },
+      {
+        "path": "./security",
+        "namespace": "securi"
+      }
+    ]
   }
 }

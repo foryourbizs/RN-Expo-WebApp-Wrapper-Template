@@ -5,6 +5,7 @@ import TabNav from './components/TabNav';
 import AppConfigPage from './pages/AppConfig';
 import ThemeConfigPage from './pages/ThemeConfig';
 import PluginsConfigPage from './pages/PluginsConfig';
+import BuildConfigPage from './pages/BuildConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('appSettings');
@@ -41,9 +42,7 @@ export default function App() {
             <PluginsConfigPage onUnsavedChange={handleUnsavedChange('plugins')} />
           )}
           {activeTab === 'build' && (
-            <div className="text-center py-12 text-gray-500">
-              Build Tab - Coming Soon
-            </div>
+            <BuildConfigPage />
           )}
         </div>
       </div>
