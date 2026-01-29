@@ -1,68 +1,16 @@
 /**
  * Bridge Handlers 통합 모듈
- * 그룹별로 분리된 핸들러들을 통합 등록
- *
- * TODO: Phase 2 남은 플러그인들
- * - [ ] deeplink (link:*) - 딥링크/유니버설 링크 처리
+ * 설정 파일 기반으로 플러그인 동적 로드
  */
 
 import { Platform } from 'react-native';
 import { registerHandler, sendToWeb } from '@/lib/bridge';
-import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
-
-import { registerBackgroundHandlers } from './background';
-import { registerCameraHandlers } from './camera';
-import { registerClipboardHandlers } from './clipboard';
-import { registerDeviceHandlers } from './device';
-import { registerGpsHandlers } from './gps';
-import { registerKeepAwakeHandlers } from './keep-awake';
-import { registerMicrophoneHandlers } from './microphone';
-import { registerNavigationBarHandlers } from './navigation-bar';
-import { registerOrientationHandlers } from './orientation';
-import { registerPushHandlers } from './push';
-import { registerScreenPinningHandlers } from './screen-pinning';
-import { registerSecurityHandlers } from './security';
-import { registerSplashHandlers } from './splash';
-import { registerStatusBarHandlers } from './status-bar';
-import { registerUIHandlers } from './ui';
-import { registerUpdateHandlers } from './update';
-import { registerWebviewHandlers } from './webview';
-import { registerWifiHandlers } from './wifi';
-import { registerBluetoothHandlers } from './bluetooth';
-
-/**
- * 내장 플러그인 네임스페이스 정의
- * - 모든 핸들러 액션은 자동으로 `namespace:action` 형식이 됨
- * - 핸들러는 namespace를 알 필요 없이 그냥 'action'만 등록하면 됨
- */
-export const BUILTIN_NAMESPACES = {
-  device: 'device',
-  ui: 'ui',
-  clipboard: 'clip',
-  webview: 'webview',
-  splash: 'splash',
-  orientation: 'orient',
-  statusBar: 'sbar',
-  navigationBar: 'nbar',
-  screenPinning: 'pin',
-  keepAwake: 'awake',
-  camera: 'cam',
-  microphone: 'mic',
-  push: 'push',
-  update: 'update',
-  security: 'sec',
-  background: 'bg',
-  gps: 'gps',
-  wifi: 'wifi',
-  bluetooth: 'bt',
-} as const;
-
-export type BuiltinNamespace = typeof BUILTIN_NAMESPACES[keyof typeof BUILTIN_NAMESPACES];
+import { BridgeAPI, PlatformInfo, toPascalCase } from '@/lib/plugin-system';
+import { PLUGINS_CONFIG } from '@/constants/plugins.config';
+import { AUTO_PLUGINS, MANUAL_PLUGINS } from './plugin-registry';
 
 /**
  * 네임스페이스가 적용된 BridgeAPI 생성
- * - registerHandler('action', ...) → 실제로는 'namespace:action'으로 등록
- * - sendToWeb('event', ...) → 실제로는 'namespace:event'로 전송
  */
 const createNamespacedBridge = (namespace: string): BridgeAPI => ({
   registerHandler: (action, handler, options) =>
@@ -72,31 +20,87 @@ const createNamespacedBridge = (namespace: string): BridgeAPI => ({
 });
 
 /**
- * 모든 내장 핸들러 등록
+ * Auto 플러그인 로드 (npm 패키지)
  */
-export const registerBuiltInHandlers = () => {
+const loadAutoPlugins = async (platform: PlatformInfo) => {
+  for (const plugin of PLUGINS_CONFIG.plugins.auto) {
+    const loader = AUTO_PLUGINS[plugin.name];
+    if (!loader) {
+      console.warn(`[Bridge] Auto plugin not found in registry: ${plugin.name}`);
+      continue;
+    }
+
+    try {
+      const mod = await loader();
+      const method = plugin.method ?? 'registerHandlers';
+      const registerFn = mod[method];
+
+      if (typeof registerFn !== 'function') {
+        console.warn(`[Bridge] Method '${method}' not found in ${plugin.name}`);
+        continue;
+      }
+
+      registerFn({
+        bridge: createNamespacedBridge(plugin.namespace),
+        platform,
+      });
+      console.log(`[Bridge] Auto plugin loaded: ${plugin.name} (${plugin.namespace})`);
+    } catch (error) {
+      console.error(`[Bridge] Failed to load auto plugin ${plugin.name}:`, error);
+    }
+  }
+};
+
+/**
+ * Manual 플러그인 로드 (로컬 구현)
+ */
+const loadManualPlugins = async (platform: PlatformInfo) => {
+  for (const plugin of PLUGINS_CONFIG.plugins.manual) {
+    const loader = MANUAL_PLUGINS[plugin.path];
+    if (!loader) {
+      console.warn(`[Bridge] Manual plugin not found in registry: ${plugin.path}`);
+      continue;
+    }
+
+    try {
+      const mod = await loader();
+      const method = plugin.method ?? `register${toPascalCase(plugin.namespace)}Handlers`;
+      const registerFn = mod[method];
+
+      if (typeof registerFn !== 'function') {
+        console.warn(`[Bridge] Method '${method}' not found in ${plugin.path}`);
+        continue;
+      }
+
+      registerFn(createNamespacedBridge(plugin.namespace), platform);
+      console.log(`[Bridge] Manual plugin loaded: ${plugin.path} (${plugin.namespace})`);
+    } catch (error) {
+      console.error(`[Bridge] Failed to load manual plugin ${plugin.path}:`, error);
+    }
+  }
+};
+
+/**
+ * 모든 플러그인 등록
+ */
+export const registerBuiltInHandlers = async () => {
   const platform: PlatformInfo = { OS: Platform.OS as 'android' | 'ios' };
 
-  // 빌트인 핸들러 등록 (네임스페이스 자동 주입)
-  registerDeviceHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.device), platform);
-  registerUIHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.ui), platform);
-  registerClipboardHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.clipboard), platform);
-  registerWebviewHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.webview), platform);
-  registerSplashHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.splash), platform);
-  registerOrientationHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.orientation), platform);
-  registerStatusBarHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.statusBar), platform);
-  registerNavigationBarHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.navigationBar), platform);
-  registerScreenPinningHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.screenPinning), platform);
-  registerKeepAwakeHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.keepAwake), platform);
-  registerCameraHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.camera), platform);
-  registerMicrophoneHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.microphone), platform);
-  registerPushHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.push), platform);
-  registerUpdateHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.update), platform);
-  registerSecurityHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.security), platform);
-  registerBackgroundHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.background), platform);
-  registerGpsHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.gps), platform);
-  registerWifiHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.wifi), platform);
-  registerBluetoothHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.bluetooth), platform);
+  await Promise.all([
+    loadAutoPlugins(platform),
+    loadManualPlugins(platform),
+  ]);
 
-  console.log('[Bridge] All built-in handlers registered');
+  console.log('[Bridge] All plugins registered');
 };
+
+// 기존 호환성을 위해 BUILTIN_NAMESPACES 유지 (deprecated)
+/** @deprecated Use PLUGINS_CONFIG instead */
+export const BUILTIN_NAMESPACES = Object.fromEntries(
+  [
+    ...PLUGINS_CONFIG.plugins.auto.map(p => [p.name.replace('rnww-plugin-', ''), p.namespace]),
+    ...PLUGINS_CONFIG.plugins.manual.map(p => [p.path.replace('./', ''), p.namespace]),
+  ]
+) as Record<string, string>;
+
+export type BuiltinNamespace = string;
