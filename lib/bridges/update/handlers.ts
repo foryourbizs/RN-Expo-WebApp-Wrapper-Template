@@ -2,12 +2,66 @@
 import { Platform } from 'react-native';
 import * as Application from 'expo-application';
 import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
 import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 import {
   UpdateCheckResult,
   AppInfo,
   UpdateConfig,
 } from './types';
+
+/**
+ * 앱 버전 가져오기 (네이티브 빌드 + Expo Go 지원)
+ */
+const getAppVersion = (): string => {
+  // 1. 네이티브 빌드 버전 (우선)
+  if (Application.nativeApplicationVersion) {
+    return Application.nativeApplicationVersion;
+  }
+  // 2. expo-constants에서 가져오기 (Expo Go / 개발 환경)
+  if (Constants.expoConfig?.version) {
+    return Constants.expoConfig.version;
+  }
+  // 3. manifest2에서 가져오기 (Expo Go - EAS Update)
+  const manifest2 = Constants.manifest2;
+  if (manifest2?.extra?.expoClient?.version) {
+    return manifest2.extra.expoClient.version;
+  }
+  return '0.0.0';
+};
+
+/**
+ * 빌드 번호 가져오기
+ */
+const getBuildNumber = (): string => {
+  if (Application.nativeBuildVersion) {
+    return Application.nativeBuildVersion;
+  }
+  // Android: versionCode, iOS: buildNumber
+  const buildNum = Platform.OS === 'ios'
+    ? Constants.expoConfig?.ios?.buildNumber
+    : Constants.expoConfig?.android?.versionCode?.toString();
+  return buildNum || '1';
+};
+
+/**
+ * 앱 이름 가져오기
+ */
+const getAppName = (): string => {
+  return Application.applicationName || Constants.expoConfig?.name || 'App';
+};
+
+/**
+ * 번들 ID 가져오기
+ */
+const getBundleId = (): string => {
+  if (Application.applicationId) {
+    return Application.applicationId;
+  }
+  return Platform.OS === 'ios'
+    ? Constants.expoConfig?.ios?.bundleIdentifier || ''
+    : Constants.expoConfig?.android?.package || '';
+};
 
 // 기본 설정 (앱에서 오버라이드 가능)
 let updateConfig: UpdateConfig = {};
@@ -57,10 +111,10 @@ export const registerUpdateHandlers = (bridge: BridgeAPI, _platform: PlatformInf
   // 앱 정보 가져오기
   registerHandler<void, AppInfo>('getAppInfo', async (_, respond) => {
     respond({
-      version: Application.nativeApplicationVersion || '0.0.0',
-      buildNumber: Application.nativeBuildVersion || '0',
-      appName: Application.applicationName || 'App',
-      bundleId: Application.applicationId || '',
+      version: getAppVersion(),
+      buildNumber: getBuildNumber(),
+      appName: getAppName(),
+      bundleId: getBundleId(),
     });
   });
 
@@ -69,7 +123,7 @@ export const registerUpdateHandlers = (bridge: BridgeAPI, _platform: PlatformInf
     'check',
     async (payload, respond) => {
       try {
-        const currentVersion = Application.nativeApplicationVersion || '0.0.0';
+        const currentVersion = getAppVersion();
         const endpoint = payload?.endpoint || updateConfig.checkEndpoint;
 
         let latestVersion = payload?.latestVersion;
@@ -104,7 +158,7 @@ export const registerUpdateHandlers = (bridge: BridgeAPI, _platform: PlatformInf
       } catch (error) {
         respond({
           available: false,
-          currentVersion: Application.nativeApplicationVersion || '0.0.0',
+          currentVersion: getAppVersion(),
           isForced: false,
           error: error instanceof Error ? error.message : 'Unknown error',
         });

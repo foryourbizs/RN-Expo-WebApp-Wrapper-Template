@@ -17,11 +17,10 @@ describe('Security Token Concealment', () => {
 
   describe('getBridgeClientScript', () => {
     it('should require security token parameter', () => {
-      // @ts-expect-error - testing runtime behavior
+      // @ts-expect-error - testing runtime behavior without argument
       expect(() => getBridgeClientScript()).toThrow();
-      // @ts-expect-error - testing runtime behavior
+      // @ts-ignore - testing runtime behavior with null
       expect(() => getBridgeClientScript(null)).toThrow();
-      // @ts-expect-error - testing runtime behavior
       expect(() => getBridgeClientScript('')).toThrow();
     });
 
