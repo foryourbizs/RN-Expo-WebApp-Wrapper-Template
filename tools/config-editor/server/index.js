@@ -5,6 +5,7 @@ import open from 'open';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import configRoutes from './routes/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.argv.includes('--dev');
@@ -17,6 +18,9 @@ app.use(express.json());
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// API routes
+app.use('/api/config', configRoutes);
 
 // Serve static files in production
 if (!isDev) {
