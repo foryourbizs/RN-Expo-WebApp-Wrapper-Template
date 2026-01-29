@@ -1,11 +1,26 @@
 // tools/config-editor/client/src/App.tsx
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Layout from './components/Layout';
 import TabNav from './components/TabNav';
+import AppConfigPage from './pages/AppConfig';
+import ThemeConfigPage from './pages/ThemeConfig';
+import PluginsConfigPage from './pages/PluginsConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('appSettings');
   const [unsavedTabs, setUnsavedTabs] = useState<string[]>([]);
+
+  const handleUnsavedChange = useCallback((tab: string) => (hasChanges: boolean) => {
+    setUnsavedTabs(prev => {
+      if (hasChanges && !prev.includes(tab)) {
+        return [...prev, tab];
+      }
+      if (!hasChanges && prev.includes(tab)) {
+        return prev.filter(t => t !== tab);
+      }
+      return prev;
+    });
+  }, []);
 
   return (
     <Layout>
@@ -16,10 +31,20 @@ export default function App() {
           unsavedTabs={unsavedTabs}
         />
         <div className="p-6">
-          {activeTab === 'appSettings' && <div>App Settings Tab</div>}
-          {activeTab === 'theme' && <div>Theme Tab</div>}
-          {activeTab === 'plugins' && <div>Plugins Tab</div>}
-          {activeTab === 'build' && <div>Build Tab (Coming Soon)</div>}
+          {activeTab === 'appSettings' && (
+            <AppConfigPage onUnsavedChange={handleUnsavedChange('appSettings')} />
+          )}
+          {activeTab === 'theme' && (
+            <ThemeConfigPage onUnsavedChange={handleUnsavedChange('theme')} />
+          )}
+          {activeTab === 'plugins' && (
+            <PluginsConfigPage onUnsavedChange={handleUnsavedChange('plugins')} />
+          )}
+          {activeTab === 'build' && (
+            <div className="text-center py-12 text-gray-500">
+              Build Tab - Coming Soon
+            </div>
+          )}
         </div>
       </div>
     </Layout>
