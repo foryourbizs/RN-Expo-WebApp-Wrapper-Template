@@ -14,7 +14,8 @@
     "test:coverage": "jest --coverage",
     "postinstall": "node ./scripts/setup-plugins.js",
     "config": "cd tools/config-editor && npm start",
-    "config:dev": "cd tools/config-editor && npm run dev"
+    "config:dev": "cd tools/config-editor && npm run dev",
+    "generate:plugins": "node scripts/generate-plugin-registry.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
