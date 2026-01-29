@@ -7,13 +7,13 @@ GUI tool for editing React Native Web Wrapper configuration files.
 From project root:
 
 ```bash
-# Production mode (builds client, starts server)
 npm run config
+```
 
-# Development mode (requires separate client dev server)
-npm run config:dev
-# In another terminal:
-cd tools/config-editor/client && npm run dev
+Or from this directory:
+
+```bash
+npm run dev
 ```
 
 ## Features
@@ -39,5 +39,5 @@ npm run generate:plugins
 
 ## Tech Stack
 
-- **Server**: Express, get-port, open
 - **Client**: React, Vite, Tailwind CSS, i18next, react-colorful
+- **API**: Vite dev server middleware (no separate backend)

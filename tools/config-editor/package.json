@@ -2,19 +2,10 @@
   "name": "rnww-config-editor",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
-    "dev": "node server/index.js --dev",
-    "start": "npm run build:client && node server/index.js",
-    "build:client": "cd client && npm install && npm run build"
-  },
-  "dependencies": {
-    "express": "^4.21.0",
-    "get-port": "^7.1.0",
-    "open": "^10.1.0",
-    "cors": "^2.8.5"
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "preview": "cd client && npm run preview",
+    "postinstall": "cd client && npm install"
   }
 }

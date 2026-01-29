@@ -1,13 +1,16 @@
 // tools/config-editor/client/vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { apiPlugin } from './vite/api-plugin';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), apiPlugin()],
   server: {
     port: 5173,
-    proxy: {
-      '/api': 'http://localhost:3000'
-    }
+    open: true
+  },
+  preview: {
+    port: 5173,
+    open: true
   }
 });
