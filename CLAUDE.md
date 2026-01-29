@@ -98,21 +98,36 @@ Uses Zustand with modular extension pattern:
 
 ### Plugin System
 
-External plugins (camera, microphone, screen-pinning) use this pattern:
+플러그인은 `constants/plugins.config.ts`에서 중앙 관리됩니다:
 
+**새 Auto 플러그인 추가 시 (npm 패키지):**
+1. `package.json`에 의존성 추가
+2. `constants/plugins.config.ts`의 `auto` 배열에 추가
+3. `lib/bridges/plugin-registry.ts`의 `AUTO_PLUGINS`에 import 추가
+
+**새 Manual 플러그인 추가 시 (로컬 구현):**
+1. `lib/bridges/<plugin>/index.ts` 생성
+2. `constants/plugins.config.ts`의 `manual` 배열에 추가
+3. `lib/bridges/plugin-registry.ts`의 `MANUAL_PLUGINS`에 import 추가
+
+**설정 구조:**
 ```typescript
-// lib/bridges/camera/index.ts
-import { registerCameraHandlers as pluginRegister } from 'rnww-plugin-camera';
-
-export const registerCameraHandlers = () => {
-  pluginRegister({
-    bridge: { registerHandler, sendToWeb },
-    platform: { OS: Platform.OS }  // Must be { OS: ... } object
-  });
+// constants/plugins.config.ts
+export const PLUGINS_CONFIG: PluginsConfig = {
+  plugins: {
+    auto: [
+      { name: 'rnww-plugin-camera', namespace: 'cam', keepModules: ['customcamera'] },
+    ],
+    manual: [
+      { path: './clipboard', namespace: 'clip' },
+    ],
+  },
 };
 ```
 
-Plugin setup script (`scripts/setup-plugins.js`) copies native module files for Expo autolinking.
+- `auto.method`: 등록 메서드명 (기본: `registerHandlers`)
+- `manual.entry`: 엔트리 파일명 (기본: `index.ts`)
+- `manual.method`: 등록 메서드명 (기본: `register{PascalCase(namespace)}Handlers`)
 
 ### Component Structure
 
