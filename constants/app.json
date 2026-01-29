@@ -1,0 +1,11 @@
+{
+  "$schema": "./schemas/app.schema.json",
+  "webview": {
+    "baseUrl": "https://webapp-sample.example-page.cc/"
+  },
+  "security": {
+    "allowedOrigins": [
+      "https://webapp-sample.example-page.cc"
+    ]
+  }
+}

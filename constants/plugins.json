@@ -1,0 +1,7 @@
+{
+  "$schema": "./schemas/plugins.schema.json",
+  "plugins": {
+    "auto": [],
+    "manual": []
+  }
+}

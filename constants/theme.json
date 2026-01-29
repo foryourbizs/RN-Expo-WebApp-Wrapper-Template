@@ -1,0 +1,7 @@
+{
+  "$schema": "./schemas/theme.schema.json",
+  "colors": {
+    "light": {},
+    "dark": {}
+  }
+}

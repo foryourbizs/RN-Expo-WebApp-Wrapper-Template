@@ -59,8 +59,6 @@ export interface AutoPluginConfig {
   namespace: string;
   /** 등록 메서드명 (기본: 'registerHandlers') */
   method?: string;
-  /** 네이티브 빌드 시 유지할 모듈 폴더 */
-  keepModules: string[];
 }
 
 /**

@@ -1,73 +1,48 @@
 /**
  * 앱 환경설정 상수
  * 웹뷰 및 앱 전반적인 설정을 관리
+ *
+ * 기본값은 이 파일에 정의되며, constants/app.json에서 오버라이드 가능
  */
 
 declare const __DEV__: boolean;
 
-import Constants from 'expo-constants';
+import { deepMerge, DeepPartial } from './utils/deep-merge';
+import appOverrides from './app.json';
 
-// app.json에서 가져온 값들
-const expoConfig = Constants.expoConfig;
-
-export const APP_CONFIG = {
-  // 앱 기본 정보 (app.json에서 자동으로 가져옴)
-  app: {
-    name: expoConfig?.name ?? 'WebApp',
-    version: expoConfig?.version ?? '1.0.0',
-    bundleId: expoConfig?.android?.package ?? expoConfig?.ios?.bundleIdentifier ?? 'com.app.webwrapper',
-    slug: expoConfig?.slug ?? 'webapp',
-  },
-
+/**
+ * 기본 설정값
+ */
+const APP_CONFIG_DEFAULTS = {
   // 웹뷰 설정
   webview: {
     // 메인 웹사이트 URL
-    baseUrl: 'https://webapp-sample.example-page.cc/',
-    
+    baseUrl: 'https://example.com/',
+
     // 웹뷰 기본 옵션
     options: {
-
       // JavaScript 활성화
       javaScriptEnabled: true,
-
       // DOM 스토리지 활성화 (localStorage, sessionStorage)
       domStorageEnabled: true,
-
       // 서드파티 쿠키 허용
       thirdPartyCookiesEnabled: true,
-
       // 미디어 자동재생 허용
       mediaPlaybackRequiresUserAction: true,
-
       // 혼합 컨텐츠 허용 (HTTPS 페이지에서 HTTP 리소스)
-      mixedContentMode: 'compatibility' as const,
-
+      mixedContentMode: 'compatibility' as 'compatibility' | 'never' | 'always',
       // 캐시 모드
       cacheEnabled: true,
-
-      // 줌 허용
-      scalesPageToFit: true,
-
       // 인라인 미디어 재생 허용 (iOS)
       allowsInlineMediaPlayback: true,
-
-      // 백그라운드에서도 미디어 재생 (iOS)
+      // 스와이프 뒤로/앞으로 제스처 (iOS)
       allowsBackForwardNavigationGestures: true,
-
-      // 파일 접근 허용 (Android)
-      allowFileAccess: true,
-
-      // 유니버설 링크 허용 (Android)
-      allowUniversalAccessFromFileURLs: true,
     },
 
     // 성능 최적화 옵션 (Android)
     performance: {
       // 레이어 타입: 'none' | 'software' | 'hardware'
-      // 'hardware': GPU 사용, 애니메이션 부드러움
       androidLayerType: 'hardware' as 'none' | 'software' | 'hardware',
-      // 렌더링 우선순위
-      renderPriority: 'high' as 'high' | 'low',
       // 오버스크롤 모드
       overScrollMode: 'never' as 'always' | 'content' | 'never',
       // 텍스트 줌 고정 (100% = 변경없음)
@@ -78,32 +53,12 @@ export const APP_CONFIG = {
       hideScrollIndicators: true,
       // 풀스크린 비디오 허용
       allowsFullscreenVideo: true,
-      // 자동 이미지 로드
-      loadsImagesAutomatically: true,
-      // 뷰포트 초기 스케일
-      initialScale: 100,
-      // 세이프에어리어 포함
+      // 멀티 윈도우 지원
       setSupportMultipleWindows: false,
-      // 포커스 시 자동 줌 비활성화
-      setUseWideViewPort: true,
     },
 
     // 커스텀 User-Agent
     userAgent: 'webapp-wrapper',
-
-    // 허용된 URL 패턴 (보안)
-    allowedUrlPatterns: [
-      'https://webapp-sample.example-page.cc/',
-      'https://*.example-page.cc/',
-    ],
-  },
-
-  // 네트워크 설정
-  network: {
-    // 요청 타임아웃 (ms)
-    timeout: 30000,
-    // 재시도 횟수
-    retryCount: 3,
   },
 
   // 오프라인 화면 설정
@@ -124,61 +79,41 @@ export const APP_CONFIG = {
     autoReconnect: true,
   },
 
-  // 상태바 & SafeArea 설정
+  // 상태바 설정
   statusBar: {
     // 상태바 표시 여부
     visible: true,
     // 상태바 스타일: 'auto' | 'light' | 'dark'
-    // 'light': 흰색 아이콘 (어두운 배경일 때)
-    // 'dark': 검은색 아이콘 (밝은 배경일 때)
-    // 'auto': 시스템 테마에 따름
-    style: 'light' as 'auto' | 'light' | 'dark',
-
+    style: 'dark' as 'auto' | 'light' | 'dark',
     // 상태바와 웹뷰 겹침 여부
-    // true: 웹뷰가 상태바 영역까지 확장됨 (G-Market 스타일)
-    // false: 웹뷰가 상태바 아래부터 시작 (일반적인 앱)
     overlapsWebView: false,
-
-    // 상태바 오버레이 표시 (웹뷰 위에 반투명 배경, overlapsWebView가 true일 때만 유효)
+    // 상태바 오버레이 표시
     showOverlay: true,
-
-    // 상태바 오버레이 색상 (반투명 검정 등)
-    // rgba 또는 8자리 Hex 사용
+    // 상태바 오버레이 색상
     overlayColor: 'rgba(0,0,0,0.5)',
-
-    // 상태바 반투명 여부 (Android) - overlapsWebView와 함께 사용
+    // 상태바 반투명 여부 (Android)
     translucent: true,
   },
 
   // 하단 네비게이션 바 설정 (Android 전용)
   navigationBar: {
     // 네비게이션 바 표시 모드
-    // 'visible': 항상 표시
-    // 'hidden': 숨김 (스와이프로 나타남)
-    visibility: 'hidden' as 'visible' | 'hidden',
-    
-    // 숨김 시 동작 방식 (visibility가 'hidden'일 때만 유효)
-    // 'overlay-swipe': 스와이프하면 오버레이로 나타남 (컨텐츠 유지)
-    // 'inset-swipe': 스와이프하면 나타남 (컨텐츠 밀림)
+    visibility: 'visible' as 'visible' | 'hidden',
+    // 숨김 시 동작 방식
     behavior: 'overlay-swipe' as 'overlay-swipe' | 'inset-swipe',
-    
-    // 네비게이션 바 배경색 (Hex)
+    // 네비게이션 바 배경색
     backgroundColor: '#ffffff',
-    
     // 다크모드 네비게이션 바 배경색
     darkBackgroundColor: '#000000',
-    
     // 네비게이션 바 버튼 스타일
-    // 'light': 밝은 버튼 (어두운 배경용)
-    // 'dark': 어두운 버튼 (밝은 배경용)
     buttonStyle: 'dark' as 'light' | 'dark',
   },
 
   // SafeArea 설정
   safeArea: {
-    // SafeArea 사용 여부 (false면 웹뷰가 상태바 뒤까지 확장)
+    // SafeArea 사용 여부
     enabled: false,
-    // 적용할 영역: 'all' | 'top' | 'bottom' | 'none'
+    // 적용할 영역
     edges: 'none' as 'all' | 'top' | 'bottom' | 'none',
     // SafeArea 배경색
     backgroundColor: '#ffffff',
@@ -188,8 +123,6 @@ export const APP_CONFIG = {
 
   // 테마 설정
   theme: {
-    // 웹뷰 배경색
-    webviewBackgroundColor: '#FFFFFF',
     // 로딩 인디케이터 색상
     loadingIndicatorColor: '#007AFF',
   },
@@ -198,7 +131,7 @@ export const APP_CONFIG = {
   splash: {
     // 스플래시 활성화 여부
     enabled: true,
-    // 최소 표시 시간 (ms) - 0이면 WebView 로드 즉시 숨김
+    // 최소 표시 시간 (ms)
     minDisplayTime: 1000,
     // 페이드 아웃 시간 (ms)
     fadeOutDuration: 300,
@@ -216,11 +149,11 @@ export const APP_CONFIG = {
 
   // 디버그 설정
   debug: {
-    // 디버그 모드 활성화 (웹뷰 위에 로그 오버레이 표시)
-    enabled: true,
+    // 디버그 모드 활성화
+    enabled: __DEV__,
     // 최대 로그 라인 수
     maxLogLines: 50,
-    // 로그 오버레이 투명도 (0-1)
+    // 로그 오버레이 투명도
     overlayOpacity: 0.85,
     // 로그 폰트 크기
     fontSize: 11,
@@ -235,60 +168,39 @@ export const APP_CONFIG = {
     },
   },
 
-  // 기능 플래그 (추후 확장용)
-  features: {
-    // Firebase 푸시 알림
-    pushNotifications: false,
-    // 앱 내 알림
-    localNotifications: false,
-    // 기기 제어 기능
-    deviceControl: false,
-    // 생체인증
-    biometrics: false,
-    // 딥링크
-    deepLinking: false,
-    // 오프라인 모드
-    offlineMode: false,
-  },
-
   // 보안 설정
   security: {
-    // 허용된 Origin 목록 (빈 배열이면 모든 Origin 허용 - 개발용)
-    allowedOrigins: [
-      'https://webapp-sample.example-page.cc',
-    ],
-
+    // 허용된 Origin 목록 (빈 배열이면 모든 Origin 허용)
+    allowedOrigins: [] as string[],
     // 차단된 URL 스킴
     blockedSchemes: ['data', 'blob', 'javascript', 'vbscript'],
-
     // 허용된 URL 스킴
     allowedSchemes: ['https', 'http', 'about'],
-
     // 개발 환경에서 HTTP 허용
     allowInsecureHttp: __DEV__,
-
     // 락다운 지속 시간 (ms)
     lockdownDurationMs: 30000,
-
     // 메시지 최대 유효 시간 (ms)
     messageMaxAgeMs: 30000,
-
     // 네비게이션 Rate Limit 설정
     navigationRateLimit: {
       shortWindow: { windowMs: 1000, maxRequests: 30 },
       longWindow: { windowMs: 10000, maxRequests: 100 },
     },
-
     // 리다이렉트 체인 최대 길이
     maxRedirectChain: 5,
-
     // 디버그 모드 (보안 로그 상세 출력)
     debug: __DEV__,
   },
-} as const;
+};
 
-// 타입 추출
-export type AppConfig = typeof APP_CONFIG;
-export type WebviewConfig = typeof APP_CONFIG.webview;
-export type FeatureFlags = typeof APP_CONFIG.features;
-export type SecurityConfigType = typeof APP_CONFIG.security;
+// 타입 정의
+export type AppConfigType = typeof APP_CONFIG_DEFAULTS;
+
+// JSON 오버라이드와 병합하여 최종 설정 생성
+const { $schema, ...overrides } = appOverrides as { $schema?: string } & DeepPartial<AppConfigType>;
+export const APP_CONFIG = deepMerge(APP_CONFIG_DEFAULTS, overrides);
+
+// 하위 타입 추출
+export type WebviewConfig = AppConfigType['webview'];
+export type SecurityConfigType = AppConfigType['security'];

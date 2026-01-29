@@ -34,19 +34,12 @@ const parsePluginsConfig = (configPath) => {
   const autoContent = afterAuto.substring(arrayStart + 1, arrayEnd);
   const plugins = [];
 
-  // 각 플러그인 객체 파싱
-  const pluginRegex = /{\s*name:\s*['"]([^'"]+)['"]\s*,\s*namespace:\s*['"][^'"]+['"]\s*,\s*keepModules:\s*\[([^\]]*)\]/g;
+  // 각 플러그인 객체에서 name 추출
+  const pluginRegex = /{\s*name:\s*['"]([^'"]+)['"]/g;
   let match;
 
   while ((match = pluginRegex.exec(autoContent)) !== null) {
-    const name = match[1];
-    const keepModulesStr = match[2];
-    const keepModules = keepModulesStr
-      .split(',')
-      .map(s => s.trim().replace(/['"]/g, ''))
-      .filter(s => s.length > 0);
-
-    plugins.push({ name, keepModules });
+    plugins.push({ name: match[1] });
   }
 
   return plugins;
@@ -63,13 +56,13 @@ if (fs.existsSync(configPath)) {
   console.log('⚠️  plugins.config.ts not found, using fallback');
   // 폴백: 기존 하드코딩 목록 (마이그레이션 중 사용)
   pluginsToSetup = [
-    { name: 'rnww-plugin-camera', keepModules: ['customcamera'] },
-    { name: 'rnww-plugin-microphone', keepModules: ['custommicrophone'] },
-    { name: 'rnww-plugin-screen-pinning', keepModules: ['screenpinning'] },
-    { name: 'rnww-plugin-background', keepModules: ['custombackground'] },
-    { name: 'rnww-plugin-gps', keepModules: ['customgps'] },
-    { name: 'rnww-plugin-wifi', keepModules: ['customwifi'] },
-    { name: 'rnww-plugin-bluetooth', keepModules: ['custombluetooth'] },
+    { name: 'rnww-plugin-camera' },
+    { name: 'rnww-plugin-microphone' },
+    { name: 'rnww-plugin-screen-pinning' },
+    { name: 'rnww-plugin-background' },
+    { name: 'rnww-plugin-gps' },
+    { name: 'rnww-plugin-wifi' },
+    { name: 'rnww-plugin-bluetooth' },
   ];
 }
 
@@ -101,22 +94,6 @@ pluginsToSetup.forEach(plugin => {
       fs.rmSync(androidDest, { recursive: true, force: true });
     }
     fs.cpSync(androidSource, androidDest, { recursive: true });
-
-    // keepModules 외 폴더 제거
-    const javaModulesPath = path.join(androidDest, 'src', 'main', 'java', 'expo', 'modules');
-    if (fs.existsSync(javaModulesPath)) {
-      const folders = fs.readdirSync(javaModulesPath);
-      folders.forEach(folder => {
-        if (!plugin.keepModules.includes(folder)) {
-          const folderPath = path.join(javaModulesPath, folder);
-          if (fs.statSync(folderPath).isDirectory()) {
-            fs.rmSync(folderPath, { recursive: true, force: true });
-            console.log(`   🧹 Removed invalid folder: ${folder}`);
-          }
-        }
-      });
-    }
-
     console.log(`✅ ${plugin.name}: android folder copied`);
   }
 
