@@ -26,6 +26,11 @@ export default function AddAutoPluginModal({
   useEffect(() => {
     if (isOpen) {
       fetchInstalled();
+      // Reset state when modal opens
+      setSelectedPackage(null);
+      setNamespace('');
+      setVersion('latest');
+      setSearchQuery('rnww-plugin-');
     }
   }, [isOpen, fetchInstalled]);
 

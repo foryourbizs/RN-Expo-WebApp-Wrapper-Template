@@ -24,6 +24,9 @@ export default function AddManualPluginModal({
   useEffect(() => {
     if (isOpen) {
       scanFolders();
+      // Reset state when modal opens
+      setSelectedPath(null);
+      setNamespace('');
     }
   }, [isOpen, scanFolders]);
 

@@ -38,8 +38,12 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
   const handleAddAutoPlugin = useCallback(async (name: string, namespace: string, needsInstall: boolean) => {
     if (needsInstall) {
       setInstalling(name);
-      await installPackage(name);
+      const success = await installPackage(name);
       setInstalling(null);
+      if (!success) {
+        // Install failed, don't add plugin
+        return;
+      }
     }
     setData((prevData) => {
       if (!prevData) return prevData;
@@ -140,9 +144,10 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                   <div className="flex gap-2">
                     {!installed && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setInstalling(plugin.name);
-                          installPackage(plugin.name).then(() => setInstalling(null));
+                          await installPackage(plugin.name);
+                          setInstalling(null);
                         }}
                         disabled={installing === plugin.name}
                         className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
