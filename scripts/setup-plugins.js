@@ -21,6 +21,14 @@ const pluginsToSetup = [
   {
     name: 'rnww-plugin-gps',
     keepModules: ['customgps']
+  },
+  {
+    name: 'rnww-plugin-wifi',
+    keepModules: ['customwifi']
+  },
+  {
+    name: 'rnww-plugin-bluetooth',
+    keepModules: ['custombluetooth']
   }
 ];
 

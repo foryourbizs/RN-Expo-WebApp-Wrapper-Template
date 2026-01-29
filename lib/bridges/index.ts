@@ -27,6 +27,8 @@ import { registerStatusBarHandlers } from './status-bar';
 import { registerUIHandlers } from './ui';
 import { registerUpdateHandlers } from './update';
 import { registerWebviewHandlers } from './webview';
+import { registerWifiHandlers } from './wifi';
+import { registerBluetoothHandlers } from './bluetooth';
 
 /**
  * 내장 플러그인 네임스페이스 정의
@@ -51,6 +53,8 @@ export const BUILTIN_NAMESPACES = {
   security: 'sec',
   background: 'bg',
   gps: 'gps',
+  wifi: 'wifi',
+  bluetooth: 'bt',
 } as const;
 
 export type BuiltinNamespace = typeof BUILTIN_NAMESPACES[keyof typeof BUILTIN_NAMESPACES];
@@ -91,6 +95,8 @@ export const registerBuiltInHandlers = () => {
   registerSecurityHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.security), platform);
   registerBackgroundHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.background), platform);
   registerGpsHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.gps), platform);
+  registerWifiHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.wifi), platform);
+  registerBluetoothHandlers(createNamespacedBridge(BUILTIN_NAMESPACES.bluetooth), platform);
 
   console.log('[Bridge] All built-in handlers registered');
 };
