@@ -103,6 +103,78 @@ const isNewerVersion = (current: string, latest: string): boolean => {
 };
 
 /**
+ * App Store에서 최신 버전 가져오기 (iOS)
+ */
+const getAppStoreVersion = async (bundleId: string): Promise<string | null> => {
+  try {
+    // iTunes Lookup API
+    const response = await fetch(
+      `https://itunes.apple.com/lookup?bundleId=${bundleId}&country=kr`
+    );
+    const data = await response.json();
+
+    if (data.resultCount > 0 && data.results[0]?.version) {
+      return data.results[0].version;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[Update] Failed to fetch App Store version:', error);
+    return null;
+  }
+};
+
+/**
+ * Play Store에서 최신 버전 가져오기 (Android)
+ */
+const getPlayStoreVersion = async (packageName: string): Promise<string | null> => {
+  try {
+    // Play Store 페이지에서 버전 정보 스크래핑
+    const response = await fetch(
+      `https://play.google.com/store/apps/details?id=${packageName}&hl=ko`
+    );
+    const html = await response.text();
+
+    // 버전 정보 패턴 매칭 (Play Store HTML 구조)
+    // 패턴 1: [["버전"],["1.2.3"]] 형태
+    const versionMatch = html.match(/\[\["[^"]*"\],\["(\d+\.\d+\.?\d*)/);
+    if (versionMatch && versionMatch[1]) {
+      return versionMatch[1];
+    }
+
+    // 패턴 2: "softwareVersion":"1.2.3" 형태
+    const softwareMatch = html.match(/"softwareVersion":"(\d+\.\d+\.?\d*)"/);
+    if (softwareMatch && softwareMatch[1]) {
+      return softwareMatch[1];
+    }
+
+    // 패턴 3: Current Version 텍스트 근처
+    const currentMatch = html.match(/Current Version.*?>([\d.]+)</);
+    if (currentMatch && currentMatch[1]) {
+      return currentMatch[1];
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('[Update] Failed to fetch Play Store version:', error);
+    return null;
+  }
+};
+
+/**
+ * 스토어에서 최신 버전 가져오기
+ */
+const getStoreVersion = async (): Promise<string | null> => {
+  const bundleId = getBundleId();
+  if (!bundleId) return null;
+
+  if (Platform.OS === 'ios') {
+    return getAppStoreVersion(bundleId);
+  } else {
+    return getPlayStoreVersion(bundleId);
+  }
+};
+
+/**
  * 업데이트 핸들러 등록
  */
 export const registerUpdateHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
@@ -118,19 +190,24 @@ export const registerUpdateHandlers = (bridge: BridgeAPI, _platform: PlatformInf
     });
   });
 
-  // 업데이트 체크 (커스텀 API 사용)
-  registerHandler<{ endpoint?: string; latestVersion?: string }, UpdateCheckResult>(
+  // 업데이트 체크 (스토어 버전 자동 확인)
+  registerHandler<{ endpoint?: string; latestVersion?: string; checkStore?: boolean }, UpdateCheckResult>(
     'check',
     async (payload, respond) => {
       try {
         const currentVersion = getAppVersion();
         const endpoint = payload?.endpoint || updateConfig.checkEndpoint;
+        const checkStore = payload?.checkStore !== false; // 기본값 true
 
         let latestVersion = payload?.latestVersion;
         let isForced = false;
 
-        // 커스텀 API로 버전 체크
-        if (endpoint && !latestVersion) {
+        // 1. 직접 전달된 버전이 있으면 사용
+        if (latestVersion) {
+          // 이미 설정됨
+        }
+        // 2. 커스텀 API로 버전 체크
+        else if (endpoint) {
           try {
             const response = await fetch(endpoint);
             const data = await response.json();
@@ -139,6 +216,10 @@ export const registerUpdateHandlers = (bridge: BridgeAPI, _platform: PlatformInf
           } catch (e) {
             console.warn('[Update] Failed to fetch version from endpoint:', e);
           }
+        }
+        // 3. 스토어에서 직접 버전 가져오기
+        else if (checkStore) {
+          latestVersion = await getStoreVersion() || undefined;
         }
 
         // 강제 업데이트 버전 체크
