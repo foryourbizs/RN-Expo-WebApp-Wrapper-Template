@@ -17,7 +17,7 @@ export default function TabNav({ activeTab, onTabChange, unsavedTabs }: TabNavPr
       {TABS.map(tab => {
         const isActive = activeTab === tab;
         const hasUnsaved = unsavedTabs.includes(tab);
-        const isDisabled = tab === 'build';
+        const isDisabled = false;
 
         return (
           <button
