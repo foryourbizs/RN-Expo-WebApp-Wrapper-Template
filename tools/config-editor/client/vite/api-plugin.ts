@@ -4,10 +4,10 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import fs from 'fs/promises';
 import path from 'path';
-import { execFile } from 'child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 
-const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
 
 // Project root (where package.json is)
 const projectRoot = path.resolve(__dirname, '../../../..');
@@ -47,8 +47,7 @@ async function searchNpmPackages(query: string) {
   }
   try {
     console.log('[api-plugin] Searching npm for:', query);
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const { stdout } = await execFileAsync(npmCmd, ['search', query, '--json'], {
+    const { stdout } = await execAsync(`npm search "${query}" --json`, {
       cwd: projectRoot,
       timeout: 60000
     });
@@ -63,8 +62,7 @@ async function searchNpmPackages(query: string) {
 
 async function getInstalledPackages() {
   try {
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const { stdout } = await execFileAsync(npmCmd, ['list', '--json', '--depth=0'], {
+    const { stdout } = await execAsync('npm list --json --depth=0', {
       cwd: projectRoot
     });
     const data = JSON.parse(stdout);
@@ -73,6 +71,7 @@ async function getInstalledPackages() {
       version: info.version
     }));
   } catch (error: any) {
+    // npm list는 peer dep 경고로 exit code 1 반환 가능
     if (error.stdout) {
       try {
         const data = JSON.parse(error.stdout);
@@ -84,6 +83,7 @@ async function getInstalledPackages() {
         return [];
       }
     }
+    console.error('[api-plugin] npm list error:', error.message);
     return [];
   }
 }
@@ -94,8 +94,7 @@ async function installPackage(packageName: string, version = 'latest') {
   }
   const spec = version === 'latest' ? packageName : `${packageName}@${version}`;
   try {
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    await execFileAsync(npmCmd, ['install', spec], { cwd: projectRoot, timeout: 120000 });
+    await execAsync(`npm install ${spec}`, { cwd: projectRoot, timeout: 120000 });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -107,8 +106,7 @@ async function uninstallPackage(packageName: string) {
     return { success: false, error: 'Invalid package name' };
   }
   try {
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    await execFileAsync(npmCmd, ['uninstall', packageName], { cwd: projectRoot, timeout: 60000 });
+    await execAsync(`npm uninstall ${packageName}`, { cwd: projectRoot, timeout: 60000 });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -117,11 +115,10 @@ async function uninstallPackage(packageName: string) {
 
 async function regeneratePluginRegistry() {
   try {
-    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    await execFileAsync(npmCmd, ['run', 'generate:plugins'], { cwd: projectRoot });
-    console.log('Plugin registry regenerated');
+    await execAsync('npm run generate:plugins', { cwd: projectRoot });
+    console.log('[api-plugin] Plugin registry regenerated');
   } catch (e) {
-    console.error('Failed to regenerate plugin registry:', e);
+    console.error('[api-plugin] Failed to regenerate plugin registry:', e);
   }
 }
 
