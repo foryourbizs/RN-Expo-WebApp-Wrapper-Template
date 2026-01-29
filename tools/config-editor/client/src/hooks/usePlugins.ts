@@ -20,6 +20,7 @@ export function usePlugins() {
 
   const fetchInstalled = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/plugins/installed');
       if (!res.ok) throw new Error('Failed to fetch');
@@ -31,8 +32,9 @@ export function usePlugins() {
     }
   }, []);
 
-  const searchPackages = async (query: string) => {
+  const searchPackages = useCallback(async (query: string) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/plugins/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('Failed to search');
@@ -42,10 +44,11 @@ export function usePlugins() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const scanFolders = async () => {
+  const scanFolders = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/plugins/scan');
       if (!res.ok) throw new Error('Failed to scan');
@@ -55,10 +58,11 @@ export function usePlugins() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const installPackage = async (name: string, version?: string) => {
+  const installPackage = useCallback(async (name: string, version?: string) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/plugins/install', {
         method: 'POST',
@@ -74,10 +78,11 @@ export function usePlugins() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchInstalled]);
 
-  const uninstallPackage = async (name: string) => {
+  const uninstallPackage = useCallback(async (name: string) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/plugins/uninstall', {
         method: 'POST',
@@ -89,10 +94,11 @@ export function usePlugins() {
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
+      return false;
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchInstalled]);
 
   return {
     installedPackages,

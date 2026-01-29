@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 type ConfigType = 'app' | 'theme' | 'plugins';
 
@@ -29,7 +29,7 @@ export function useConfig<T>(type: ConfigType) {
     fetchConfig();
   }, [fetchConfig]);
 
-  const saveConfig = async (newData: T) => {
+  const saveConfig = useCallback(async (newData: T) => {
     setSaving(true);
     setError(null);
     try {
@@ -47,13 +47,16 @@ export function useConfig<T>(type: ConfigType) {
     } finally {
       setSaving(false);
     }
-  };
+  }, [type]);
 
-  const revert = () => {
+  const revert = useCallback(() => {
     setData(originalData);
-  };
+  }, [originalData]);
 
-  const hasChanges = JSON.stringify(data) !== JSON.stringify(originalData);
+  const hasChanges = useMemo(
+    () => JSON.stringify(data) !== JSON.stringify(originalData),
+    [data, originalData]
+  );
 
   return {
     data,
