@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "node server/index.js --dev",
-    "start": "node server/index.js",
-    "build": "cd client && npm run build"
+    "start": "npm run build:client && node server/index.js",
+    "build:client": "cd client && npm install && npm run build"
   },
   "dependencies": {
     "express": "^4.21.0",
