@@ -66,33 +66,57 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.webview.userAgent')}
           value={data.webview?.userAgent || ''}
           onChange={(v) => updateField(['webview', 'userAgent'], v)}
+          description={t('app.webview.userAgentDesc')}
         />
 
         <Accordion title={t('app.webview.options')}>
           <Toggle
-            label="JavaScript Enabled"
+            label={t('app.webview.javaScriptEnabled')}
             value={data.webview?.options?.javaScriptEnabled ?? true}
             onChange={(v) => updateField(['webview', 'options', 'javaScriptEnabled'], v)}
+            description={t('app.webview.javaScriptEnabledDesc')}
           />
           <Toggle
-            label="DOM Storage Enabled"
+            label={t('app.webview.domStorageEnabled')}
             value={data.webview?.options?.domStorageEnabled ?? true}
             onChange={(v) => updateField(['webview', 'options', 'domStorageEnabled'], v)}
+            description={t('app.webview.domStorageEnabledDesc')}
           />
           <Toggle
-            label="Third Party Cookies"
+            label={t('app.webview.thirdPartyCookiesEnabled')}
             value={data.webview?.options?.thirdPartyCookiesEnabled ?? true}
             onChange={(v) => updateField(['webview', 'options', 'thirdPartyCookiesEnabled'], v)}
+            description={t('app.webview.thirdPartyCookiesEnabledDesc')}
           />
           <Toggle
-            label="Cache Enabled"
+            label={t('app.webview.cacheEnabled')}
             value={data.webview?.options?.cacheEnabled ?? true}
             onChange={(v) => updateField(['webview', 'options', 'cacheEnabled'], v)}
+            description={t('app.webview.cacheEnabledDesc')}
+          />
+          <Toggle
+            label={t('app.webview.mediaPlaybackRequiresUserAction')}
+            value={data.webview?.options?.mediaPlaybackRequiresUserAction ?? true}
+            onChange={(v) => updateField(['webview', 'options', 'mediaPlaybackRequiresUserAction'], v)}
+            description={t('app.webview.mediaPlaybackRequiresUserActionDesc')}
+          />
+          <Toggle
+            label={t('app.webview.allowsInlineMediaPlayback')}
+            value={data.webview?.options?.allowsInlineMediaPlayback ?? true}
+            onChange={(v) => updateField(['webview', 'options', 'allowsInlineMediaPlayback'], v)}
+            description={t('app.webview.allowsInlineMediaPlaybackDesc')}
+          />
+          <Toggle
+            label={t('app.webview.allowsBackForwardNavigationGestures')}
+            value={data.webview?.options?.allowsBackForwardNavigationGestures ?? true}
+            onChange={(v) => updateField(['webview', 'options', 'allowsBackForwardNavigationGestures'], v)}
+            description={t('app.webview.allowsBackForwardNavigationGesturesDesc')}
           />
           <Select
-            label="Mixed Content Mode"
+            label={t('app.webview.mixedContentMode')}
             value={data.webview?.options?.mixedContentMode || 'compatibility'}
             onChange={(v) => updateField(['webview', 'options', 'mixedContentMode'], v)}
+            description={t('app.webview.mixedContentModeDesc')}
             options={[
               { value: 'compatibility', label: 'Compatibility' },
               { value: 'never', label: 'Never' },
@@ -103,22 +127,59 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
 
         <Accordion title={t('app.webview.performance')}>
           <Select
-            label="Android Layer Type"
+            label={t('app.webview.androidLayerType')}
             value={data.webview?.performance?.androidLayerType || 'hardware'}
             onChange={(v) => updateField(['webview', 'performance', 'androidLayerType'], v)}
+            description={t('app.webview.androidLayerTypeDesc')}
             options={[
               { value: 'none', label: 'None' },
               { value: 'software', label: 'Software' },
               { value: 'hardware', label: 'Hardware' }
             ]}
           />
+          <Select
+            label={t('app.webview.overScrollMode')}
+            value={data.webview?.performance?.overScrollMode || 'never'}
+            onChange={(v) => updateField(['webview', 'performance', 'overScrollMode'], v)}
+            description={t('app.webview.overScrollModeDesc')}
+            options={[
+              { value: 'always', label: 'Always' },
+              { value: 'content', label: 'Content' },
+              { value: 'never', label: 'Never' }
+            ]}
+          />
           <NumberInput
-            label="Text Zoom"
+            label={t('app.webview.textZoom')}
             value={data.webview?.performance?.textZoom ?? 100}
             onChange={(v) => updateField(['webview', 'performance', 'textZoom'], v)}
+            description={t('app.webview.textZoomDesc')}
             min={50}
             max={200}
             showSlider
+          />
+          <Toggle
+            label={t('app.webview.nestedScrollEnabled')}
+            value={data.webview?.performance?.nestedScrollEnabled ?? false}
+            onChange={(v) => updateField(['webview', 'performance', 'nestedScrollEnabled'], v)}
+            description={t('app.webview.nestedScrollEnabledDesc')}
+          />
+          <Toggle
+            label={t('app.webview.hideScrollIndicators')}
+            value={data.webview?.performance?.hideScrollIndicators ?? true}
+            onChange={(v) => updateField(['webview', 'performance', 'hideScrollIndicators'], v)}
+            description={t('app.webview.hideScrollIndicatorsDesc')}
+          />
+          <Toggle
+            label={t('app.webview.allowsFullscreenVideo')}
+            value={data.webview?.performance?.allowsFullscreenVideo ?? true}
+            onChange={(v) => updateField(['webview', 'performance', 'allowsFullscreenVideo'], v)}
+            description={t('app.webview.allowsFullscreenVideoDesc')}
+          />
+          <Toggle
+            label={t('app.webview.setSupportMultipleWindows')}
+            value={data.webview?.performance?.setSupportMultipleWindows ?? false}
+            onChange={(v) => updateField(['webview', 'performance', 'setSupportMultipleWindows'], v)}
+            description={t('app.webview.setSupportMultipleWindowsDesc')}
           />
         </Accordion>
       </Accordion>
@@ -129,21 +190,43 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.offline.enabled')}
           value={data.offline?.enabled ?? true}
           onChange={(v) => updateField(['offline', 'enabled'], v)}
+          description={t('app.offline.enabledDesc')}
         />
         <TextInput
           label={t('app.offline.titleField')}
           value={data.offline?.title || ''}
           onChange={(v) => updateField(['offline', 'title'], v)}
+          description={t('app.offline.titleFieldDesc')}
         />
         <TextInput
           label={t('app.offline.message')}
           value={data.offline?.message || ''}
           onChange={(v) => updateField(['offline', 'message'], v)}
+          description={t('app.offline.messageDesc')}
+        />
+        <TextInput
+          label={t('app.offline.retryButtonText')}
+          value={data.offline?.retryButtonText || ''}
+          onChange={(v) => updateField(['offline', 'retryButtonText'], v)}
+          description={t('app.offline.retryButtonTextDesc')}
+        />
+        <Toggle
+          label={t('app.offline.autoReconnect')}
+          value={data.offline?.autoReconnect ?? true}
+          onChange={(v) => updateField(['offline', 'autoReconnect'], v)}
+          description={t('app.offline.autoReconnectDesc')}
         />
         <ColorPicker
-          label="Background Color"
+          label={t('app.offline.backgroundColor')}
           value={data.offline?.backgroundColor || '#ffffff'}
           onChange={(v) => updateField(['offline', 'backgroundColor'], v)}
+          description={t('app.offline.backgroundColorDesc')}
+        />
+        <ColorPicker
+          label={t('app.offline.darkBackgroundColor')}
+          value={data.offline?.darkBackgroundColor || '#1a1a1a'}
+          onChange={(v) => updateField(['offline', 'darkBackgroundColor'], v)}
+          description={t('app.offline.darkBackgroundColorDesc')}
         />
       </Accordion>
 
@@ -153,16 +236,42 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.statusBar.visible')}
           value={data.statusBar?.visible ?? true}
           onChange={(v) => updateField(['statusBar', 'visible'], v)}
+          description={t('app.statusBar.visibleDesc')}
         />
         <Select
           label={t('app.statusBar.style')}
           value={data.statusBar?.style || 'dark'}
           onChange={(v) => updateField(['statusBar', 'style'], v)}
+          description={t('app.statusBar.styleDesc')}
           options={[
             { value: 'auto', label: 'Auto' },
             { value: 'light', label: 'Light' },
             { value: 'dark', label: 'Dark' }
           ]}
+        />
+        <Toggle
+          label={t('app.statusBar.translucent')}
+          value={data.statusBar?.translucent ?? true}
+          onChange={(v) => updateField(['statusBar', 'translucent'], v)}
+          description={t('app.statusBar.translucentDesc')}
+        />
+        <Toggle
+          label={t('app.statusBar.overlapsWebView')}
+          value={data.statusBar?.overlapsWebView ?? false}
+          onChange={(v) => updateField(['statusBar', 'overlapsWebView'], v)}
+          description={t('app.statusBar.overlapsWebViewDesc')}
+        />
+        <Toggle
+          label={t('app.statusBar.showOverlay')}
+          value={data.statusBar?.showOverlay ?? true}
+          onChange={(v) => updateField(['statusBar', 'showOverlay'], v)}
+          description={t('app.statusBar.showOverlayDesc')}
+        />
+        <TextInput
+          label={t('app.statusBar.overlayColor')}
+          value={data.statusBar?.overlayColor || 'rgba(0,0,0,0.5)'}
+          onChange={(v) => updateField(['statusBar', 'overlayColor'], v)}
+          description={t('app.statusBar.overlayColorDesc')}
         />
       </Accordion>
 
@@ -172,15 +281,43 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.navigationBar.visibility')}
           value={data.navigationBar?.visibility || 'visible'}
           onChange={(v) => updateField(['navigationBar', 'visibility'], v)}
+          description={t('app.navigationBar.visibilityDesc')}
           options={[
             { value: 'visible', label: 'Visible' },
             { value: 'hidden', label: 'Hidden' }
           ]}
         />
+        <Select
+          label={t('app.navigationBar.behavior')}
+          value={data.navigationBar?.behavior || 'overlay-swipe'}
+          onChange={(v) => updateField(['navigationBar', 'behavior'], v)}
+          description={t('app.navigationBar.behaviorDesc')}
+          options={[
+            { value: 'overlay-swipe', label: 'Overlay Swipe' },
+            { value: 'inset-swipe', label: 'Inset Swipe' }
+          ]}
+        />
+        <Select
+          label={t('app.navigationBar.buttonStyle')}
+          value={data.navigationBar?.buttonStyle || 'dark'}
+          onChange={(v) => updateField(['navigationBar', 'buttonStyle'], v)}
+          description={t('app.navigationBar.buttonStyleDesc')}
+          options={[
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' }
+          ]}
+        />
         <ColorPicker
-          label="Background Color"
+          label={t('app.navigationBar.backgroundColor')}
           value={data.navigationBar?.backgroundColor || '#ffffff'}
           onChange={(v) => updateField(['navigationBar', 'backgroundColor'], v)}
+          description={t('app.navigationBar.backgroundColorDesc')}
+        />
+        <ColorPicker
+          label={t('app.navigationBar.darkBackgroundColor')}
+          value={data.navigationBar?.darkBackgroundColor || '#000000'}
+          onChange={(v) => updateField(['navigationBar', 'darkBackgroundColor'], v)}
+          description={t('app.navigationBar.darkBackgroundColorDesc')}
         />
       </Accordion>
 
@@ -190,17 +327,41 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.safeArea.enabled')}
           value={data.safeArea?.enabled ?? false}
           onChange={(v) => updateField(['safeArea', 'enabled'], v)}
+          description={t('app.safeArea.enabledDesc')}
         />
         <Select
           label={t('app.safeArea.edges')}
           value={data.safeArea?.edges || 'none'}
           onChange={(v) => updateField(['safeArea', 'edges'], v)}
+          description={t('app.safeArea.edgesDesc')}
           options={[
             { value: 'all', label: 'All' },
             { value: 'top', label: 'Top' },
             { value: 'bottom', label: 'Bottom' },
             { value: 'none', label: 'None' }
           ]}
+        />
+        <ColorPicker
+          label={t('app.safeArea.backgroundColor')}
+          value={data.safeArea?.backgroundColor || '#ffffff'}
+          onChange={(v) => updateField(['safeArea', 'backgroundColor'], v)}
+          description={t('app.safeArea.backgroundColorDesc')}
+        />
+        <ColorPicker
+          label={t('app.safeArea.darkBackgroundColor')}
+          value={data.safeArea?.darkBackgroundColor || '#000000'}
+          onChange={(v) => updateField(['safeArea', 'darkBackgroundColor'], v)}
+          description={t('app.safeArea.darkBackgroundColorDesc')}
+        />
+      </Accordion>
+
+      {/* Theme */}
+      <Accordion title={t('app.theme.title')}>
+        <ColorPicker
+          label={t('app.theme.loadingIndicatorColor')}
+          value={data.theme?.loadingIndicatorColor || '#007AFF'}
+          onChange={(v) => updateField(['theme', 'loadingIndicatorColor'], v)}
+          description={t('app.theme.loadingIndicatorColorDesc')}
         />
       </Accordion>
 
@@ -210,19 +371,55 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.splash.enabled')}
           value={data.splash?.enabled ?? true}
           onChange={(v) => updateField(['splash', 'enabled'], v)}
+          description={t('app.splash.enabledDesc')}
         />
         <NumberInput
           label={t('app.splash.minDisplayTime')}
           value={data.splash?.minDisplayTime ?? 1000}
           onChange={(v) => updateField(['splash', 'minDisplayTime'], v)}
+          description={t('app.splash.minDisplayTimeDesc')}
           min={0}
           max={5000}
           step={100}
+        />
+        <NumberInput
+          label={t('app.splash.fadeOutDuration')}
+          value={data.splash?.fadeOutDuration ?? 300}
+          onChange={(v) => updateField(['splash', 'fadeOutDuration'], v)}
+          description={t('app.splash.fadeOutDurationDesc')}
+          min={0}
+          max={2000}
+          step={50}
         />
         <TextInput
           label={t('app.splash.loadingText')}
           value={data.splash?.loadingText || ''}
           onChange={(v) => updateField(['splash', 'loadingText'], v)}
+          description={t('app.splash.loadingTextDesc')}
+        />
+        <TextInput
+          label={t('app.splash.logoImage')}
+          value={data.splash?.logoImage || ''}
+          onChange={(v) => updateField(['splash', 'logoImage'], v || null)}
+          description={t('app.splash.logoImageDesc')}
+        />
+        <Toggle
+          label={t('app.splash.showLoadingIndicator')}
+          value={data.splash?.showLoadingIndicator ?? true}
+          onChange={(v) => updateField(['splash', 'showLoadingIndicator'], v)}
+          description={t('app.splash.showLoadingIndicatorDesc')}
+        />
+        <ColorPicker
+          label={t('app.splash.backgroundColor')}
+          value={data.splash?.backgroundColor || '#ffffff'}
+          onChange={(v) => updateField(['splash', 'backgroundColor'], v)}
+          description={t('app.splash.backgroundColorDesc')}
+        />
+        <ColorPicker
+          label={t('app.splash.darkBackgroundColor')}
+          value={data.splash?.darkBackgroundColor || '#000000'}
+          onChange={(v) => updateField(['splash', 'darkBackgroundColor'], v)}
+          description={t('app.splash.darkBackgroundColorDesc')}
         />
       </Accordion>
 
@@ -232,8 +429,109 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           label={t('app.security.allowedOrigins')}
           value={data.security?.allowedOrigins || []}
           onChange={(v) => updateField(['security', 'allowedOrigins'], v)}
+          description={t('app.security.allowedOriginsDesc')}
           placeholder="https://example.com"
         />
+        <TagInput
+          label={t('app.security.allowedSchemes')}
+          value={data.security?.allowedSchemes || ['https', 'http', 'about']}
+          onChange={(v) => updateField(['security', 'allowedSchemes'], v)}
+          description={t('app.security.allowedSchemesDesc')}
+          placeholder="https"
+        />
+        <TagInput
+          label={t('app.security.blockedSchemes')}
+          value={data.security?.blockedSchemes || ['data', 'blob', 'javascript', 'vbscript']}
+          onChange={(v) => updateField(['security', 'blockedSchemes'], v)}
+          description={t('app.security.blockedSchemesDesc')}
+          placeholder="javascript"
+        />
+        <Toggle
+          label={t('app.security.allowInsecureHttp')}
+          value={data.security?.allowInsecureHttp ?? false}
+          onChange={(v) => updateField(['security', 'allowInsecureHttp'], v)}
+          description={t('app.security.allowInsecureHttpDesc')}
+        />
+        <Toggle
+          label={t('app.security.debug')}
+          value={data.security?.debug ?? false}
+          onChange={(v) => updateField(['security', 'debug'], v)}
+          description={t('app.security.debugDesc')}
+        />
+      </Accordion>
+
+      {/* Debug */}
+      <Accordion title={t('app.debug.title')}>
+        <Toggle
+          label={t('app.debug.enabled')}
+          value={data.debug?.enabled ?? false}
+          onChange={(v) => updateField(['debug', 'enabled'], v)}
+          description={t('app.debug.enabledDesc')}
+        />
+        <NumberInput
+          label={t('app.debug.maxLogLines')}
+          value={data.debug?.maxLogLines ?? 50}
+          onChange={(v) => updateField(['debug', 'maxLogLines'], v)}
+          description={t('app.debug.maxLogLinesDesc')}
+          min={10}
+          max={200}
+        />
+        <NumberInput
+          label={t('app.debug.overlayOpacity')}
+          value={data.debug?.overlayOpacity ?? 0.85}
+          onChange={(v) => updateField(['debug', 'overlayOpacity'], v)}
+          description={t('app.debug.overlayOpacityDesc')}
+          min={0.1}
+          max={1}
+          step={0.05}
+          showSlider
+        />
+        <NumberInput
+          label={t('app.debug.fontSize')}
+          value={data.debug?.fontSize ?? 11}
+          onChange={(v) => updateField(['debug', 'fontSize'], v)}
+          description={t('app.debug.fontSizeDesc')}
+          min={8}
+          max={16}
+        />
+        <Accordion title={t('app.debug.colors')}>
+          <ColorPicker
+            label={t('app.debug.colorInfo')}
+            value={data.debug?.colors?.info || '#3498db'}
+            onChange={(v) => updateField(['debug', 'colors', 'info'], v)}
+            description={t('app.debug.colorInfoDesc')}
+          />
+          <ColorPicker
+            label={t('app.debug.colorWarn')}
+            value={data.debug?.colors?.warn || '#f39c12'}
+            onChange={(v) => updateField(['debug', 'colors', 'warn'], v)}
+            description={t('app.debug.colorWarnDesc')}
+          />
+          <ColorPicker
+            label={t('app.debug.colorError')}
+            value={data.debug?.colors?.error || '#e74c3c'}
+            onChange={(v) => updateField(['debug', 'colors', 'error'], v)}
+            description={t('app.debug.colorErrorDesc')}
+          />
+          <ColorPicker
+            label={t('app.debug.colorSuccess')}
+            value={data.debug?.colors?.success || '#27ae60'}
+            onChange={(v) => updateField(['debug', 'colors', 'success'], v)}
+            description={t('app.debug.colorSuccessDesc')}
+          />
+          <ColorPicker
+            label={t('app.debug.colorEvent')}
+            value={data.debug?.colors?.event || '#9b59b6'}
+            onChange={(v) => updateField(['debug', 'colors', 'event'], v)}
+            description={t('app.debug.colorEventDesc')}
+          />
+          <ColorPicker
+            label={t('app.debug.colorNav')}
+            value={data.debug?.colors?.nav || '#1abc9c'}
+            onChange={(v) => updateField(['debug', 'colors', 'nav'], v)}
+            description={t('app.debug.colorNavDesc')}
+          />
+        </Accordion>
       </Accordion>
 
       <SaveRevertBar

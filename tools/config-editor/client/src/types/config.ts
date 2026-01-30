@@ -63,10 +63,29 @@ export interface AppConfig {
     loadingText?: string;
     showLoadingIndicator?: boolean;
   };
+  theme?: {
+    loadingIndicatorColor?: string;
+  };
   security?: {
     allowedOrigins?: string[];
     blockedSchemes?: string[];
     allowedSchemes?: string[];
+    allowInsecureHttp?: boolean;
+    debug?: boolean;
+  };
+  debug?: {
+    enabled?: boolean | null;
+    maxLogLines?: number;
+    overlayOpacity?: number;
+    fontSize?: number;
+    colors?: {
+      info?: string;
+      warn?: string;
+      error?: string;
+      success?: string;
+      event?: string;
+      nav?: string;
+    };
   };
 }
 

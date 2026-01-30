@@ -5,14 +5,16 @@ interface ColorPickerProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  description?: string;
 }
 
-export default function ColorPicker({ label, value, onChange }: ColorPickerProps) {
+export default function ColorPicker({ label, value, onChange, description }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="mb-3">
       <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      {description && <p className="text-xs text-slate-400 mb-1">{description}</p>}
       <div className="flex items-center gap-2">
         <button
           type="button"

@@ -1,0 +1,393 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "App Configuration",
+  "description": "Configuration schema for the WebApp Wrapper application",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "webview": {
+      "type": "object",
+      "description": "WebView settings",
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "description": "Website URL to load in app"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "Custom User-Agent string appended to requests"
+        },
+        "options": {
+          "type": "object",
+          "description": "WebView options",
+          "properties": {
+            "javaScriptEnabled": {
+              "type": "boolean",
+              "description": "Enable JavaScript execution",
+              "default": true
+            },
+            "domStorageEnabled": {
+              "type": "boolean",
+              "description": "Enable localStorage and sessionStorage",
+              "default": true
+            },
+            "thirdPartyCookiesEnabled": {
+              "type": "boolean",
+              "description": "Allow cookies from third-party domains",
+              "default": true
+            },
+            "mediaPlaybackRequiresUserAction": {
+              "type": "boolean",
+              "description": "Require user action for media playback",
+              "default": true
+            },
+            "mixedContentMode": {
+              "type": "string",
+              "enum": ["compatibility", "never", "always"],
+              "description": "How to handle HTTP resources on HTTPS pages",
+              "default": "compatibility"
+            },
+            "cacheEnabled": {
+              "type": "boolean",
+              "description": "Enable HTTP cache",
+              "default": true
+            },
+            "allowsInlineMediaPlayback": {
+              "type": "boolean",
+              "description": "Allow inline media playback (iOS)",
+              "default": true
+            },
+            "allowsBackForwardNavigationGestures": {
+              "type": "boolean",
+              "description": "Allow swipe back/forward gestures (iOS)",
+              "default": true
+            }
+          }
+        },
+        "performance": {
+          "type": "object",
+          "description": "Performance optimization options (Android)",
+          "properties": {
+            "androidLayerType": {
+              "type": "string",
+              "enum": ["none", "software", "hardware"],
+              "description": "Rendering layer type",
+              "default": "hardware"
+            },
+            "overScrollMode": {
+              "type": "string",
+              "enum": ["always", "content", "never"],
+              "description": "Overscroll mode",
+              "default": "never"
+            },
+            "textZoom": {
+              "type": "integer",
+              "description": "Text zoom percentage (100 = default)",
+              "default": 100
+            },
+            "nestedScrollEnabled": {
+              "type": "boolean",
+              "description": "Enable nested scrolling",
+              "default": false
+            },
+            "hideScrollIndicators": {
+              "type": "boolean",
+              "description": "Hide scroll indicators",
+              "default": true
+            },
+            "allowsFullscreenVideo": {
+              "type": "boolean",
+              "description": "Allow fullscreen video",
+              "default": true
+            },
+            "setSupportMultipleWindows": {
+              "type": "boolean",
+              "description": "Support multiple windows",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "offline": {
+      "type": "object",
+      "description": "Offline screen settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Show offline screen when network is unavailable",
+          "default": true
+        },
+        "title": {
+          "type": "string",
+          "description": "Title text on offline screen"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message text on offline screen"
+        },
+        "retryButtonText": {
+          "type": "string",
+          "description": "Retry button text"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "Background color (hex)",
+          "default": "#ffffff"
+        },
+        "darkBackgroundColor": {
+          "type": "string",
+          "description": "Dark mode background color (hex)",
+          "default": "#1a1a1a"
+        },
+        "autoReconnect": {
+          "type": "boolean",
+          "description": "Auto refresh when network is restored",
+          "default": true
+        }
+      }
+    },
+    "statusBar": {
+      "type": "object",
+      "description": "Status bar settings",
+      "properties": {
+        "visible": {
+          "type": "boolean",
+          "description": "Show or hide the status bar",
+          "default": true
+        },
+        "style": {
+          "type": "string",
+          "enum": ["auto", "light", "dark"],
+          "description": "Status bar content color",
+          "default": "dark"
+        },
+        "overlapsWebView": {
+          "type": "boolean",
+          "description": "Status bar overlaps WebView",
+          "default": false
+        },
+        "showOverlay": {
+          "type": "boolean",
+          "description": "Show status bar overlay",
+          "default": true
+        },
+        "overlayColor": {
+          "type": "string",
+          "description": "Status bar overlay color",
+          "default": "rgba(0,0,0,0.5)"
+        },
+        "translucent": {
+          "type": "boolean",
+          "description": "Translucent status bar (Android)",
+          "default": true
+        }
+      }
+    },
+    "navigationBar": {
+      "type": "object",
+      "description": "Navigation bar settings (Android)",
+      "properties": {
+        "visibility": {
+          "type": "string",
+          "enum": ["visible", "hidden"],
+          "description": "Navigation bar display mode",
+          "default": "visible"
+        },
+        "behavior": {
+          "type": "string",
+          "enum": ["overlay-swipe", "inset-swipe"],
+          "description": "Behavior when hidden",
+          "default": "overlay-swipe"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "Navigation bar background color (hex)",
+          "default": "#ffffff"
+        },
+        "darkBackgroundColor": {
+          "type": "string",
+          "description": "Dark mode background color (hex)",
+          "default": "#000000"
+        },
+        "buttonStyle": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "description": "Navigation bar button style",
+          "default": "dark"
+        }
+      }
+    },
+    "safeArea": {
+      "type": "object",
+      "description": "Safe area settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Apply safe area insets",
+          "default": false
+        },
+        "edges": {
+          "type": "string",
+          "enum": ["all", "top", "bottom", "none"],
+          "description": "Which edges to apply safe area",
+          "default": "none"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "Safe area background color (hex)",
+          "default": "#ffffff"
+        },
+        "darkBackgroundColor": {
+          "type": "string",
+          "description": "Dark mode background color (hex)",
+          "default": "#000000"
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "description": "Theme settings",
+      "properties": {
+        "loadingIndicatorColor": {
+          "type": "string",
+          "description": "Loading indicator color (hex)",
+          "default": "#007AFF"
+        }
+      }
+    },
+    "splash": {
+      "type": "object",
+      "description": "Splash screen settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Show custom splash screen",
+          "default": true
+        },
+        "minDisplayTime": {
+          "type": "integer",
+          "description": "Minimum display time in ms",
+          "default": 1000
+        },
+        "fadeOutDuration": {
+          "type": "integer",
+          "description": "Fade out duration in ms",
+          "default": 300
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "Background color (hex)",
+          "default": "#ffffff"
+        },
+        "darkBackgroundColor": {
+          "type": "string",
+          "description": "Dark mode background color (hex)",
+          "default": "#000000"
+        },
+        "logoImage": {
+          "type": ["string", "null"],
+          "description": "Logo image path (null for text only)"
+        },
+        "loadingText": {
+          "type": "string",
+          "description": "Loading text"
+        },
+        "showLoadingIndicator": {
+          "type": "boolean",
+          "description": "Show loading indicator",
+          "default": true
+        }
+      }
+    },
+    "debug": {
+      "type": "object",
+      "description": "Debug settings",
+      "properties": {
+        "enabled": {
+          "type": ["boolean", "null"],
+          "description": "Enable debug overlay (null = __DEV__ mode only)",
+          "default": null
+        },
+        "maxLogLines": {
+          "type": "integer",
+          "description": "Maximum log lines in overlay",
+          "default": 50
+        },
+        "overlayOpacity": {
+          "type": "number",
+          "description": "Debug overlay opacity (0-1)",
+          "default": 0.85
+        },
+        "fontSize": {
+          "type": "integer",
+          "description": "Log text font size",
+          "default": 11
+        },
+        "colors": {
+          "type": "object",
+          "description": "Log level colors",
+          "properties": {
+            "info": { "type": "string", "default": "#3498db" },
+            "warn": { "type": "string", "default": "#f39c12" },
+            "error": { "type": "string", "default": "#e74c3c" },
+            "success": { "type": "string", "default": "#27ae60" },
+            "event": { "type": "string", "default": "#9b59b6" },
+            "nav": { "type": "string", "default": "#1abc9c" }
+          }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "description": "Security settings",
+      "properties": {
+        "allowedOrigins": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowed origins for bridge communication (empty = allow all)",
+          "default": []
+        },
+        "blockedSchemes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Blocked URL schemes",
+          "default": ["data", "blob", "javascript", "vbscript"]
+        },
+        "allowedSchemes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowed URL schemes",
+          "default": ["https", "http", "about"]
+        },
+        "allowInsecureHttp": {
+          "type": "boolean",
+          "description": "Allow HTTP in development",
+          "default": false
+        },
+        "lockdownDurationMs": {
+          "type": "integer",
+          "description": "Lockdown duration in ms",
+          "default": 30000
+        },
+        "messageMaxAgeMs": {
+          "type": "integer",
+          "description": "Message max age in ms",
+          "default": 30000
+        },
+        "maxRedirectChain": {
+          "type": "integer",
+          "description": "Maximum redirect chain length",
+          "default": 5
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Enable security debug logs",
+          "default": false
+        }
+      }
+    }
+  }
+}

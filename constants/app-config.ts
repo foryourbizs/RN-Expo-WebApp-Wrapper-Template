@@ -149,8 +149,8 @@ const APP_CONFIG_DEFAULTS = {
 
   // 디버그 설정
   debug: {
-    // 디버그 모드 활성화
-    enabled: __DEV__,
+    // 디버그 모드 활성화 (null이면 __DEV__ 값 사용)
+    enabled: null as boolean | null,
     // 최대 로그 라인 수
     maxLogLines: 50,
     // 로그 오버레이 투명도
@@ -199,7 +199,22 @@ export type AppConfigType = typeof APP_CONFIG_DEFAULTS;
 
 // JSON 오버라이드와 병합하여 최종 설정 생성
 const { $schema, ...overrides } = appOverrides as { $schema?: string } & DeepPartial<AppConfigType>;
-export const APP_CONFIG = deepMerge(APP_CONFIG_DEFAULTS, overrides);
+const mergedConfig = deepMerge(APP_CONFIG_DEFAULTS, overrides);
+
+// debug.enabled가 null이면 __DEV__ 값으로 대체
+if (mergedConfig.debug.enabled === null) {
+  mergedConfig.debug.enabled = __DEV__;
+}
+
+// security.allowInsecureHttp와 security.debug도 __DEV__ 기반 기본값 적용
+if (mergedConfig.security.allowInsecureHttp === undefined) {
+  mergedConfig.security.allowInsecureHttp = __DEV__;
+}
+if (mergedConfig.security.debug === undefined) {
+  mergedConfig.security.debug = __DEV__;
+}
+
+export const APP_CONFIG = mergedConfig;
 
 // 하위 타입 추출
 export type WebviewConfig = AppConfigType['webview'];
