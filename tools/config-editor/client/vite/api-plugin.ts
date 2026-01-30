@@ -1481,6 +1481,58 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             return;
           }
 
+          // GET /api/proxy - Proxy for fetching external URLs (CORS bypass for preview)
+          if (url.startsWith('/api/proxy') && req.method === 'GET') {
+            const urlObj = new URL(url, 'http://localhost');
+            const targetUrl = urlObj.searchParams.get('url');
+
+            if (!targetUrl) {
+              sendJson(res, 400, { error: 'url parameter is required' });
+              return;
+            }
+
+            // URL 유효성 검사
+            try {
+              const parsedUrl = new URL(targetUrl);
+              if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+                sendJson(res, 400, { error: 'Only http/https URLs are allowed' });
+                return;
+              }
+            } catch {
+              sendJson(res, 400, { error: 'Invalid URL' });
+              return;
+            }
+
+            try {
+              // Node.js fetch로 외부 URL 가져오기
+              const response = await fetch(targetUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'Accept-Language': 'en-US,en;q=0.9'
+                },
+                redirect: 'follow'
+              });
+
+              if (!response.ok) {
+                sendJson(res, response.status, { error: `Failed to fetch: ${response.statusText}` });
+                return;
+              }
+
+              const contentType = response.headers.get('content-type') || 'text/html';
+              const content = await response.text();
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', contentType);
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.end(content);
+            } catch (error: any) {
+              console.error('[api-plugin] Proxy fetch error:', error.message);
+              sendJson(res, 500, { error: `Proxy error: ${error.message}` });
+            }
+            return;
+          }
+
           // Not found
           sendJson(res, 404, { error: 'Not found' });
 
