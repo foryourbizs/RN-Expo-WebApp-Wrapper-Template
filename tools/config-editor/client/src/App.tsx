@@ -6,10 +6,18 @@ import AppConfigPage from './pages/AppConfig';
 import ThemeConfigPage from './pages/ThemeConfig';
 import PluginsConfigPage from './pages/PluginsConfig';
 import BuildConfigPage from './pages/BuildConfig';
+import { PreviewPanel } from './components/preview';
+import { PreviewProvider } from './contexts/PreviewContext';
+import { useConfig } from './hooks/useConfig';
+import type { AppConfig, ThemeConfig } from './types/config';
 
-export default function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState('appSettings');
   const [unsavedTabs, setUnsavedTabs] = useState<string[]>([]);
+
+  // 미리보기를 위해 config 데이터 로드
+  const { data: appConfig } = useConfig<AppConfig>('app');
+  const { data: themeConfig } = useConfig<ThemeConfig>('theme');
 
   const handleUnsavedChange = useCallback((tab: string) => (hasChanges: boolean) => {
     setUnsavedTabs(prev => {
@@ -23,8 +31,16 @@ export default function App() {
     });
   }, []);
 
+  const previewPanel = (
+    <PreviewPanel
+      appConfig={appConfig}
+      themeConfig={themeConfig}
+      activeTab={activeTab}
+    />
+  );
+
   return (
-    <Layout>
+    <Layout previewPanel={previewPanel}>
       <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <TabNav
           activeTab={activeTab}
@@ -47,5 +63,13 @@ export default function App() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+export default function App() {
+  return (
+    <PreviewProvider>
+      <AppContent />
+    </PreviewProvider>
   );
 }
