@@ -1,19 +1,54 @@
-import { useState, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 
 interface AccordionProps {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  /** Controlled mode: external open state */
+  isOpen?: boolean;
+  /** Callback when accordion is toggled */
+  onToggle?: (isOpen: boolean) => void;
+  /** Unique identifier for tracking */
+  sectionId?: string;
 }
 
-export default function Accordion({ title, children, defaultOpen = false }: AccordionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+export default function Accordion({
+  title,
+  children,
+  defaultOpen = false,
+  isOpen: controlledIsOpen,
+  onToggle,
+  sectionId,
+}: AccordionProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
+
+  // 제어 모드 여부 확인
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+
+  // 제어 모드에서 외부 값이 변경되면 내부 상태도 동기화
+  useEffect(() => {
+    if (isControlled) {
+      setInternalIsOpen(controlledIsOpen);
+    }
+  }, [isControlled, controlledIsOpen]);
+
+  const handleToggle = () => {
+    const newState = !isOpen;
+
+    if (!isControlled) {
+      setInternalIsOpen(newState);
+    }
+
+    onToggle?.(newState);
+  };
 
   return (
     <div className="border border-slate-200 rounded-lg mb-3 overflow-hidden">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
+        data-section-id={sectionId}
         className={`
           w-full px-4 py-2.5 flex items-center justify-between text-left
           ${isOpen ? 'bg-slate-100 border-b border-slate-200' : 'bg-slate-50 hover:bg-slate-100'}
