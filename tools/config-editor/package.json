@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "cd client && npm install --prefer-offline --no-audit --no-fund",
     "dev": "cd client && npm run dev",
     "build": "cd client && npm run build",
     "preview": "cd client && npm run preview",

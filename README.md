@@ -29,6 +29,7 @@ Select your language:
 - 📡 **Offline Support** - Custom offline screen
 - 🛠️ **Built-in Handlers** - Toast, vibration, clipboard, and more
 - 📷 **Camera Integration** - Camera streaming & photo capture (Android only)
+- ⚙️ **Web Config Editor** - Configure everything via web UI (`npm run config`)
 
 
 ---
@@ -46,18 +47,22 @@ npm install
 
 ### 2. Configure
 
-Edit `constants/app-config.ts`:
+**Option A: Web UI (Recommended)**
+```bash
+npm run config
+```
+Opens a web-based configuration editor where you can set up all app settings, plugins, themes, and build options.
 
-```typescript
-export const APP_CONFIG = {
-  webview: {
-    url: 'https://your-webapp-url.com',
-  },
-  app: {
-    name: 'Your App Name',
-    // ...
-  },
-};
+**Option B: Manual Edit**
+
+Edit `constants/app.json`:
+
+```json
+{
+  "webview": {
+    "baseUrl": "https://your-webapp-url.com"
+  }
+}
 ```
 
 ### 3. Run
@@ -79,12 +84,23 @@ npx expo run:ios
 
 ## 🔨 Build
 
-### Windows
+### Web UI (Recommended)
+```bash
+npm run config
+```
+Navigate to the **Build** tab to:
+- Check build environment (SDK, Java, licenses)
+- Generate release keystore
+- Run local or cloud builds
+
+### Command Line
+
+**Windows**
 ```bash
 .\build.bat
 ```
 
-### EAS Cloud Build
+**EAS Cloud Build**
 ```bash
 npx eas build --platform android --profile preview
 ```
