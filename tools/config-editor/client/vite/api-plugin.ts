@@ -1052,9 +1052,28 @@ export function apiPlugin(): Plugin {
         }
 
         if (!proxyTargetUrl || !proxyTargetOrigin) {
-          res.statusCode = 400;
-          res.setHeader('Content-Type', 'text/plain');
-          res.end('Preview proxy not configured. Set target URL first.');
+          // 프록시 미설정 시 로딩 페이지 반환
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'text/html');
+          res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui; background: #f8fafc; }
+    .loader { text-align: center; color: #64748b; }
+    .spinner { width: 24px; height: 24px; border: 2px solid #e2e8f0; border-top-color: #475569; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="loader">
+    <div class="spinner"></div>
+    <div>Waiting for preview...</div>
+  </div>
+  <script>setTimeout(() => location.reload(), 1000);</script>
+</body>
+</html>`);
           return;
         }
 
