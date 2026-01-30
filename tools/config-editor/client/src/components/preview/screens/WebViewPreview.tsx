@@ -1,5 +1,5 @@
 // tools/config-editor/client/src/components/preview/screens/WebViewPreview.tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePreview } from '../../../contexts/PreviewContext';
 import type { AppConfig } from '../../../types/config';
 
@@ -14,6 +14,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   const [loadMode, setLoadMode] = useState<LoadMode>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [iframeKey, setIframeKey] = useState(0);
+  const configuredUrlRef = useRef<string | null>(null);
 
   const baseUrl = appConfig?.webview?.baseUrl || '';
   const loadIframe = settings.loadIframe && baseUrl;
@@ -25,56 +26,78 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     : (safeArea?.backgroundColor || '#ffffff');
 
   // 프록시 설정
-  const configureProxy = useCallback(async (targetUrl: string | null) => {
+  useEffect(() => {
+    if (!loadIframe || !baseUrl) {
+      setLoadMode('idle');
+      return;
+    }
+
+    // 이미 같은 URL로 설정되어 있으면 스킵
+    if (configuredUrlRef.current === baseUrl && loadMode === 'ready') {
+      return;
+    }
+
+    let cancelled = false;
+
+    const configure = async () => {
+      setLoadMode('configuring');
+      setErrorMessage('');
+
+      try {
+        const response = await fetch('/api/proxy/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetUrl: baseUrl })
+        });
+
+        if (cancelled) return;
+
+        if (response.ok) {
+          configuredUrlRef.current = baseUrl;
+          setLoadMode('ready');
+          setIframeKey(k => k + 1);
+        } else {
+          setLoadMode('error');
+          setErrorMessage('Failed to configure proxy');
+        }
+      } catch {
+        if (cancelled) return;
+        setLoadMode('error');
+        setErrorMessage('Network error');
+      }
+    };
+
+    configure();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadIframe, baseUrl]);
+
+  const handleRetry = async () => {
+    if (!baseUrl) return;
+
+    setLoadMode('configuring');
+    setErrorMessage('');
+
     try {
       const response = await fetch('/api/proxy/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl })
+        body: JSON.stringify({ targetUrl: baseUrl })
       });
-      return response.ok;
+
+      if (response.ok) {
+        configuredUrlRef.current = baseUrl;
+        setLoadMode('ready');
+        setIframeKey(k => k + 1);
+      } else {
+        setLoadMode('error');
+        setErrorMessage('Failed to configure proxy');
+      }
     } catch {
-      return false;
-    }
-  }, []);
-
-  // loadIframe 변경 시 프록시 설정
-  useEffect(() => {
-    if (loadIframe && baseUrl) {
-      setLoadMode('configuring');
-      setErrorMessage('');
-
-      configureProxy(baseUrl).then(success => {
-        if (success) {
-          setLoadMode('ready');
-          setIframeKey(k => k + 1);
-        } else {
-          setLoadMode('error');
-          setErrorMessage('Failed to configure proxy');
-        }
-      });
-    } else {
-      setLoadMode('idle');
-      configureProxy(null);
-    }
-
-    return () => {
-      configureProxy(null);
-    };
-  }, [loadIframe, baseUrl, configureProxy]);
-
-  const handleRetry = () => {
-    if (baseUrl) {
-      setLoadMode('configuring');
-      configureProxy(baseUrl).then(success => {
-        if (success) {
-          setLoadMode('ready');
-          setIframeKey(k => k + 1);
-        } else {
-          setLoadMode('error');
-          setErrorMessage('Failed to configure proxy');
-        }
-      });
+      setLoadMode('error');
+      setErrorMessage('Network error');
     }
   };
 
