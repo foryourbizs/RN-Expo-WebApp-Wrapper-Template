@@ -10,6 +10,74 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// NDK/SDK 라이선스 에러 패턴
+const LICENSE_ERROR_PATTERNS = [
+  /License for package .* not accepted/i,
+  /Failed to install the following Android SDK packages/i,
+  /You have not accepted the license agreements/i,
+];
+
+// 라이선스 에러 감지
+function detectLicenseError(text: string): boolean {
+  return LICENSE_ERROR_PATTERNS.some(pattern => pattern.test(text));
+}
+
+// SDK 라이선스 자동 수락
+async function acceptSdkLicenses(sdkPath?: string): Promise<{ success: boolean; message: string }> {
+  // SDK 경로 결정
+  const androidHome = sdkPath || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT ||
+    (process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'Android', 'Sdk') : '');
+
+  if (!androidHome) {
+    return { success: false, message: 'Android SDK path not found' };
+  }
+
+  // sdkmanager 경로 찾기
+  const sdkmanagerPaths = [
+    path.join(androidHome, 'cmdline-tools', 'latest', 'bin', process.platform === 'win32' ? 'sdkmanager.bat' : 'sdkmanager'),
+    path.join(androidHome, 'tools', 'bin', process.platform === 'win32' ? 'sdkmanager.bat' : 'sdkmanager'),
+  ];
+
+  let sdkmanagerPath: string | null = null;
+  for (const p of sdkmanagerPaths) {
+    if (fsSync.existsSync(p)) {
+      sdkmanagerPath = p;
+      break;
+    }
+  }
+
+  if (!sdkmanagerPath) {
+    return { success: false, message: 'sdkmanager not found in Android SDK' };
+  }
+
+  try {
+    // 라이선스 수락 (yes를 여러 번 전송)
+    const yesInput = 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\n';
+
+    if (process.platform === 'win32') {
+      // Windows: echo로 yes 입력
+      await execAsync(`echo ${yesInput.replace(/\n/g, '& echo ')} | "${sdkmanagerPath}" --licenses`, {
+        timeout: 120000,
+        env: { ...process.env, ANDROID_HOME: androidHome, ANDROID_SDK_ROOT: androidHome }
+      });
+    } else {
+      // Unix: yes 명령어 사용
+      await execAsync(`yes | "${sdkmanagerPath}" --licenses`, {
+        timeout: 120000,
+        env: { ...process.env, ANDROID_HOME: androidHome, ANDROID_SDK_ROOT: androidHome }
+      });
+    }
+
+    return { success: true, message: 'SDK licenses accepted successfully' };
+  } catch (error: any) {
+    // sdkmanager가 exit code 1을 반환해도 라이선스는 수락됐을 수 있음
+    if (error.stdout?.includes('accepted') || error.stderr?.includes('accepted')) {
+      return { success: true, message: 'SDK licenses accepted' };
+    }
+    return { success: false, message: `Failed to accept licenses: ${error.message}` };
+  }
+}
+
 // Build process management
 interface BuildProcess {
   process: ChildProcess;
@@ -339,10 +407,12 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
   return checks;
 }
 
-function startBuildProcess(type: string, profile: string, buildId: string): BuildProcess {
+function startBuildProcess(type: string, profile: string, buildId: string, retryCount = 0): BuildProcess {
   const output: Array<{ type: string; text: string; timestamp: number }> = [];
   let cmd: string;
   let args: string[];
+  let licenseErrorDetected = false;
+  let allOutputText = ''; // 전체 출력을 누적하여 라이선스 에러 감지
 
   if (type === 'cloud') {
     // EAS Cloud Build
@@ -374,10 +444,18 @@ function startBuildProcess(type: string, profile: string, buildId: string): Buil
 
   const buildProcess: BuildProcess = { process: proc, output, finished: false };
 
+  const checkAndHandleLicenseError = (text: string) => {
+    allOutputText += text + '\n';
+    if (!licenseErrorDetected && detectLicenseError(allOutputText)) {
+      licenseErrorDetected = true;
+    }
+  };
+
   proc.stdout?.on('data', (data: Buffer) => {
     const text = data.toString().trim();
     if (text) {
       output.push({ type: 'stdout', text, timestamp: Date.now() });
+      checkAndHandleLicenseError(text);
     }
   });
 
@@ -385,10 +463,52 @@ function startBuildProcess(type: string, profile: string, buildId: string): Buil
     const text = data.toString().trim();
     if (text) {
       output.push({ type: 'stderr', text, timestamp: Date.now() });
+      checkAndHandleLicenseError(text);
     }
   });
 
-  proc.on('close', (code) => {
+  proc.on('close', async (code) => {
+    // 라이선스 에러가 감지되고 재시도 횟수가 남아있으면 자동 수정 후 재빌드
+    if (code !== 0 && licenseErrorDetected && retryCount < 2) {
+      output.push({ type: 'info', text: '⚠️ SDK/NDK license issue detected. Attempting automatic fix...', timestamp: Date.now() });
+
+      // build-env.json에서 SDK 경로 가져오기
+      const buildEnv = await loadBuildEnv();
+      const sdkPath = buildEnv.android?.sdkPath;
+
+      output.push({ type: 'info', text: 'Accepting SDK licenses...', timestamp: Date.now() });
+      const licenseResult = await acceptSdkLicenses(sdkPath);
+
+      if (licenseResult.success) {
+        output.push({ type: 'success', text: `✓ ${licenseResult.message}`, timestamp: Date.now() });
+        output.push({ type: 'info', text: '🔄 Restarting build...', timestamp: Date.now() });
+
+        // 새 빌드 프로세스 시작 (재시도 횟수 증가)
+        const newBuildProcess = startBuildProcess(type, profile, buildId, retryCount + 1);
+
+        // 기존 buildProcess 객체를 새 프로세스로 업데이트
+        buildProcess.process = newBuildProcess.process;
+
+        // 새 프로세스의 출력을 기존 output 배열에 연결
+        const originalOutput = newBuildProcess.output;
+        const pollInterval = setInterval(() => {
+          while (originalOutput.length > 0) {
+            output.push(originalOutput.shift()!);
+          }
+          if (newBuildProcess.finished) {
+            clearInterval(pollInterval);
+            buildProcess.finished = true;
+          }
+        }, 100);
+      } else {
+        output.push({ type: 'error', text: `✗ ${licenseResult.message}`, timestamp: Date.now() });
+        output.push({ type: 'info', text: 'Manual fix required: Run "sdkmanager --licenses" in your Android SDK directory', timestamp: Date.now() });
+        buildProcess.finished = true;
+        output.push({ type: 'error', text: `Build failed with exit code ${code}`, timestamp: Date.now() });
+      }
+      return;
+    }
+
     buildProcess.finished = true;
     if (code === 0) {
       output.push({ type: 'success', text: 'Build completed successfully!', timestamp: Date.now() });

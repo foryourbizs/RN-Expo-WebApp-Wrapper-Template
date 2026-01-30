@@ -1,8 +1,8 @@
 {
   "$schema": "./schemas/build-env.schema.json",
   "android": {
-    "sdkPath": "E:\\AndroidSDK",
-    "javaHome": ""
+    "sdkPath": "A:\\commandlinetools-win-14742923_latest\\cmdline-tools",
+    "javaHome": "A:\\JDK_21"
   },
   "ios": {
     "xcodeSelectPath": ""
