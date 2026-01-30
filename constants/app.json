@@ -7,5 +7,17 @@
     "allowedOrigins": [
       "https://webapp-sample.example-page.cc"
     ]
+  },
+  "offline": {
+    "enabled": false
+  },
+  "statusBar": {
+    "visible": false
+  },
+  "navigationBar": {
+    "visibility": "hidden"
+  },
+  "splash": {
+    "enabled": false
   }
 }

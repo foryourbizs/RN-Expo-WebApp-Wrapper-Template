@@ -415,51 +415,199 @@ function startBuildProcess(type: string, profile: string, buildId: string): Buil
   return buildProcess;
 }
 
+async function cleanDirectories(): Promise<string[]> {
+  const dirsToClean = [
+    path.join(projectRoot, 'android', 'app', '.cxx'),
+    path.join(projectRoot, 'android', 'app', 'build'),
+    path.join(projectRoot, 'android', '.gradle'),
+    path.join(projectRoot, 'android', 'build'),
+  ];
+
+  const cleaned: string[] = [];
+
+  for (const dir of dirsToClean) {
+    if (fsSync.existsSync(dir)) {
+      try {
+        await fs.rm(dir, { recursive: true, force: true });
+        cleaned.push(path.basename(dir));
+      } catch (e) {
+        // 삭제 실패해도 계속 진행
+      }
+    }
+  }
+
+  return cleaned;
+}
+
 function startCleanProcess(buildId: string): BuildProcess {
   const output: Array<{ type: string; text: string; timestamp: number }> = [];
-  output.push({ type: 'info', text: 'Cleaning Gradle cache...', timestamp: Date.now() });
+  output.push({ type: 'info', text: 'Cleaning build cache...', timestamp: Date.now() });
 
-  const cmd = process.platform === 'win32' ? 'cmd' : 'sh';
-  const cleanScript = process.platform === 'win32'
-    ? 'cd android && .\\gradlew --stop && .\\gradlew clean'
-    : 'cd android && ./gradlew --stop && ./gradlew clean';
-  const args = process.platform === 'win32' ? ['/c', cleanScript] : ['-c', cleanScript];
+  const buildProcess: BuildProcess = {
+    process: null as any,
+    output,
+    finished: false
+  };
 
-  const proc = spawn(cmd, args, {
-    cwd: projectRoot,
-    shell: false,
-    env: { ...process.env, FORCE_COLOR: '0' }
-  });
+  // 비동기로 디렉토리 삭제 후 gradlew clean 실행
+  (async () => {
+    try {
+      // 1. 먼저 문제가 되는 디렉토리들 삭제
+      output.push({ type: 'info', text: 'Removing .cxx and build directories...', timestamp: Date.now() });
+      const cleaned = await cleanDirectories();
+      if (cleaned.length > 0) {
+        output.push({ type: 'stdout', text: `Deleted: ${cleaned.join(', ')}`, timestamp: Date.now() });
+      }
 
-  const buildProcess: BuildProcess = { process: proc, output, finished: false };
+      // 2. Gradle daemon 중지 및 clean 실행
+      output.push({ type: 'info', text: 'Stopping Gradle daemon...', timestamp: Date.now() });
 
-  proc.stdout?.on('data', (data: Buffer) => {
-    const text = data.toString().trim();
-    if (text) {
-      output.push({ type: 'stdout', text, timestamp: Date.now() });
+      const cmd = process.platform === 'win32' ? 'cmd' : 'sh';
+      const cleanScript = process.platform === 'win32'
+        ? 'cd android && .\\gradlew --stop'
+        : 'cd android && ./gradlew --stop';
+      const args = process.platform === 'win32' ? ['/c', cleanScript] : ['-c', cleanScript];
+
+      const proc = spawn(cmd, args, {
+        cwd: projectRoot,
+        shell: false,
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+
+      buildProcess.process = proc;
+
+      proc.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString().trim();
+        if (text) {
+          output.push({ type: 'stdout', text, timestamp: Date.now() });
+        }
+      });
+
+      proc.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString().trim();
+        if (text) {
+          output.push({ type: 'stderr', text, timestamp: Date.now() });
+        }
+      });
+
+      proc.on('close', (code) => {
+        buildProcess.finished = true;
+        if (code === 0) {
+          output.push({ type: 'success', text: 'Cache cleaned successfully!', timestamp: Date.now() });
+          output.push({ type: 'info', text: 'Run a build to regenerate native code.', timestamp: Date.now() });
+        } else {
+          // Gradle stop이 실패해도 디렉토리는 삭제됐으므로 성공으로 처리
+          output.push({ type: 'success', text: 'Build directories cleaned. Gradle daemon may need manual stop.', timestamp: Date.now() });
+        }
+      });
+
+      proc.on('error', (err) => {
+        buildProcess.finished = true;
+        output.push({ type: 'error', text: `Process error: ${err.message}`, timestamp: Date.now() });
+      });
+
+    } catch (err: any) {
+      buildProcess.finished = true;
+      output.push({ type: 'error', text: `Clean error: ${err.message}`, timestamp: Date.now() });
     }
-  });
+  })();
 
-  proc.stderr?.on('data', (data: Buffer) => {
-    const text = data.toString().trim();
-    if (text) {
-      output.push({ type: 'stderr', text, timestamp: Date.now() });
+  return buildProcess;
+}
+
+function startDeepCleanProcess(buildId: string): BuildProcess {
+  const output: Array<{ type: string; text: string; timestamp: number }> = [];
+  output.push({ type: 'info', text: 'Starting deep clean...', timestamp: Date.now() });
+
+  const buildProcess: BuildProcess = {
+    process: null as any,
+    output,
+    finished: false
+  };
+
+  (async () => {
+    try {
+      // 1. Gradle daemon 중지
+      output.push({ type: 'info', text: 'Stopping Gradle daemon...', timestamp: Date.now() });
+      try {
+        await execAsync(
+          process.platform === 'win32'
+            ? 'cd android && .\\gradlew --stop'
+            : 'cd android && ./gradlew --stop',
+          { cwd: projectRoot, timeout: 30000 }
+        );
+        output.push({ type: 'stdout', text: 'Gradle daemon stopped', timestamp: Date.now() });
+      } catch {
+        output.push({ type: 'stdout', text: 'Gradle daemon stop skipped (may not be running)', timestamp: Date.now() });
+      }
+
+      // 2. android 폴더 삭제
+      const androidDir = path.join(projectRoot, 'android');
+      if (fsSync.existsSync(androidDir)) {
+        output.push({ type: 'info', text: 'Removing android folder...', timestamp: Date.now() });
+        await fs.rm(androidDir, { recursive: true, force: true });
+        output.push({ type: 'stdout', text: 'android folder deleted', timestamp: Date.now() });
+      }
+
+      // 3. expo prebuild 실행
+      output.push({ type: 'info', text: 'Running expo prebuild...', timestamp: Date.now() });
+
+      const cmd = process.platform === 'win32' ? 'cmd' : 'sh';
+      const prebuildScript = 'npx expo prebuild --platform android';
+      const args = process.platform === 'win32' ? ['/c', prebuildScript] : ['-c', prebuildScript];
+
+      const proc = spawn(cmd, args, {
+        cwd: projectRoot,
+        shell: false,
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+
+      buildProcess.process = proc;
+
+      proc.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString().trim();
+        if (text) {
+          output.push({ type: 'stdout', text, timestamp: Date.now() });
+        }
+      });
+
+      proc.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString().trim();
+        if (text) {
+          output.push({ type: 'stderr', text, timestamp: Date.now() });
+        }
+      });
+
+      proc.on('close', async (code) => {
+        if (code === 0) {
+          // 4. local.properties 복원 (build-env.json에서)
+          try {
+            const buildEnv = await loadBuildEnv();
+            if (buildEnv.android?.sdkPath) {
+              await updateLocalProperties(buildEnv.android.sdkPath);
+              output.push({ type: 'stdout', text: 'local.properties restored', timestamp: Date.now() });
+            }
+          } catch {
+            output.push({ type: 'stderr', text: 'Warning: Could not restore local.properties', timestamp: Date.now() });
+          }
+
+          output.push({ type: 'success', text: 'Deep clean completed!', timestamp: Date.now() });
+        } else {
+          output.push({ type: 'error', text: `Prebuild failed with exit code ${code}`, timestamp: Date.now() });
+        }
+        buildProcess.finished = true;
+      });
+
+      proc.on('error', (err) => {
+        buildProcess.finished = true;
+        output.push({ type: 'error', text: `Process error: ${err.message}`, timestamp: Date.now() });
+      });
+
+    } catch (err: any) {
+      buildProcess.finished = true;
+      output.push({ type: 'error', text: `Deep clean error: ${err.message}`, timestamp: Date.now() });
     }
-  });
-
-  proc.on('close', (code) => {
-    buildProcess.finished = true;
-    if (code === 0) {
-      output.push({ type: 'success', text: 'Cache cleaned successfully!', timestamp: Date.now() });
-    } else {
-      output.push({ type: 'error', text: `Clean failed with exit code ${code}`, timestamp: Date.now() });
-    }
-  });
-
-  proc.on('error', (err) => {
-    buildProcess.finished = true;
-    output.push({ type: 'error', text: `Process error: ${err.message}`, timestamp: Date.now() });
-  });
+  })();
 
   return buildProcess;
 }
@@ -708,6 +856,227 @@ export function apiPlugin(): Plugin {
               sendJson(res, 200, { buildId });
             } catch (error: any) {
               sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // POST /api/build/deep-clean - Delete android folder and run prebuild
+          if (url === '/api/build/deep-clean' && req.method === 'POST') {
+            const buildId = `deepclean-${Date.now()}`;
+
+            try {
+              const buildProcess = startDeepCleanProcess(buildId);
+              buildProcesses.set(buildId, buildProcess);
+              sendJson(res, 200, { buildId });
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // GET /api/build/keystore - Check keystore status
+          if (url === '/api/build/keystore' && req.method === 'GET') {
+            const keystorePaths = [
+              path.join(projectRoot, 'android', 'app', 'release.keystore'),
+              path.join(projectRoot, 'android', 'app', 'my-release-key.keystore'),
+              path.join(projectRoot, 'android', 'keystores', 'release.keystore')
+            ];
+
+            let foundPath: string | null = null;
+            for (const p of keystorePaths) {
+              if (fsSync.existsSync(p)) {
+                foundPath = p;
+                break;
+              }
+            }
+
+            // Check gradle.properties for signing config
+            let hasSigningConfig = false;
+            const gradlePropsPath = path.join(projectRoot, 'android', 'gradle.properties');
+            if (fsSync.existsSync(gradlePropsPath)) {
+              const content = fsSync.readFileSync(gradlePropsPath, 'utf-8');
+              hasSigningConfig = content.includes('MYAPP_RELEASE_STORE_PASSWORD');
+            }
+
+            sendJson(res, 200, {
+              exists: !!foundPath,
+              path: foundPath,
+              hasSigningConfig
+            });
+            return;
+          }
+
+          // POST /api/build/open-folder - Open folder in file explorer
+          if (url === '/api/build/open-folder' && req.method === 'POST') {
+            const { filePath } = await readBody(req);
+
+            if (!filePath) {
+              sendJson(res, 400, { error: 'filePath is required' });
+              return;
+            }
+
+            // 상대 경로를 절대 경로로 변환
+            const absolutePath = path.isAbsolute(filePath)
+              ? filePath
+              : path.join(projectRoot, filePath);
+
+            // 파일이면 상위 폴더, 폴더면 그대로
+            let folderPath = absolutePath;
+            if (fsSync.existsSync(absolutePath) && fsSync.statSync(absolutePath).isFile()) {
+              folderPath = path.dirname(absolutePath);
+            }
+
+            if (!fsSync.existsSync(folderPath)) {
+              sendJson(res, 404, { error: 'Folder not found' });
+              return;
+            }
+
+            try {
+              // 플랫폼별 파일 탐색기 열기
+              const cmd = process.platform === 'win32'
+                ? `explorer "${folderPath}"`
+                : process.platform === 'darwin'
+                ? `open "${folderPath}"`
+                : `xdg-open "${folderPath}"`;
+
+              await execAsync(cmd);
+              sendJson(res, 200, { success: true });
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // GET /api/build/download - Download build output file
+          if (url.startsWith('/api/build/download') && req.method === 'GET') {
+            const urlObj = new URL(url, 'http://localhost');
+            const filePath = urlObj.searchParams.get('path');
+
+            if (!filePath) {
+              sendJson(res, 400, { error: 'path parameter is required' });
+              return;
+            }
+
+            // 상대 경로를 절대 경로로 변환
+            const absolutePath = path.isAbsolute(filePath)
+              ? filePath
+              : path.join(projectRoot, filePath);
+
+            // 보안: projectRoot 내부인지 확인
+            const normalizedPath = path.normalize(absolutePath);
+            if (!normalizedPath.startsWith(projectRoot)) {
+              sendJson(res, 403, { error: 'Access denied' });
+              return;
+            }
+
+            if (!fsSync.existsSync(absolutePath)) {
+              sendJson(res, 404, { error: 'File not found' });
+              return;
+            }
+
+            const stat = fsSync.statSync(absolutePath);
+            const filename = path.basename(absolutePath);
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            res.setHeader('Content-Length', stat.size);
+
+            const stream = fsSync.createReadStream(absolutePath);
+            stream.pipe(res);
+            return;
+          }
+
+          // GET /api/build/output-info - Get info about build output files
+          if (url === '/api/build/output-info' && req.method === 'GET') {
+            const outputs: Array<{ type: string; path: string; exists: boolean; size?: number; modified?: number }> = [];
+
+            const outputPaths = [
+              { type: 'Debug APK', path: 'android/app/build/outputs/apk/debug/app-debug.apk' },
+              { type: 'Release APK', path: 'android/app/build/outputs/apk/release/app-release.apk' },
+              { type: 'Release AAB', path: 'android/app/build/outputs/bundle/release/app-release.aab' }
+            ];
+
+            for (const item of outputPaths) {
+              const absolutePath = path.join(projectRoot, item.path);
+              if (fsSync.existsSync(absolutePath)) {
+                const stat = fsSync.statSync(absolutePath);
+                outputs.push({
+                  type: item.type,
+                  path: item.path,
+                  exists: true,
+                  size: stat.size,
+                  modified: stat.mtimeMs
+                });
+              } else {
+                outputs.push({
+                  type: item.type,
+                  path: item.path,
+                  exists: false
+                });
+              }
+            }
+
+            sendJson(res, 200, { outputs });
+            return;
+          }
+
+          // POST /api/build/keystore - Generate keystore
+          if (url === '/api/build/keystore' && req.method === 'POST') {
+            const { alias, storePassword, keyPassword, validity, dname } = await readBody(req);
+
+            // Validate
+            if (!alias || !storePassword || storePassword.length < 6) {
+              sendJson(res, 400, { error: 'Invalid parameters. Alias required, password must be at least 6 characters.' });
+              return;
+            }
+
+            const androidAppDir = path.join(projectRoot, 'android', 'app');
+            if (!fsSync.existsSync(androidAppDir)) {
+              sendJson(res, 400, { error: 'android/app folder not found. Run expo prebuild first.' });
+              return;
+            }
+
+            const keystorePath = path.join(androidAppDir, 'release.keystore');
+            const finalKeyPassword = keyPassword || storePassword;
+            const finalValidity = validity || 10000;
+            const finalDname = dname || 'CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=US';
+
+            try {
+              // Generate keystore using keytool
+              const keytoolCmd = `keytool -genkey -v -keystore "${keystorePath}" -alias "${alias}" -keyalg RSA -keysize 2048 -validity ${finalValidity} -storepass "${storePassword}" -keypass "${finalKeyPassword}" -dname "${finalDname}"`;
+
+              await execAsync(keytoolCmd, { cwd: projectRoot, timeout: 30000 });
+
+              // Update gradle.properties
+              const gradlePropsPath = path.join(projectRoot, 'android', 'gradle.properties');
+              let gradleProps = '';
+              if (fsSync.existsSync(gradlePropsPath)) {
+                gradleProps = fsSync.readFileSync(gradlePropsPath, 'utf-8');
+                // Remove existing MYAPP_RELEASE settings
+                gradleProps = gradleProps.split('\n')
+                  .filter(line => !line.startsWith('MYAPP_RELEASE_'))
+                  .join('\n');
+              }
+
+              // Add new settings
+              const signingConfig = `
+# Release Keystore settings (auto-generated)
+MYAPP_RELEASE_STORE_FILE=release.keystore
+MYAPP_RELEASE_KEY_ALIAS=${alias}
+MYAPP_RELEASE_STORE_PASSWORD=${storePassword}
+MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
+`;
+              gradleProps = gradleProps.trimEnd() + '\n' + signingConfig;
+              fsSync.writeFileSync(gradlePropsPath, gradleProps, 'utf-8');
+
+              sendJson(res, 200, {
+                success: true,
+                path: keystorePath,
+                message: 'Keystore created and gradle.properties updated'
+              });
+            } catch (error: any) {
+              sendJson(res, 500, { error: `Keystore generation failed: ${error.message}` });
             }
             return;
           }
