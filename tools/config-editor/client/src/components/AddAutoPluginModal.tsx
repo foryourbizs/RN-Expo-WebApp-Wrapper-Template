@@ -26,7 +26,6 @@ export default function AddAutoPluginModal({
   useEffect(() => {
     if (isOpen) {
       fetchInstalled();
-      // Reset state when modal opens
       setSelectedPackage(null);
       setNamespace('');
       setVersion('latest');
@@ -36,7 +35,6 @@ export default function AddAutoPluginModal({
 
   useEffect(() => {
     if (selectedPackage) {
-      // 자동 네임스페이스 생성
       const ns = selectedPackage
         .replace('rnww-plugin-', '')
         .replace(/-/g, '')
@@ -59,30 +57,38 @@ export default function AddAutoPluginModal({
 
   if (!isOpen) return null;
 
-  // rnww-plugin-* 패키지만 필터링
   const rnwwPlugins = installedPackages.filter(
     p => p.name.startsWith('rnww-plugin-')
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-[600px] max-h-[80vh] overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-medium">{t('plugins.addAutoTitle')}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[650px] max-h-[85vh] overflow-hidden shadow-2xl">
+        <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-500">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📦</span>
+            <h2 className="text-lg font-semibold text-white">{t('plugins.addAutoTitle')}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="p-4 overflow-y-auto max-h-[60vh]">
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
           {/* Installed Packages */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-green-100 flex items-center justify-center text-xs">✅</span>
               {t('plugins.installedPackages')} ({rnwwPlugins.length})
             </h3>
-            <div className="border rounded max-h-40 overflow-y-auto">
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
               {loading ? (
-                <div className="p-3 text-center text-gray-500">{t('common.loading')}</div>
+                <div className="p-4 text-center text-slate-500">{t('common.loading')}</div>
               ) : rnwwPlugins.length === 0 ? (
-                <div className="p-3 text-center text-gray-500">
+                <div className="p-4 text-center text-slate-500">
                   No rnww-plugin-* packages installed
                 </div>
               ) : (
@@ -93,21 +99,23 @@ export default function AddAutoPluginModal({
                       key={pkg.name}
                       onClick={() => !isAlreadyAdded && setSelectedPackage(pkg.name)}
                       disabled={isAlreadyAdded}
-                      className={`w-full px-3 py-2 text-left flex justify-between items-center ${
+                      className={`w-full px-4 py-3 text-left flex justify-between items-center border-b border-slate-100 last:border-b-0 transition-colors ${
                         isAlreadyAdded
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          ? 'bg-slate-50 text-slate-400 cursor-not-allowed'
                           : selectedPackage === pkg.name
-                          ? 'bg-blue-50'
-                          : 'hover:bg-gray-50'
+                          ? 'bg-indigo-50'
+                          : 'hover:bg-slate-50'
                       }`}
                     >
-                      <span>
-                        ⭐ {pkg.name} (v{pkg.version})
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-500">⭐</span>
+                        <span className="font-medium">{pkg.name}</span>
+                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">v{pkg.version}</span>
+                      </div>
                       {isAlreadyAdded ? (
-                        <span className="text-sm text-gray-400">{t('plugins.alreadyAdded')}</span>
+                        <span className="text-xs text-slate-400 bg-slate-200 px-2 py-1 rounded-full">{t('plugins.alreadyAdded')}</span>
                       ) : (
-                        <span className="text-sm text-blue-500">Select</span>
+                        <span className="text-sm text-indigo-500 font-medium">Select →</span>
                       )}
                     </button>
                   );
@@ -117,8 +125,9 @@ export default function AddAutoPluginModal({
           </div>
 
           {/* npm Search */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-orange-100 flex items-center justify-center text-xs">🔍</span>
               {t('plugins.npmSearch')}
             </h3>
             <div className="flex gap-2">
@@ -127,28 +136,33 @@ export default function AddAutoPluginModal({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('plugins.searchPlaceholder')}
-                className="flex-1 px-3 py-2 border rounded-md"
+                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
+                  focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
+                  transition-all duration-200 outline-none"
               />
               <button
                 onClick={handleSearch}
                 disabled={loading}
-                className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium text-slate-700 transition-colors"
               >
                 {loading ? '...' : 'Search'}
               </button>
             </div>
             {searchResults.length > 0 && (
-              <div className="mt-2 border rounded max-h-40 overflow-y-auto">
+              <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                 {searchResults.map(pkg => (
                   <button
                     key={pkg.name}
                     onClick={() => setSelectedPackage(pkg.name)}
-                    className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${
-                      selectedPackage === pkg.name ? 'bg-blue-50' : ''
+                    className={`w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors ${
+                      selectedPackage === pkg.name ? 'bg-indigo-50' : ''
                     }`}
                   >
-                    {pkg.name.startsWith('rnww-plugin-') && '⭐ '}
-                    {pkg.name} (v{pkg.version})
+                    <div className="flex items-center gap-2">
+                      {pkg.name.startsWith('rnww-plugin-') && <span className="text-amber-500">⭐</span>}
+                      <span className="font-medium">{pkg.name}</span>
+                      <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">v{pkg.version}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -157,27 +171,30 @@ export default function AddAutoPluginModal({
 
           {/* Selected Package */}
           {selectedPackage && (
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-2">
-                {t('plugins.selected')}: <strong>{selectedPackage}</strong>
+            <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+              <p className="text-sm text-slate-600 mb-3 flex items-center gap-2">
+                <span className="w-5 h-5 rounded bg-indigo-100 flex items-center justify-center text-xs">✓</span>
+                {t('plugins.selected')}: <strong className="text-indigo-700">{selectedPackage}</strong>
               </p>
               <div className="flex gap-4">
                 <div>
-                  <label className="block text-sm text-gray-600">{t('plugins.version')}</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('plugins.version')}</label>
                   <input
                     type="text"
                     value={version}
                     onChange={(e) => setVersion(e.target.value)}
-                    className="w-24 px-2 py-1 border rounded text-sm"
+                    className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-mono
+                      focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600">{t('plugins.namespace')}</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('plugins.namespace')}</label>
                   <input
                     type="text"
                     value={namespace}
                     onChange={(e) => setNamespace(e.target.value)}
-                    className="w-24 px-2 py-1 border rounded text-sm"
+                    className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-mono
+                      focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
                   />
                 </div>
               </div>
@@ -185,17 +202,21 @@ export default function AddAutoPluginModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-3 p-4 border-t">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 border rounded-md hover:bg-gray-50"
+            className="px-5 py-2.5 border border-slate-200 rounded-lg hover:bg-white font-medium text-slate-700 transition-colors"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleAdd}
             disabled={!selectedPackage || !namespace}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+            className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+              selectedPackage && namespace
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
           >
             {t('plugins.installAndAdd')}
           </button>

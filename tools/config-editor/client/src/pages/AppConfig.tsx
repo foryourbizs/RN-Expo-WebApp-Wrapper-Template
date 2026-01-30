@@ -8,7 +8,8 @@ import {
   Select,
   ColorPicker,
   TagInput,
-  Accordion
+  Accordion,
+  SaveRevertBar
 } from '../components/form';
 import type { AppConfig } from '../types/config';
 
@@ -235,30 +236,12 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
         />
       </Accordion>
 
-      {/* Save/Revert Buttons */}
-      <div className="mt-6 flex items-center justify-between border-t pt-4">
-        <div>
-          {hasChanges && (
-            <span className="text-sm text-orange-500">{t('common.unsaved')}</span>
-          )}
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={revert}
-            disabled={!hasChanges}
-            className="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
-            {t('common.revert')}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-          >
-            {saving ? t('common.loading') : t('common.save')}
-          </button>
-        </div>
-      </div>
+      <SaveRevertBar
+        hasChanges={hasChanges}
+        saving={saving}
+        onSave={handleSave}
+        onRevert={revert}
+      />
     </div>
   );
 }

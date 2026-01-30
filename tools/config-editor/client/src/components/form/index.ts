@@ -5,3 +5,4 @@ export { default as Select } from './Select';
 export { default as ColorPicker } from './ColorPicker';
 export { default as TagInput } from './TagInput';
 export { default as Accordion } from './Accordion';
+export { default as SaveRevertBar } from './SaveRevertBar';

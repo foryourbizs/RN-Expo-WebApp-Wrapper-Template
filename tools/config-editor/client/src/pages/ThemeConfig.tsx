@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfig } from '../hooks/useConfig';
-import { ColorPicker } from '../components/form';
+import { ColorPicker, SaveRevertBar } from '../components/form';
 import type { ThemeConfig } from '../types/config';
 
 interface ThemeConfigProps {
@@ -80,10 +80,52 @@ export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
 
   return (
     <div>
+      {/* Theme Preview */}
+      <div className="mb-8 p-6 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl border border-slate-200">
+        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Live Preview</h3>
+        <div className="grid grid-cols-2 gap-6">
+          {/* Light Mode Preview */}
+          <div 
+            className="rounded-xl p-4 shadow-lg transition-all duration-300"
+            style={{ backgroundColor: getColor('light', 'background') }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+              <div className="w-3 h-3 rounded-full bg-green-400" />
+            </div>
+            <p className="text-sm font-medium mb-2" style={{ color: getColor('light', 'text') }}>Light Mode</p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: getColor('light', 'tint') }} />
+              <div className="w-6 h-6 rounded" style={{ backgroundColor: getColor('light', 'icon') }} />
+            </div>
+          </div>
+          {/* Dark Mode Preview */}
+          <div 
+            className="rounded-xl p-4 shadow-lg transition-all duration-300"
+            style={{ backgroundColor: getColor('dark', 'background') }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+              <div className="w-3 h-3 rounded-full bg-green-400" />
+            </div>
+            <p className="text-sm font-medium mb-2" style={{ color: getColor('dark', 'text') }}>Dark Mode</p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: getColor('dark', 'tint') }} />
+              <div className="w-6 h-6 rounded" style={{ backgroundColor: getColor('dark', 'icon') }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-8">
         {/* Light Mode */}
-        <div className="p-4 bg-white border rounded-lg">
-          <h3 className="text-lg font-medium mb-4">{t('theme.light')}</h3>
+        <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-2xl">☀️</span>
+            <h3 className="text-lg font-semibold text-slate-800">{t('theme.light')}</h3>
+          </div>
           {COLOR_KEYS.map(key => (
             <ColorPicker
               key={`light-${key}`}
@@ -95,23 +137,29 @@ export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
         </div>
 
         {/* Dark Mode */}
-        <div className="p-4 bg-gray-800 border rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-white">{t('theme.dark')}</h3>
+        <div className="p-6 bg-slate-800 border border-slate-700 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-2xl">🌙</span>
+            <h3 className="text-lg font-semibold text-white">{t('theme.dark')}</h3>
+          </div>
           {COLOR_KEYS.map(key => (
-            <div key={`dark-${key}`} className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+            <div key={`dark-${key}`} className="mb-5">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 {key}
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded border-2 border-gray-600"
+                  className="w-12 h-12 rounded-xl border-2 border-slate-600 shadow-sm"
                   style={{ backgroundColor: getColor('dark', key) }}
                 />
                 <input
                   type="text"
                   value={getColor('dark', key)}
                   onChange={(e) => updateColor('dark', key, e.target.value)}
-                  className="w-28 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md font-mono text-sm"
+                  className="w-32 px-4 py-2.5 bg-slate-700 text-white border border-slate-600 rounded-lg 
+                    font-mono text-sm uppercase
+                    focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+                    transition-all duration-200 outline-none"
                 />
               </div>
             </div>
@@ -120,39 +168,21 @@ export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
       </div>
 
       {/* Reset Button */}
-      <div className="mt-4">
+      <div className="mt-6 flex justify-center">
         <button
           onClick={handleReset}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
         >
-          {t('theme.reset')}
+          🔄 {t('theme.reset')}
         </button>
       </div>
 
-      {/* Save/Revert Buttons */}
-      <div className="mt-6 flex items-center justify-between border-t pt-4">
-        <div>
-          {hasChanges && (
-            <span className="text-sm text-orange-500">{t('common.unsaved')}</span>
-          )}
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={revert}
-            disabled={!hasChanges}
-            className="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
-            {t('common.revert')}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-          >
-            {saving ? t('common.loading') : t('common.save')}
-          </button>
-        </div>
-      </div>
+      <SaveRevertBar
+        hasChanges={hasChanges}
+        saving={saving}
+        onSave={handleSave}
+        onRevert={revert}
+      />
     </div>
   );
 }

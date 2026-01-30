@@ -25,7 +25,7 @@ export default function App() {
 
   return (
     <Layout>
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <TabNav
           activeTab={activeTab}
           onTabChange={setActiveTab}

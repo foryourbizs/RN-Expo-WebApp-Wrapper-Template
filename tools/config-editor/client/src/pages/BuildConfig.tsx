@@ -23,14 +23,12 @@ export default function BuildConfigPage() {
   const [buildId, setBuildId] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [buildOutput]);
 
-  // Poll build output
   useEffect(() => {
     if (!buildId || !building) return;
 
@@ -143,10 +141,10 @@ export default function BuildConfigPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'ok': return <span className="text-green-500">✓</span>;
-      case 'error': return <span className="text-red-500">✗</span>;
-      case 'warning': return <span className="text-yellow-500">⚠</span>;
-      case 'info': return <span className="text-gray-400">○</span>;
+      case 'ok': return <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs">✓</span>;
+      case 'error': return <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs">✗</span>;
+      case 'warning': return <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">!</span>;
+      case 'info': return <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs">○</span>;
       default: return null;
     }
   };
@@ -157,35 +155,53 @@ export default function BuildConfigPage() {
       case 'success': return 'text-green-400';
       case 'info': return 'text-blue-400';
       case 'stderr': return 'text-yellow-400';
-      default: return 'text-gray-300';
+      default: return 'text-slate-300';
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Environment Check */}
-      <div className="border rounded-lg p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">{t('build.envCheck')}</h3>
+      <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔍</span>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800">{t('build.envCheck')}</h3>
+              <p className="text-sm text-slate-500">Verify build prerequisites</p>
+            </div>
+          </div>
           <button
             onClick={checkEnvironment}
             disabled={envChecking || building}
-            className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+            className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+              envChecking || building
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            }`}
           >
-            {envChecking ? t('common.loading') : t('build.checkEnv')}
+            {envChecking ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Checking...
+              </span>
+            ) : t('build.checkEnv')}
           </button>
         </div>
 
         {envChecks.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 bg-slate-50 rounded-xl p-4">
             {envChecks.map((check, index) => (
-              <div key={index} className="flex items-start gap-2 text-sm">
-                <span className="mt-0.5">{getStatusIcon(check.status)}</span>
-                <div>
-                  <span className="font-medium">{check.name}:</span>{' '}
-                  <span className={check.status === 'error' ? 'text-red-600' : ''}>{check.message}</span>
+              <div key={index} className="flex items-start gap-3 py-2">
+                {getStatusIcon(check.status)}
+                <div className="flex-1">
+                  <span className="font-medium text-slate-700">{check.name}:</span>{' '}
+                  <span className={check.status === 'error' ? 'text-red-600' : 'text-slate-600'}>{check.message}</span>
                   {check.detail && (
-                    <div className="text-gray-500 text-xs">{check.detail}</div>
+                    <div className="text-slate-400 text-xs mt-0.5">{check.detail}</div>
                   )}
                 </div>
               </div>
@@ -195,89 +211,97 @@ export default function BuildConfigPage() {
       </div>
 
       {/* Build Options */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-6">
         {/* Cloud Build */}
-        <div className="border rounded-lg p-4">
-          <h3 className="text-lg font-medium mb-4">{t('build.cloudBuild')}</h3>
-          <p className="text-sm text-gray-500 mb-4">{t('build.cloudBuildDesc')}</p>
+        <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-2xl">☁️</span>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800">{t('build.cloudBuild')}</h3>
+              <p className="text-sm text-slate-500">{t('build.cloudBuildDesc')}</p>
+            </div>
+          </div>
           <div className="space-y-2">
-            <button
-              onClick={() => startBuild('cloud', 'development')}
-              disabled={building}
-              className="w-full px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 text-left"
-            >
-              <span className="font-medium">Development</span>
-              <span className="text-sm text-gray-500 block">{t('build.devBuildDesc')}</span>
-            </button>
-            <button
-              onClick={() => startBuild('cloud', 'preview')}
-              disabled={building}
-              className="w-full px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 text-left"
-            >
-              <span className="font-medium">Preview</span>
-              <span className="text-sm text-gray-500 block">{t('build.previewBuildDesc')}</span>
-            </button>
-            <button
-              onClick={() => startBuild('cloud', 'production')}
-              disabled={building}
-              className="w-full px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 text-left"
-            >
-              <span className="font-medium">Production</span>
-              <span className="text-sm text-gray-500 block">{t('build.prodBuildDesc')}</span>
-            </button>
+            {[
+              { profile: 'development', icon: '🛠️', name: 'Development', desc: t('build.devBuildDesc') },
+              { profile: 'preview', icon: '👁️', name: 'Preview', desc: t('build.previewBuildDesc') },
+              { profile: 'production', icon: '🚀', name: 'Production', desc: t('build.prodBuildDesc') }
+            ].map(item => (
+              <button
+                key={item.profile}
+                onClick={() => startBuild('cloud', item.profile)}
+                disabled={building}
+                className="w-full p-4 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-indigo-200
+                  disabled:opacity-50 disabled:cursor-not-allowed text-left transition-all duration-200 group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{item.icon}</span>
+                  <div>
+                    <span className="font-semibold text-slate-700 group-hover:text-indigo-600">{item.name}</span>
+                    <span className="text-sm text-slate-500 block">{item.desc}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Local Build */}
-        <div className="border rounded-lg p-4">
-          <h3 className="text-lg font-medium mb-4">{t('build.localBuild')}</h3>
-          <p className="text-sm text-gray-500 mb-4">{t('build.localBuildDesc')}</p>
+        <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-2xl">💻</span>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800">{t('build.localBuild')}</h3>
+              <p className="text-sm text-slate-500">{t('build.localBuildDesc')}</p>
+            </div>
+          </div>
           <div className="space-y-2">
-            <button
-              onClick={() => startBuild('local', 'debug')}
-              disabled={building}
-              className="w-full px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 text-left"
-            >
-              <span className="font-medium">Debug APK</span>
-              <span className="text-sm text-gray-500 block">{t('build.debugApkDesc')}</span>
-            </button>
-            <button
-              onClick={() => startBuild('local', 'release-apk')}
-              disabled={building}
-              className="w-full px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 text-left"
-            >
-              <span className="font-medium">Release APK</span>
-              <span className="text-sm text-gray-500 block">{t('build.releaseApkDesc')}</span>
-            </button>
-            <button
-              onClick={() => startBuild('local', 'release-aab')}
-              disabled={building}
-              className="w-full px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 text-left"
-            >
-              <span className="font-medium">Release AAB</span>
-              <span className="text-sm text-gray-500 block">{t('build.releaseAabDesc')}</span>
-            </button>
+            {[
+              { profile: 'debug', icon: '🐛', name: 'Debug APK', desc: t('build.debugApkDesc') },
+              { profile: 'release-apk', icon: '📦', name: 'Release APK', desc: t('build.releaseApkDesc') },
+              { profile: 'release-aab', icon: '🎁', name: 'Release AAB', desc: t('build.releaseAabDesc') }
+            ].map(item => (
+              <button
+                key={item.profile}
+                onClick={() => startBuild('local', item.profile)}
+                disabled={building}
+                className="w-full p-4 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-purple-200
+                  disabled:opacity-50 disabled:cursor-not-allowed text-left transition-all duration-200 group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{item.icon}</span>
+                  <div>
+                    <span className="font-semibold text-slate-700 group-hover:text-purple-600">{item.name}</span>
+                    <span className="text-sm text-slate-500 block">{item.desc}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Utilities */}
-      <div className="border rounded-lg p-4">
-        <h3 className="text-lg font-medium mb-4">{t('build.utilities')}</h3>
-        <div className="flex gap-2">
+      <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl">🧹</span>
+          <h3 className="text-lg font-semibold text-slate-800">{t('build.utilities')}</h3>
+        </div>
+        <div className="flex gap-3">
           <button
             onClick={cleanCache}
             disabled={building}
-            className="px-4 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+            className="px-5 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50
+              disabled:opacity-50 disabled:cursor-not-allowed font-medium text-slate-700 transition-colors"
           >
-            {t('build.cleanCache')}
+            🗑️ {t('build.cleanCache')}
           </button>
           {building && (
             <button
               onClick={cancelBuild}
-              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+              className="px-5 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors"
             >
-              {t('build.cancel')}
+              ⏹️ {t('build.cancel')}
             </button>
           )}
         </div>
@@ -285,27 +309,35 @@ export default function BuildConfigPage() {
 
       {/* Build Output */}
       {buildOutput.length > 0 && (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="bg-gray-800 px-4 py-2 flex justify-between items-center">
-            <h3 className="text-white font-medium">{t('build.output')}</h3>
+        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-3 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">📟</span>
+              <h3 className="text-white font-semibold">{t('build.output')}</h3>
+              {building && (
+                <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full animate-pulse">
+                  Running
+                </span>
+              )}
+            </div>
             <button
               onClick={() => setBuildOutput([])}
-              className="text-gray-400 hover:text-white text-sm"
+              className="text-slate-400 hover:text-white text-sm px-3 py-1 rounded hover:bg-white/10 transition-colors"
             >
               {t('common.reset')}
             </button>
           </div>
           <div
             ref={outputRef}
-            className="bg-gray-900 p-4 font-mono text-sm h-64 overflow-y-auto"
+            className="bg-slate-900 p-5 font-mono text-sm h-72 overflow-y-auto"
           >
             {buildOutput.map((line, index) => (
-              <div key={index} className={getOutputClass(line.type)}>
+              <div key={index} className={`${getOutputClass(line.type)} leading-relaxed`}>
                 {line.text}
               </div>
             ))}
             {building && (
-              <div className="text-gray-500 animate-pulse">▌</div>
+              <div className="text-indigo-400 animate-pulse mt-2">▌</div>
             )}
           </div>
         </div>
