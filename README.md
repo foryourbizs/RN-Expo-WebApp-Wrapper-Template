@@ -35,7 +35,7 @@ Select your language:
 ---
 
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone & Install
 
@@ -82,7 +82,7 @@ npx expo run:ios
 ---
 
 
-## 🔨 Build
+## Build
 
 ### Web UI (Recommended)
 ```bash
@@ -108,34 +108,6 @@ npx eas build --platform android --profile preview
 
 ---
 
-
-## 📁 Project Structure
-
-```
-├── app/                    # App screens (Expo Router)
-├── components/             # React components
-│   ├── custom-splash.tsx   # Splash screen
-│   ├── offline-screen.tsx  # Offline screen
-│   └── webview-container.tsx
-├── constants/              # Configuration
-│   ├── app-config.ts       # Main config
-│   └── theme.ts            # Theme settings
-├── lib/                    # Libraries
-│   ├── bridge.ts           # Native bridge
-│   └── bridge-client.ts    # Web bridge client
-└── docs/                   # Documentation
-```
-
-
----
-
-
-## 📄 License
-
-MIT License
-
-
----
 
 
 ## Contributors

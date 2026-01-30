@@ -1,15 +1,34 @@
 # React Native + EXPO + WebApp Wrapper Template
 
 
-## Configuration
-```
-Available in constants\app-config.ts
+## ⚙️ Configuration (Config Editor)
+
+**All settings can be configured via the web UI:**
+
+```bash
+npm run config
 ```
 
-## Theme Settings
-```
-Available in constants\theme.ts
-```
+This opens a configuration editor in your web browser where you can set up:
+
+| Tab | Settings |
+|-----|----------|
+| **App Settings** | WebView URL, Status Bar, Navigation Bar, Safe Area, Splash, Offline Screen, Security, Debug |
+| **Theme** | Light/Dark mode colors |
+| **Plugins** | Auto plugins (npm), Manual plugins (local) management |
+| **Build** | SDK environment check, Keystore generation, Local/Cloud builds |
+
+> 💡 Configuration files are saved as JSON in the `constants/` folder.
+
+
+### Manual Configuration (Optional)
+
+You can also edit files directly:
+- App settings: `constants/app.json`
+- Theme: `constants/theme.json`
+- Plugins: `constants/plugins.json`
+- Build environment: `constants/build-env.json`
+
 
 ## Splash Screen
 ```
@@ -472,8 +491,26 @@ await AppBridge.call('stopRecording');
 
 ## Build
 
-```
-Windows: Use build.bat for interactive build (for convenience)
+### Web UI (Recommended)
 
-Mac: Not verified yet.
+```bash
+npm run config
+```
+
+In the **Build** tab:
+- Check build environment (SDK, Java, licenses)
+- Generate release keystore
+- Run local builds (Debug APK, Release APK, Release AAB)
+- Run cloud builds (EAS)
+
+### Command Line
+
+**Windows**
+```bash
+.\build.bat
+```
+
+**EAS Cloud Build**
+```bash
+npx eas build --platform android --profile preview
 ```
