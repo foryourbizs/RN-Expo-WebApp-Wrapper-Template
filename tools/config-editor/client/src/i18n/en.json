@@ -255,5 +255,15 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success"
+  },
+  "preview": {
+    "title": "Preview",
+    "rotate": "Rotate",
+    "settings": "Settings",
+    "loadIframe": "Load actual URL",
+    "showStatusBar": "Show Status Bar",
+    "showNavBar": "Show Navigation Bar",
+    "doubleClickHint": "Double-click to fullscreen",
+    "showPreview": "Show Preview"
   }
 }
