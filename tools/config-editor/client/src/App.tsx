@@ -6,7 +6,7 @@ import AppConfigPage from './pages/AppConfig';
 import ThemeConfigPage from './pages/ThemeConfig';
 import PluginsConfigPage from './pages/PluginsConfig';
 import BuildConfigPage from './pages/BuildConfig';
-import { PreviewPanel } from './components/preview';
+import { PreviewPanel, FullscreenModal } from './components/preview';
 import { PreviewProvider } from './contexts/PreviewContext';
 import { useConfig, useKeyboardShortcuts } from './hooks';
 import type { AppConfig, ThemeConfig } from './types/config';
@@ -43,29 +43,36 @@ function AppContent() {
   );
 
   return (
-    <Layout previewPanel={previewPanel}>
-      <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-        <TabNav
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          unsavedTabs={unsavedTabs}
-        />
-        <div className="p-6">
-          {activeTab === 'appSettings' && (
-            <AppConfigPage onUnsavedChange={handleUnsavedChange('appSettings')} />
-          )}
-          {activeTab === 'theme' && (
-            <ThemeConfigPage onUnsavedChange={handleUnsavedChange('theme')} />
-          )}
-          {activeTab === 'plugins' && (
-            <PluginsConfigPage onUnsavedChange={handleUnsavedChange('plugins')} />
-          )}
-          {activeTab === 'build' && (
-            <BuildConfigPage />
-          )}
+    <>
+      <Layout previewPanel={previewPanel}>
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+          <TabNav
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            unsavedTabs={unsavedTabs}
+          />
+          <div className="p-6">
+            {activeTab === 'appSettings' && (
+              <AppConfigPage onUnsavedChange={handleUnsavedChange('appSettings')} />
+            )}
+            {activeTab === 'theme' && (
+              <ThemeConfigPage onUnsavedChange={handleUnsavedChange('theme')} />
+            )}
+            {activeTab === 'plugins' && (
+              <PluginsConfigPage onUnsavedChange={handleUnsavedChange('plugins')} />
+            )}
+            {activeTab === 'build' && (
+              <BuildConfigPage />
+            )}
+          </div>
         </div>
-      </div>
-    </Layout>
+      </Layout>
+      <FullscreenModal
+        appConfig={appConfig}
+        themeConfig={themeConfig}
+        activeTab={activeTab}
+      />
+    </>
   );
 }
 
