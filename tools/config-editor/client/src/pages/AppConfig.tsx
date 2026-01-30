@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfig } from '../hooks/useConfig';
+import { useAccordionSync } from '../hooks/useAccordionSync';
 import {
   TextInput,
   NumberInput,
@@ -21,6 +22,7 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
   const { t } = useTranslation();
   const { data, setData, loading, error, saving, saveConfig, revert, hasChanges } =
     useConfig<AppConfig>('app');
+  const { handleAccordionToggle } = useAccordionSync();
 
   // 변경 사항 알림
   useEffect(() => {
@@ -55,7 +57,12 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
   return (
     <div>
       {/* Webview Settings */}
-      <Accordion title={t('app.webview.title')} defaultOpen>
+      <Accordion
+        title={t('app.webview.title')}
+        defaultOpen
+        sectionId="webview"
+        onToggle={(isOpen) => handleAccordionToggle('webview', isOpen)}
+      >
         <TextInput
           label={t('app.webview.baseUrl')}
           value={data.webview?.baseUrl || ''}
@@ -69,7 +76,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           description={t('app.webview.userAgentDesc')}
         />
 
-        <Accordion title={t('app.webview.options')}>
+        <Accordion
+          title={t('app.webview.options')}
+          sectionId="webview-options"
+          onToggle={(isOpen) => handleAccordionToggle('webview-options', isOpen)}
+        >
           <Toggle
             label={t('app.webview.javaScriptEnabled')}
             value={data.webview?.options?.javaScriptEnabled ?? true}
@@ -125,7 +136,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           />
         </Accordion>
 
-        <Accordion title={t('app.webview.performance')}>
+        <Accordion
+          title={t('app.webview.performance')}
+          sectionId="webview-performance"
+          onToggle={(isOpen) => handleAccordionToggle('webview-performance', isOpen)}
+        >
           <Select
             label={t('app.webview.androidLayerType')}
             value={data.webview?.performance?.androidLayerType || 'hardware'}
@@ -185,7 +200,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Offline Screen */}
-      <Accordion title={t('app.offline.title')}>
+      <Accordion
+        title={t('app.offline.title')}
+        sectionId="offline"
+        onToggle={(isOpen) => handleAccordionToggle('offline', isOpen)}
+      >
         <Toggle
           label={t('app.offline.enabled')}
           value={data.offline?.enabled ?? true}
@@ -231,7 +250,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Status Bar */}
-      <Accordion title={t('app.statusBar.title')}>
+      <Accordion
+        title={t('app.statusBar.title')}
+        sectionId="statusBar"
+        onToggle={(isOpen) => handleAccordionToggle('statusBar', isOpen)}
+      >
         <Toggle
           label={t('app.statusBar.visible')}
           value={data.statusBar?.visible ?? true}
@@ -276,7 +299,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Navigation Bar */}
-      <Accordion title={t('app.navigationBar.title')}>
+      <Accordion
+        title={t('app.navigationBar.title')}
+        sectionId="navigationBar"
+        onToggle={(isOpen) => handleAccordionToggle('navigationBar', isOpen)}
+      >
         <Select
           label={t('app.navigationBar.visibility')}
           value={data.navigationBar?.visibility || 'visible'}
@@ -322,7 +349,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Safe Area */}
-      <Accordion title={t('app.safeArea.title')}>
+      <Accordion
+        title={t('app.safeArea.title')}
+        sectionId="safeArea"
+        onToggle={(isOpen) => handleAccordionToggle('safeArea', isOpen)}
+      >
         <Toggle
           label={t('app.safeArea.enabled')}
           value={data.safeArea?.enabled ?? false}
@@ -356,7 +387,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Theme */}
-      <Accordion title={t('app.theme.title')}>
+      <Accordion
+        title={t('app.theme.title')}
+        sectionId="theme"
+        onToggle={(isOpen) => handleAccordionToggle('theme', isOpen)}
+      >
         <ColorPicker
           label={t('app.theme.loadingIndicatorColor')}
           value={data.theme?.loadingIndicatorColor || '#007AFF'}
@@ -366,7 +401,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Splash Screen */}
-      <Accordion title={t('app.splash.title')}>
+      <Accordion
+        title={t('app.splash.title')}
+        sectionId="splash"
+        onToggle={(isOpen) => handleAccordionToggle('splash', isOpen)}
+      >
         <Toggle
           label={t('app.splash.enabled')}
           value={data.splash?.enabled ?? true}
@@ -424,7 +463,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Security */}
-      <Accordion title={t('app.security.title')}>
+      <Accordion
+        title={t('app.security.title')}
+        sectionId="security"
+        onToggle={(isOpen) => handleAccordionToggle('security', isOpen)}
+      >
         <TagInput
           label={t('app.security.allowedOrigins')}
           value={data.security?.allowedOrigins || []}
@@ -461,7 +504,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       {/* Debug */}
-      <Accordion title={t('app.debug.title')}>
+      <Accordion
+        title={t('app.debug.title')}
+        sectionId="debug"
+        onToggle={(isOpen) => handleAccordionToggle('debug', isOpen)}
+      >
         <Toggle
           label={t('app.debug.enabled')}
           value={data.debug?.enabled ?? false}
@@ -494,7 +541,11 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           min={8}
           max={16}
         />
-        <Accordion title={t('app.debug.colors')}>
+        <Accordion
+          title={t('app.debug.colors')}
+          sectionId="debug-colors"
+          onToggle={(isOpen) => handleAccordionToggle('debug-colors', isOpen)}
+        >
           <ColorPicker
             label={t('app.debug.colorInfo')}
             value={data.debug?.colors?.info || '#3498db'}
