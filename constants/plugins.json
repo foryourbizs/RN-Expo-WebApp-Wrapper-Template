@@ -24,7 +24,7 @@
       },
       {
         "name": "rnww-plugin-microphone",
-        "namespace": "microp"
+        "namespace": "mic"
       }
     ],
     "manual": [
