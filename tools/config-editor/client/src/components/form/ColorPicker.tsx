@@ -11,39 +11,30 @@ export default function ColorPicker({ label, value, onChange }: ColorPickerProps
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="mb-5">
-      <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
-      <div className="flex items-center gap-3">
+    <div className="mb-3">
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-12 h-12 rounded-xl border-2 border-slate-200 shadow-sm
-            hover:border-indigo-300 hover:shadow-md
-            transition-all duration-200 relative overflow-hidden group"
+          className="w-8 h-8 rounded border border-slate-200"
           style={{ backgroundColor: value }}
-        >
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-        </button>
+        />
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-32 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
-            font-mono text-sm text-slate-700 uppercase
-            focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
-            transition-all duration-200 outline-none"
-          placeholder="#000000"
+          className="w-24 px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded font-mono uppercase"
         />
       </div>
       {isOpen && (
-        <div className="absolute z-50 mt-3">
+        <div className="absolute z-50 mt-2">
           <div className="fixed inset-0" onClick={() => setIsOpen(false)} />
-          <div className="relative bg-white p-3 rounded-xl shadow-2xl border border-slate-200">
+          <div className="relative bg-white p-2 rounded shadow-lg border border-slate-200">
             <HexColorPicker color={value} onChange={onChange} />
             <button
               onClick={() => setIsOpen(false)}
-              className="w-full mt-3 px-4 py-2 bg-indigo-500 text-white text-sm font-medium rounded-lg
-                hover:bg-indigo-600 transition-colors"
+              className="w-full mt-2 px-2 py-1 text-xs bg-slate-800 text-white rounded"
             >
               Done
             </button>

@@ -1,4 +1,3 @@
-// tools/config-editor/client/src/components/TabNav.tsx
 import { useTranslation } from 'react-i18next';
 
 interface TabNavProps {
@@ -12,43 +11,27 @@ const TABS = ['appSettings', 'theme', 'plugins', 'build'] as const;
 export default function TabNav({ activeTab, onTabChange, unsavedTabs }: TabNavProps) {
   const { t } = useTranslation();
 
-  const TAB_ICONS: Record<string, string> = {
-    appSettings: '📱',
-    theme: '🎨',
-    plugins: '🧩',
-    build: '🔨'
-  };
-
   return (
-    <div className="flex bg-white rounded-t-xl border-b border-slate-200">
+    <div className="flex border-b border-slate-200 bg-white">
       {TABS.map(tab => {
         const isActive = activeTab === tab;
         const hasUnsaved = unsavedTabs.includes(tab);
-        const isDisabled = false;
 
         return (
           <button
             key={tab}
-            onClick={() => !isDisabled && onTabChange(tab)}
-            disabled={isDisabled}
+            onClick={() => onTabChange(tab)}
             className={`
-              relative flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all duration-200
+              relative px-4 py-2.5 text-sm font-medium transition-colors
               ${isActive
-                ? 'text-indigo-600 bg-indigo-50/50'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                ? 'text-slate-900 border-b-2 border-slate-800 -mb-px'
+                : 'text-slate-500 hover:text-slate-700'
               }
-              ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-              first:rounded-tl-xl
             `}
           >
-            <span className="text-lg">{TAB_ICONS[tab]}</span>
-            <span>{t(`nav.${tab}`)}</span>
+            {t(`nav.${tab}`)}
             {hasUnsaved && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
-            )}
-            {isDisabled && <span className="ml-1 text-xs text-slate-400">(TBD)</span>}
-            {isActive && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500" />
+              <span className="absolute top-1.5 right-1 w-1.5 h-1.5 bg-orange-500 rounded-full" />
             )}
           </button>
         );

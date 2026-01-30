@@ -139,13 +139,12 @@ export default function BuildConfigPage() {
     setBuildId(null);
   }, [buildId]);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ok': return <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs">✓</span>;
-      case 'error': return <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs">✗</span>;
-      case 'warning': return <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">!</span>;
-      case 'info': return <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs">○</span>;
-      default: return null;
+      case 'ok': return 'text-green-600';
+      case 'error': return 'text-red-600';
+      case 'warning': return 'text-amber-600';
+      default: return 'text-slate-500';
     }
   };
 
@@ -160,48 +159,32 @@ export default function BuildConfigPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Environment Check */}
-      <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <div className="flex justify-between items-center mb-5">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🔍</span>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">{t('build.envCheck')}</h3>
-              <p className="text-sm text-slate-500">Verify build prerequisites</p>
-            </div>
-          </div>
+      <div className="border border-slate-200 rounded-lg p-4 bg-white">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-medium text-slate-800">{t('build.envCheck')}</h3>
           <button
             onClick={checkEnvironment}
             disabled={envChecking || building}
-            className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-              envChecking || building
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-            }`}
+            className="px-3 py-1.5 text-sm rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {envChecking ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Checking...
-              </span>
-            ) : t('build.checkEnv')}
+            {envChecking ? 'Checking...' : t('build.checkEnv')}
           </button>
         </div>
 
         {envChecks.length > 0 && (
-          <div className="space-y-2 bg-slate-50 rounded-xl p-4">
+          <div className="space-y-1 text-sm">
             {envChecks.map((check, index) => (
-              <div key={index} className="flex items-start gap-3 py-2">
-                {getStatusIcon(check.status)}
-                <div className="flex-1">
+              <div key={index} className="flex items-start gap-2 py-1">
+                <span className={`font-medium ${getStatusColor(check.status)}`}>
+                  {check.status === 'ok' ? '✓' : check.status === 'error' ? '✗' : '!'}
+                </span>
+                <div>
                   <span className="font-medium text-slate-700">{check.name}:</span>{' '}
                   <span className={check.status === 'error' ? 'text-red-600' : 'text-slate-600'}>{check.message}</span>
                   {check.detail && (
-                    <div className="text-slate-400 text-xs mt-0.5">{check.detail}</div>
+                    <div className="text-slate-400 text-xs">{check.detail}</div>
                   )}
                 </div>
               </div>
@@ -211,70 +194,44 @@ export default function BuildConfigPage() {
       </div>
 
       {/* Build Options */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-4">
         {/* Cloud Build */}
-        <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-2xl">☁️</span>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">{t('build.cloudBuild')}</h3>
-              <p className="text-sm text-slate-500">{t('build.cloudBuildDesc')}</p>
-            </div>
-          </div>
+        <div className="border border-slate-200 rounded-lg p-4 bg-white">
+          <h3 className="font-medium text-slate-800 mb-3">{t('build.cloudBuild')}</h3>
           <div className="space-y-2">
             {[
-              { profile: 'development', icon: '🛠️', name: 'Development', desc: t('build.devBuildDesc') },
-              { profile: 'preview', icon: '👁️', name: 'Preview', desc: t('build.previewBuildDesc') },
-              { profile: 'production', icon: '🚀', name: 'Production', desc: t('build.prodBuildDesc') }
+              { profile: 'development', name: 'Development' },
+              { profile: 'preview', name: 'Preview' },
+              { profile: 'production', name: 'Production' }
             ].map(item => (
               <button
                 key={item.profile}
                 onClick={() => startBuild('cloud', item.profile)}
                 disabled={building}
-                className="w-full p-4 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-indigo-200
-                  disabled:opacity-50 disabled:cursor-not-allowed text-left transition-all duration-200 group"
+                className="w-full px-3 py-2 text-sm text-left border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{item.icon}</span>
-                  <div>
-                    <span className="font-semibold text-slate-700 group-hover:text-indigo-600">{item.name}</span>
-                    <span className="text-sm text-slate-500 block">{item.desc}</span>
-                  </div>
-                </div>
+                {item.name}
               </button>
             ))}
           </div>
         </div>
 
         {/* Local Build */}
-        <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-2xl">💻</span>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">{t('build.localBuild')}</h3>
-              <p className="text-sm text-slate-500">{t('build.localBuildDesc')}</p>
-            </div>
-          </div>
+        <div className="border border-slate-200 rounded-lg p-4 bg-white">
+          <h3 className="font-medium text-slate-800 mb-3">{t('build.localBuild')}</h3>
           <div className="space-y-2">
             {[
-              { profile: 'debug', icon: '🐛', name: 'Debug APK', desc: t('build.debugApkDesc') },
-              { profile: 'release-apk', icon: '📦', name: 'Release APK', desc: t('build.releaseApkDesc') },
-              { profile: 'release-aab', icon: '🎁', name: 'Release AAB', desc: t('build.releaseAabDesc') }
+              { profile: 'debug', name: 'Debug APK' },
+              { profile: 'release-apk', name: 'Release APK' },
+              { profile: 'release-aab', name: 'Release AAB' }
             ].map(item => (
               <button
                 key={item.profile}
                 onClick={() => startBuild('local', item.profile)}
                 disabled={building}
-                className="w-full p-4 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-purple-200
-                  disabled:opacity-50 disabled:cursor-not-allowed text-left transition-all duration-200 group"
+                className="w-full px-3 py-2 text-sm text-left border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{item.icon}</span>
-                  <div>
-                    <span className="font-semibold text-slate-700 group-hover:text-purple-600">{item.name}</span>
-                    <span className="text-sm text-slate-500 block">{item.desc}</span>
-                  </div>
-                </div>
+                {item.name}
               </button>
             ))}
           </div>
@@ -282,63 +239,50 @@ export default function BuildConfigPage() {
       </div>
 
       {/* Utilities */}
-      <div className="border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">🧹</span>
-          <h3 className="text-lg font-semibold text-slate-800">{t('build.utilities')}</h3>
-        </div>
-        <div className="flex gap-3">
+      <div className="flex gap-2">
+        <button
+          onClick={cleanCache}
+          disabled={building}
+          className="px-3 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {t('build.cleanCache')}
+        </button>
+        {building && (
           <button
-            onClick={cleanCache}
-            disabled={building}
-            className="px-5 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50
-              disabled:opacity-50 disabled:cursor-not-allowed font-medium text-slate-700 transition-colors"
+            onClick={cancelBuild}
+            className="px-3 py-1.5 text-sm bg-red-500 text-white rounded hover:bg-red-600"
           >
-            🗑️ {t('build.cleanCache')}
+            {t('build.cancel')}
           </button>
-          {building && (
-            <button
-              onClick={cancelBuild}
-              className="px-5 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors"
-            >
-              ⏹️ {t('build.cancel')}
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Build Output */}
       {buildOutput.length > 0 && (
-        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-3 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <span className="text-lg">📟</span>
-              <h3 className="text-white font-semibold">{t('build.output')}</h3>
+        <div className="border border-slate-200 rounded-lg overflow-hidden">
+          <div className="bg-slate-800 px-3 py-2 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-white font-medium">{t('build.output')}</span>
               {building && (
-                <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full animate-pulse">
-                  Running
-                </span>
+                <span className="text-xs text-green-400">Running</span>
               )}
             </div>
             <button
               onClick={() => setBuildOutput([])}
-              className="text-slate-400 hover:text-white text-sm px-3 py-1 rounded hover:bg-white/10 transition-colors"
+              className="text-xs text-slate-400 hover:text-white"
             >
               {t('common.reset')}
             </button>
           </div>
           <div
             ref={outputRef}
-            className="bg-slate-900 p-5 font-mono text-sm h-72 overflow-y-auto"
+            className="bg-slate-900 p-3 font-mono text-xs h-48 overflow-y-auto"
           >
             {buildOutput.map((line, index) => (
-              <div key={index} className={`${getOutputClass(line.type)} leading-relaxed`}>
+              <div key={index} className={getOutputClass(line.type)}>
                 {line.text}
               </div>
             ))}
-            {building && (
-              <div className="text-indigo-400 animate-pulse mt-2">▌</div>
-            )}
           </div>
         </div>
       )}

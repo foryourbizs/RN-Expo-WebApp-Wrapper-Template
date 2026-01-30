@@ -13,9 +13,9 @@ export default function NumberInput({
   label, value, onChange, description, min, max, step = 1, showSlider = false
 }: NumberInputProps) {
   return (
-    <div className="mb-5">
-      <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
-      <div className="flex items-center gap-4">
+    <div className="mb-3">
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <div className="flex items-center gap-2">
         <input
           type="number"
           value={value}
@@ -23,15 +23,11 @@ export default function NumberInput({
           min={min}
           max={max}
           step={step}
-          className="w-28 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
-            text-slate-700 text-center font-medium
-            focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
-            hover:border-slate-300
-            transition-all duration-200 outline-none"
+          className="w-20 px-2 py-1 text-sm bg-slate-50 border border-slate-200 rounded text-center"
         />
         {showSlider && min !== undefined && max !== undefined && (
-          <div className="flex-1 flex items-center gap-3">
-            <span className="text-xs text-slate-400 font-medium">{min}</span>
+          <div className="flex-1 flex items-center gap-2">
+            <span className="text-xs text-slate-400">{min}</span>
             <input
               type="range"
               value={value}
@@ -39,22 +35,13 @@ export default function NumberInput({
               min={min}
               max={max}
               step={step}
-              className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer
-                [&::-webkit-slider-thumb]:appearance-none
-                [&::-webkit-slider-thumb]:w-4
-                [&::-webkit-slider-thumb]:h-4
-                [&::-webkit-slider-thumb]:bg-indigo-500
-                [&::-webkit-slider-thumb]:rounded-full
-                [&::-webkit-slider-thumb]:shadow-lg
-                [&::-webkit-slider-thumb]:cursor-pointer
-                [&::-webkit-slider-thumb]:transition-transform
-                [&::-webkit-slider-thumb]:hover:scale-110"
+              className="flex-1 h-1 bg-slate-200 rounded appearance-none cursor-pointer"
             />
-            <span className="text-xs text-slate-400 font-medium">{max}</span>
+            <span className="text-xs text-slate-400">{max}</span>
           </div>
         )}
       </div>
-      {description && <p className="mt-2 text-sm text-slate-500">{description}</p>}
+      {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
     </div>
   );
 }

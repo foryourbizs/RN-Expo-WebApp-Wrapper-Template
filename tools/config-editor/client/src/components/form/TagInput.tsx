@@ -26,20 +26,16 @@ export default function TagInput({ label, value, onChange, description, placehol
   };
 
   return (
-    <div className="mb-5">
-      <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
-      <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[52px]
-        focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500
-        transition-all duration-200">
+    <div className="mb-3">
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded min-h-[32px]">
         {value.map(tag => (
-          <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1.5
-            bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full text-sm font-medium
-            shadow-sm">
+          <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-700 text-white rounded text-xs">
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
-              className="w-4 h-4 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              className="hover:text-slate-300"
             >
               ×
             </button>
@@ -50,11 +46,11 @@ export default function TagInput({ label, value, onChange, description, placehol
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={value.length === 0 ? placeholder : 'Enter로 추가...'}
-          className="flex-1 min-w-[150px] outline-none bg-transparent text-slate-700 placeholder:text-slate-400"
+          placeholder={value.length === 0 ? placeholder : ''}
+          className="flex-1 min-w-[100px] outline-none bg-transparent text-sm"
         />
       </div>
-      {description && <p className="mt-2 text-sm text-slate-500">{description}</p>}
+      {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
     </div>
   );
 }

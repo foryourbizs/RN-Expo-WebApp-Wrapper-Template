@@ -7,27 +7,25 @@ interface ToggleProps {
 
 export default function Toggle({ label, value, onChange, description }: ToggleProps) {
   return (
-    <div className="mb-5 flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors duration-200">
-      <div className="flex-1">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
-        {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
+    <div className="mb-3 flex items-center justify-between py-1">
+      <div>
+        <span className="text-xs font-medium text-slate-600">{label}</span>
+        {description && <p className="text-xs text-slate-500">{description}</p>}
       </div>
       <button
         type="button"
         onClick={() => onChange(!value)}
         className={`
-          relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-300 ease-in-out
-          ${value
-            ? 'bg-gradient-to-r from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/30'
-            : 'bg-slate-300'
-          }
+          relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+          ${value ? 'bg-slate-800' : 'bg-slate-300'}
         `}
       >
         <span
           className={`
-            inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-all duration-300 ease-in-out
-            ${value ? 'translate-x-6' : 'translate-x-1'}
+            inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+            ${value ? 'translate-x-4.5' : 'translate-x-1'}
           `}
+          style={{ transform: value ? 'translateX(18px)' : 'translateX(4px)' }}
         />
       </button>
     </div>
