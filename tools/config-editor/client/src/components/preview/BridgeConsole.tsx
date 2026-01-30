@@ -1,6 +1,18 @@
 // tools/config-editor/client/src/components/preview/BridgeConsole.tsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { PreviewBridgeEvent } from '../../utils/previewBridge';
+
+// Bridge 메시지 타입
+interface BridgeMessage {
+  protocol: string;
+  payload: Record<string, unknown>;
+  requestId?: string;
+  timestamp: number;
+}
+
+interface PreviewBridgeEvent {
+  type: 'PREVIEW_BRIDGE_MESSAGE';
+  data: BridgeMessage;
+}
 
 interface BridgeLog {
   id: number;
@@ -17,7 +29,7 @@ interface BridgeConsoleProps {
 
 export default function BridgeConsole({ onSendResponse }: BridgeConsoleProps) {
   const [logs, setLogs] = useState<BridgeLog[]>([]);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // 기본 접힘 상태
   const [selectedLog, setSelectedLog] = useState<BridgeLog | null>(null);
   const logIdRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
