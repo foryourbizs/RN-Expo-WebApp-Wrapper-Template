@@ -1112,21 +1112,28 @@ export function apiPlugin(): Plugin {
           if (contentType.includes('text/html')) {
             let html = content.toString('utf-8');
 
-            // Inject bridge script at the beginning of <head>
+            // Inject bridge script and base tag at the beginning of <head>
             const bridgeScript = getPreviewBridgeScript();
+            const baseTag = `<base href="/preview/">`;
             const headMatch = html.match(/<head[^>]*>/i);
             if (headMatch && headMatch.index !== undefined) {
               const insertPos = headMatch.index + headMatch[0].length;
-              html = html.slice(0, insertPos) + bridgeScript + html.slice(insertPos);
+              html = html.slice(0, insertPos) + baseTag + bridgeScript + html.slice(insertPos);
             } else {
               // No head tag, inject at beginning
-              html = bridgeScript + html;
+              html = baseTag + bridgeScript + html;
             }
 
-            // Rewrite absolute URLs to go through proxy
+            // Rewrite URLs to go through proxy
+            // 1. Absolute URLs with full origin
             html = html.replace(
               new RegExp(`(href|src|action)=["'](${proxyTargetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(/[^"']*)["']`, 'gi'),
               '$1="/preview$3"'
+            );
+            // 2. Root-relative URLs (starting with /) - but not //protocol URLs
+            html = html.replace(
+              /(href|src|action)=["'](?!\/\/)(\/[^"']*?)["']/gi,
+              '$1="/preview$2"'
             );
 
             content = Buffer.from(html, 'utf-8');

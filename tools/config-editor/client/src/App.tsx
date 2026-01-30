@@ -8,7 +8,7 @@ import PluginsConfigPage from './pages/PluginsConfig';
 import BuildConfigPage from './pages/BuildConfig';
 import { PreviewPanel, FullscreenModal } from './components/preview';
 import { PreviewProvider } from './contexts/PreviewContext';
-import { useConfig, useKeyboardShortcuts } from './hooks';
+import { useConfig } from './hooks';
 import type { AppConfig, ThemeConfig } from './types/config';
 
 function AppContent() {
@@ -18,9 +18,6 @@ function AppContent() {
   // 미리보기를 위해 config 데이터 로드
   const { data: appConfig } = useConfig<AppConfig>('app');
   const { data: themeConfig } = useConfig<ThemeConfig>('theme');
-
-  // 키보드 단축키 활성화
-  useKeyboardShortcuts();
 
   const handleUnsavedChange = useCallback((tab: string) => (hasChanges: boolean) => {
     setUnsavedTabs(prev => {

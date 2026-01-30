@@ -1,7 +1,6 @@
 // tools/config-editor/client/src/components/preview/screens/WebViewPreview.tsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePreview } from '../../../contexts/PreviewContext';
-import BridgeConsole from '../BridgeConsole';
 import type { AppConfig } from '../../../types/config';
 
 interface WebViewPreviewProps {
@@ -14,9 +13,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   const { settings, themeMode } = usePreview();
   const [loadMode, setLoadMode] = useState<LoadMode>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [showBridgeConsole, setShowBridgeConsole] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const baseUrl = appConfig?.webview?.baseUrl || '';
   const loadIframe = settings.loadIframe && baseUrl;
@@ -35,14 +32,8 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUrl })
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to configure proxy');
-      }
-
-      return true;
-    } catch (e) {
-      console.error('[Preview] Failed to configure proxy:', e);
+      return response.ok;
+    } catch {
       return false;
     }
   }, []);
@@ -56,8 +47,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
       configureProxy(baseUrl).then(success => {
         if (success) {
           setLoadMode('ready');
-          setIframeKey(k => k + 1); // iframe 리로드
-          console.log('[Preview] Proxy configured for:', baseUrl);
+          setIframeKey(k => k + 1);
         } else {
           setLoadMode('error');
           setErrorMessage('Failed to configure proxy');
@@ -65,35 +55,13 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
       });
     } else {
       setLoadMode('idle');
-      // 프록시 해제
       configureProxy(null);
     }
 
     return () => {
-      // cleanup: 프록시 해제
       configureProxy(null);
     };
   }, [loadIframe, baseUrl, configureProxy]);
-
-  // Bridge 응답 전송
-  const sendBridgeResponse = useCallback((requestId: string, response: unknown) => {
-    if (!iframeRef.current?.contentWindow) return;
-
-    try {
-      iframeRef.current.contentWindow.postMessage({
-        type: 'PREVIEW_BRIDGE_RESPONSE',
-        message: {
-          action: 'bridgeResponse',
-          payload: {
-            requestId,
-            ...(response as Record<string, unknown>)
-          }
-        }
-      }, '*');
-    } catch (e) {
-      console.error('[Preview] Failed to send response:', e);
-    }
-  }, []);
 
   const handleRetry = () => {
     if (baseUrl) {
@@ -164,40 +132,19 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
       <div className="w-full h-full flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin mb-2" />
-          <p className="text-xs text-slate-500">Setting up preview...</p>
+          <p className="text-xs text-slate-500">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // 준비 완료 - 프록시 URL로 iframe 로드
+  // 준비 완료 - iframe만 표시
   return (
-    <div className="w-full h-full relative">
-      {/* Bridge Status Indicator */}
-      <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
-        <button
-          onClick={() => setShowBridgeConsole(!showBridgeConsole)}
-          className="px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 bg-green-500/80 text-white"
-          title="AppBridge injected via proxy"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-white" />
-          Bridge ✓
-        </button>
-      </div>
-
-      {/* iframe via proxy */}
-      <iframe
-        key={iframeKey}
-        ref={iframeRef}
-        src="/preview/"
-        className="w-full h-full border-0"
-        title="WebView Preview"
-      />
-
-      {/* Bridge Console */}
-      {showBridgeConsole && (
-        <BridgeConsole onSendResponse={sendBridgeResponse} />
-      )}
-    </div>
+    <iframe
+      key={iframeKey}
+      src="/preview/"
+      className="w-full h-full border-0"
+      title="WebView Preview"
+    />
   );
 }
