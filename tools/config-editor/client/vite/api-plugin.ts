@@ -32,10 +32,25 @@ async function acceptSdkLicenses(sdkPath?: string): Promise<{ success: boolean; 
     return { success: false, message: 'Android SDK path not found' };
   }
 
-  // sdkmanager 경로 찾기
+  const sdkmanagerName = process.platform === 'win32' ? 'sdkmanager.bat' : 'sdkmanager';
+
+  // sdkmanager 경로 찾기 (다양한 SDK 구조 지원)
   const sdkmanagerPaths = [
-    path.join(androidHome, 'cmdline-tools', 'latest', 'bin', process.platform === 'win32' ? 'sdkmanager.bat' : 'sdkmanager'),
-    path.join(androidHome, 'tools', 'bin', process.platform === 'win32' ? 'sdkmanager.bat' : 'sdkmanager'),
+    // 설정된 경로가 bin 폴더를 직접 가리키는 경우
+    path.join(androidHome, sdkmanagerName),
+    // 설정된 경로가 cmdline-tools 폴더인 경우
+    path.join(androidHome, 'bin', sdkmanagerName),
+    // 표준 SDK 구조: cmdline-tools/latest/bin
+    path.join(androidHome, 'cmdline-tools', 'latest', 'bin', sdkmanagerName),
+    // 이전 버전 SDK 구조: cmdline-tools/bin
+    path.join(androidHome, 'cmdline-tools', 'bin', sdkmanagerName),
+    // 레거시 SDK 구조: tools/bin
+    path.join(androidHome, 'tools', 'bin', sdkmanagerName),
+    // 부모 폴더에서 찾기 (bin 경로가 설정된 경우)
+    path.join(path.dirname(androidHome), sdkmanagerName),
+    path.join(path.dirname(androidHome), 'bin', sdkmanagerName),
+    // cmdline-tools 폴더 구조 (버전 폴더 없이)
+    path.join(path.dirname(path.dirname(androidHome)), 'cmdline-tools', 'bin', sdkmanagerName),
   ];
 
   let sdkmanagerPath: string | null = null;
@@ -47,7 +62,22 @@ async function acceptSdkLicenses(sdkPath?: string): Promise<{ success: boolean; 
   }
 
   if (!sdkmanagerPath) {
-    return { success: false, message: 'sdkmanager not found in Android SDK' };
+    return { success: false, message: `sdkmanager not found. Searched paths:\n${sdkmanagerPaths.slice(0, 4).join('\n')}` };
+  }
+
+  // ANDROID_HOME 환경 변수 설정을 위한 SDK 루트 경로 추정
+  // sdkmanager가 있는 bin 폴더의 상위 구조에서 SDK 루트 찾기
+  let sdkRoot = androidHome;
+  const sdkmanagerDir = path.dirname(sdkmanagerPath);
+  // bin 폴더에서 SDK 루트 추정 (cmdline-tools/bin -> SDK root, cmdline-tools/latest/bin -> SDK root)
+  if (sdkmanagerDir.endsWith('bin')) {
+    const parent = path.dirname(sdkmanagerDir);
+    if (parent.endsWith('cmdline-tools') || parent.endsWith('tools')) {
+      sdkRoot = path.dirname(parent);
+    } else if (path.basename(path.dirname(parent)) === 'cmdline-tools') {
+      // cmdline-tools/latest/bin 구조
+      sdkRoot = path.dirname(path.dirname(parent));
+    }
   }
 
   try {
@@ -55,24 +85,32 @@ async function acceptSdkLicenses(sdkPath?: string): Promise<{ success: boolean; 
     const yesInput = 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\n';
 
     if (process.platform === 'win32') {
-      // Windows: echo로 yes 입력
-      await execAsync(`echo ${yesInput.replace(/\n/g, '& echo ')} | "${sdkmanagerPath}" --licenses`, {
+      // Windows: PowerShell 사용하여 yes 입력 파이프
+      const psCommand = `powershell -Command "& { 1..20 | ForEach-Object { 'y' } | & '${sdkmanagerPath.replace(/'/g, "''")}' --licenses }"`;
+      await execAsync(psCommand, {
         timeout: 120000,
-        env: { ...process.env, ANDROID_HOME: androidHome, ANDROID_SDK_ROOT: androidHome }
+        env: { ...process.env, ANDROID_HOME: sdkRoot, ANDROID_SDK_ROOT: sdkRoot }
       });
     } else {
       // Unix: yes 명령어 사용
       await execAsync(`yes | "${sdkmanagerPath}" --licenses`, {
         timeout: 120000,
-        env: { ...process.env, ANDROID_HOME: androidHome, ANDROID_SDK_ROOT: androidHome }
+        env: { ...process.env, ANDROID_HOME: sdkRoot, ANDROID_SDK_ROOT: sdkRoot }
       });
     }
 
     return { success: true, message: 'SDK licenses accepted successfully' };
   } catch (error: any) {
     // sdkmanager가 exit code 1을 반환해도 라이선스는 수락됐을 수 있음
-    if (error.stdout?.includes('accepted') || error.stderr?.includes('accepted')) {
+    if (error.stdout?.includes('accepted') || error.stderr?.includes('accepted') ||
+        error.stdout?.includes('All SDK package licenses accepted') ||
+        error.stderr?.includes('All SDK package licenses accepted')) {
       return { success: true, message: 'SDK licenses accepted' };
+    }
+    // 이미 모든 라이선스가 수락된 경우
+    if (error.stdout?.includes('licenses not accepted') === false &&
+        error.stderr?.includes('licenses not accepted') === false) {
+      return { success: true, message: 'SDK licenses already accepted' };
     }
     return { success: false, message: `Failed to accept licenses: ${error.message}` };
   }

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(findstr:*)",
       "Bash(\"%ANDROID_HOME%\\\\cmdline-tools\\\\latest\\\\bin\\\\sdkmanager.bat\" --licenses)",
-      "Bash(\"%LOCALAPPDATA%\\\\Android\\\\Sdk\\\\cmdline-tools\\\\latest\\\\bin\\\\sdkmanager.bat\" --licenses)"
+      "Bash(\"%LOCALAPPDATA%\\\\Android\\\\Sdk\\\\cmdline-tools\\\\latest\\\\bin\\\\sdkmanager.bat\" --licenses)",
+      "Bash(dir:*)"
     ]
   }
 }
