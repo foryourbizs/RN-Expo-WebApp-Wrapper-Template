@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfig } from '../hooks/useConfig';
 import { usePlugins } from '../hooks/usePlugins';
@@ -31,6 +31,34 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
 
   const autoPlugins = data?.plugins?.auto || [];
   const manualPlugins = data?.plugins?.manual || [];
+
+  // 네임스페이스 충돌 검사
+  const namespaceConflicts = useMemo(() => {
+    const allPlugins = [
+      ...autoPlugins.map(p => ({ id: p.name, namespace: p.namespace, type: 'auto' as const })),
+      ...manualPlugins.map(p => ({ id: p.path, namespace: p.namespace, type: 'manual' as const }))
+    ];
+
+    const nsMap = new Map<string, string[]>();
+    allPlugins.forEach(p => {
+      if (p.namespace) {
+        if (!nsMap.has(p.namespace)) nsMap.set(p.namespace, []);
+        nsMap.get(p.namespace)!.push(p.id);
+      }
+    });
+
+    const conflicts: { namespace: string; plugins: string[] }[] = [];
+    nsMap.forEach((plugins, namespace) => {
+      if (plugins.length > 1) {
+        conflicts.push({ namespace, plugins });
+      }
+    });
+    return conflicts;
+  }, [autoPlugins, manualPlugins]);
+
+  const conflictingNamespaces = useMemo(() => {
+    return new Set(namespaceConflicts.map(c => c.namespace));
+  }, [namespaceConflicts]);
 
   const isInstalled = useCallback((name: string) =>
     installedPackages.some(p => p.name === name), [installedPackages]);
@@ -103,6 +131,20 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
 
   return (
     <div>
+      {/* Namespace Conflict Warning */}
+      {namespaceConflicts.length > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+          <p className="text-sm font-medium text-red-800 mb-1">{t('plugins.namespaceConflict')}</p>
+          <ul className="text-xs text-red-600">
+            {namespaceConflicts.map(c => (
+              <li key={c.namespace}>
+                "{c.namespace}" → {c.plugins.join(', ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Auto Plugins */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
@@ -122,11 +164,14 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
           ) : (
             autoPlugins.map((plugin, index) => {
               const installed = isInstalled(plugin.name);
+              const hasConflict = conflictingNamespaces.has(plugin.namespace);
               return (
-                <div key={plugin.name} className="p-3 bg-white border border-slate-200 rounded flex items-center justify-between">
+                <div key={plugin.name} className={`p-3 bg-white border rounded flex items-center justify-between ${hasConflict ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
                   <div>
                     <span className="text-sm font-medium text-slate-800">{plugin.name}</span>
-                    <span className="ml-2 text-xs text-slate-400">ns: {plugin.namespace}</span>
+                    <span className={`ml-2 text-xs ${hasConflict ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
+                      ns: {plugin.namespace}{hasConflict && ' ⚠'}
+                    </span>
                     <span className={`ml-2 text-xs ${installed ? 'text-green-600' : 'text-orange-500'}`}>
                       {installed ? 'installed' : 'not installed'}
                     </span>
@@ -176,11 +221,15 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
               No manual plugins
             </div>
           ) : (
-            manualPlugins.map((plugin, index) => (
-              <div key={plugin.path} className="p-3 bg-white border border-slate-200 rounded flex items-center justify-between">
+            manualPlugins.map((plugin, index) => {
+              const hasConflict = conflictingNamespaces.has(plugin.namespace);
+              return (
+              <div key={plugin.path} className={`p-3 bg-white border rounded flex items-center justify-between ${hasConflict ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
                 <div>
                   <span className="text-sm font-medium text-slate-800">{plugin.path}</span>
-                  <span className="ml-2 text-xs text-slate-400">ns: {plugin.namespace}</span>
+                  <span className={`ml-2 text-xs ${hasConflict ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
+                    ns: {plugin.namespace}{hasConflict && ' ⚠'}
+                  </span>
                 </div>
                 <button
                   onClick={() => handleRemoveManualPlugin(index)}
@@ -189,7 +238,8 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                   {t('plugins.remove')}
                 </button>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

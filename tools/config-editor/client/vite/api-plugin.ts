@@ -28,7 +28,8 @@ const bridgesDir = path.join(projectRoot, 'lib/bridges');
 const CONFIG_FILES: Record<string, string> = {
   app: 'app.json',
   theme: 'theme.json',
-  plugins: 'plugins.json'
+  plugins: 'plugins.json',
+  'build-env': 'build-env.json'
 };
 
 // Validation
@@ -132,6 +133,36 @@ async function regeneratePluginRegistry() {
   }
 }
 
+// 네임스페이스 충돌 검사
+function validatePluginNamespaces(config: any): { valid: boolean; conflicts: Array<{ namespace: string; plugins: string[] }> } {
+  const allPlugins = [
+    ...(config.plugins?.auto || []).map((p: any) => ({ ...p, id: p.name, type: 'auto' })),
+    ...(config.plugins?.manual || []).map((p: any) => ({ ...p, id: p.path, type: 'manual' }))
+  ];
+
+  const namespaceMap = new Map<string, string[]>();
+
+  allPlugins.forEach((plugin: any) => {
+    const ns = plugin.namespace;
+    const id = plugin.id;
+    if (ns) {
+      if (!namespaceMap.has(ns)) {
+        namespaceMap.set(ns, []);
+      }
+      namespaceMap.get(ns)!.push(id);
+    }
+  });
+
+  const conflicts: Array<{ namespace: string; plugins: string[] }> = [];
+  namespaceMap.forEach((plugins, namespace) => {
+    if (plugins.length > 1) {
+      conflicts.push({ namespace, plugins });
+    }
+  });
+
+  return { valid: conflicts.length === 0, conflicts };
+}
+
 // Helper to read request body
 async function readBody(req: any): Promise<any> {
   return new Promise((resolve) => {
@@ -154,10 +185,54 @@ function sendJson(res: any, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
-// ========== Build Functions ==========
+// ========== Build Environment ==========
+
+interface BuildEnvConfig {
+  android?: {
+    sdkPath?: string;
+    javaHome?: string;
+  };
+  ios?: {
+    xcodeSelectPath?: string;
+  };
+}
+
+async function loadBuildEnv(): Promise<BuildEnvConfig> {
+  try {
+    const content = await fs.readFile(path.join(constantsDir, 'build-env.json'), 'utf-8');
+    const data = JSON.parse(content);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { $schema, ...config } = data;
+    return config;
+  } catch {
+    return {};
+  }
+}
+
+async function saveBuildEnv(config: BuildEnvConfig): Promise<void> {
+  const data = {
+    $schema: './schemas/build-env.schema.json',
+    ...config
+  };
+  await fs.writeFile(
+    path.join(constantsDir, 'build-env.json'),
+    JSON.stringify(data, null, 2) + '\n',
+    'utf-8'
+  );
+}
+
+// local.properties 업데이트
+async function updateLocalProperties(sdkPath: string): Promise<void> {
+  const localPropsPath = path.join(projectRoot, 'android', 'local.properties');
+  // 경로를 gradle 형식으로 변환 (백슬래시 이스케이프)
+  const escapedPath = sdkPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
+  const content = `sdk.dir=${escapedPath}\n`;
+  await fs.writeFile(localPropsPath, content, 'utf-8');
+}
 
 async function checkBuildEnvironment(): Promise<Array<{ name: string; status: string; message: string; detail?: string }>> {
   const checks: Array<{ name: string; status: string; message: string; detail?: string }> = [];
+  const buildEnv = await loadBuildEnv();
 
   // 1. Node.js
   try {
@@ -175,39 +250,62 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
     checks.push({ name: 'npm', status: 'error', message: 'Not installed' });
   }
 
-  // 3. Java
-  try {
-    const { stderr } = await execAsync('java -version');
-    const match = stderr.match(/version "([^"]+)"/);
-    const version = match ? match[1] : 'Unknown';
-    const major = parseInt(version.split('.')[0]);
-    if (major >= 17 && major <= 21) {
-      checks.push({ name: 'Java', status: 'ok', message: version });
-    } else if (major > 21) {
-      checks.push({ name: 'Java', status: 'warning', message: version, detail: 'JDK 17-21 recommended' });
-    } else {
-      checks.push({ name: 'Java', status: 'error', message: version, detail: 'JDK 17+ required' });
+  // 3. Java - build-env.json의 javaHome 우선 사용
+  const javaHome = buildEnv.android?.javaHome || process.env.JAVA_HOME;
+  if (javaHome) {
+    try {
+      const javaCmd = path.join(javaHome, 'bin', 'java');
+      const { stderr } = await execAsync(`"${javaCmd}" -version`);
+      const match = stderr.match(/version "([^"]+)"/);
+      const version = match ? match[1] : 'Unknown';
+      const major = parseInt(version.split('.')[0]);
+      if (major >= 17 && major <= 21) {
+        checks.push({ name: 'Java', status: 'ok', message: version });
+      } else if (major > 21) {
+        checks.push({ name: 'Java', status: 'warning', message: version, detail: 'JDK 17-21 recommended' });
+      } else {
+        checks.push({ name: 'Java', status: 'error', message: version, detail: 'JDK 17+ required' });
+      }
+    } catch {
+      // fallback to system java
+      try {
+        const { stderr } = await execAsync('java -version');
+        const match = stderr.match(/version "([^"]+)"/);
+        const version = match ? match[1] : 'Unknown';
+        checks.push({ name: 'Java', status: 'ok', message: version });
+      } catch {
+        checks.push({ name: 'Java', status: 'error', message: 'Not installed', detail: 'Install JDK 17+' });
+      }
     }
-  } catch {
-    checks.push({ name: 'Java', status: 'error', message: 'Not installed', detail: 'Install JDK 17+' });
+  } else {
+    try {
+      const { stderr } = await execAsync('java -version');
+      const match = stderr.match(/version "([^"]+)"/);
+      const version = match ? match[1] : 'Unknown';
+      checks.push({ name: 'Java', status: 'ok', message: version });
+    } catch {
+      checks.push({ name: 'Java', status: 'error', message: 'Not installed', detail: 'Install JDK 17+' });
+    }
   }
 
   // 4. JAVA_HOME
-  const javaHome = process.env.JAVA_HOME;
-  if (javaHome) {
-    checks.push({ name: 'JAVA_HOME', status: 'ok', message: javaHome });
+  if (buildEnv.android?.javaHome) {
+    checks.push({ name: 'JAVA_HOME', status: 'ok', message: buildEnv.android.javaHome, detail: '(config)' });
+  } else if (process.env.JAVA_HOME) {
+    checks.push({ name: 'JAVA_HOME', status: 'ok', message: process.env.JAVA_HOME });
   } else {
     checks.push({ name: 'JAVA_HOME', status: 'warning', message: 'Not set' });
   }
 
-  // 5. Android SDK
-  const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  // 5. Android SDK - build-env.json의 sdkPath 우선 사용
+  const androidHome = buildEnv.android?.sdkPath || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
   if (androidHome && fsSync.existsSync(path.join(androidHome, 'platform-tools'))) {
-    checks.push({ name: 'Android SDK', status: 'ok', message: androidHome });
+    const source = buildEnv.android?.sdkPath ? '(config)' : undefined;
+    checks.push({ name: 'Android SDK', status: 'ok', message: androidHome, detail: source });
   } else if (androidHome) {
     checks.push({ name: 'Android SDK', status: 'warning', message: androidHome, detail: 'platform-tools missing' });
   } else {
-    checks.push({ name: 'Android SDK', status: 'error', message: 'Not found', detail: 'Set ANDROID_HOME' });
+    checks.push({ name: 'Android SDK', status: 'error', message: 'Not found', detail: 'Set ANDROID_HOME or configure in settings' });
   }
 
   // 6. EAS CLI
@@ -380,7 +478,7 @@ export function apiPlugin(): Plugin {
 
         try {
           // GET /api/config/:type
-          const configGetMatch = url.match(/^\/api\/config\/(app|theme|plugins)$/);
+          const configGetMatch = url.match(/^\/api\/config\/(app|theme|plugins|build-env)$/);
           if (configGetMatch && req.method === 'GET') {
             const type = configGetMatch[1];
             const filename = CONFIG_FILES[type];
@@ -407,12 +505,33 @@ export function apiPlugin(): Plugin {
               return;
             }
 
+            // plugins 저장 시 네임스페이스 충돌 검사
+            if (type === 'plugins') {
+              const validation = validatePluginNamespaces(body);
+              if (!validation.valid) {
+                sendJson(res, 400, {
+                  error: 'Namespace conflict detected',
+                  conflicts: validation.conflicts
+                });
+                return;
+              }
+            }
+
             try {
               const content = JSON.stringify(body, null, 2) + '\n';
               await fs.writeFile(filePath, content, 'utf-8');
 
               if (type === 'plugins') {
                 await regeneratePluginRegistry();
+              }
+
+              // build-env 저장 시 local.properties도 업데이트
+              if (type === 'build-env' && body.android?.sdkPath) {
+                try {
+                  await updateLocalProperties(body.android.sdkPath);
+                } catch (e) {
+                  console.log('[api-plugin] Could not update local.properties:', e);
+                }
               }
 
               sendJson(res, 200, { success: true });
@@ -507,6 +626,14 @@ export function apiPlugin(): Plugin {
             } catch {
               sendJson(res, 500, { error: 'Failed to scan bridges folder' });
             }
+            return;
+          }
+
+          // POST /api/plugins/validate - 네임스페이스 충돌 검사
+          if (url === '/api/plugins/validate' && req.method === 'POST') {
+            const body = await readBody(req);
+            const validation = validatePluginNamespaces(body);
+            sendJson(res, 200, validation);
             return;
           }
 

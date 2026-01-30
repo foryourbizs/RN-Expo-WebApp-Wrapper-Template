@@ -73,9 +73,11 @@
     "version": "버전",
     "installAndAdd": "설치 후 추가",
     "scanResults": "lib/bridges 폴더 스캔 결과",
-    "alreadyAdded": "이미 추가됨"
+    "alreadyAdded": "이미 추가됨",
+    "namespaceConflict": "네임스페이스 충돌이 있습니다. 각 플러그인은 고유한 네임스페이스를 사용해야 합니다."
   },
   "build": {
+    "envSettings": "환경 설정",
     "envCheck": "빌드 환경 확인",
     "checkEnv": "환경 확인",
     "cloudBuild": "클라우드 빌드 (EAS)",

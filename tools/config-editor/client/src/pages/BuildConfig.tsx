@@ -14,6 +14,16 @@ interface BuildOutput {
   timestamp: number;
 }
 
+interface BuildEnvConfig {
+  android?: {
+    sdkPath?: string;
+    javaHome?: string;
+  };
+  ios?: {
+    xcodeSelectPath?: string;
+  };
+}
+
 export default function BuildConfigPage() {
   const { t } = useTranslation();
   const [envChecks, setEnvChecks] = useState<EnvCheckResult[]>([]);
@@ -22,6 +32,65 @@ export default function BuildConfigPage() {
   const [buildOutput, setBuildOutput] = useState<BuildOutput[]>([]);
   const [buildId, setBuildId] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
+
+  // Environment config
+  const [buildEnv, setBuildEnv] = useState<BuildEnvConfig>({});
+  const [envSaving, setEnvSaving] = useState(false);
+  const [envDirty, setEnvDirty] = useState(false);
+
+  // Load build-env config on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/config/build-env');
+        if (res.ok) {
+          const data = await res.json();
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { $schema, ...config } = data;
+          setBuildEnv(config);
+        }
+      } catch (e) {
+        console.error('Failed to load build-env:', e);
+      }
+    })();
+  }, []);
+
+  const saveBuildEnv = useCallback(async () => {
+    setEnvSaving(true);
+    try {
+      const res = await fetch('/api/config/build-env', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          $schema: './schemas/build-env.schema.json',
+          ...buildEnv
+        })
+      });
+      if (res.ok) {
+        setEnvDirty(false);
+      }
+    } catch (e) {
+      console.error('Failed to save build-env:', e);
+    } finally {
+      setEnvSaving(false);
+    }
+  }, [buildEnv]);
+
+  const updateEnvConfig = useCallback((path: string, value: string) => {
+    setBuildEnv(prev => {
+      const parts = path.split('.');
+      const newConfig = { ...prev };
+      let current: any = newConfig;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!current[parts[i]]) current[parts[i]] = {};
+        current[parts[i]] = { ...current[parts[i]] };
+        current = current[parts[i]];
+      }
+      current[parts[parts.length - 1]] = value;
+      return newConfig;
+    });
+    setEnvDirty(true);
+  }, []);
 
   useEffect(() => {
     if (outputRef.current) {
@@ -160,6 +229,45 @@ export default function BuildConfigPage() {
 
   return (
     <div className="space-y-4">
+      {/* Environment Settings */}
+      <div className="border border-slate-200 rounded-lg p-4 bg-white">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-medium text-slate-800">{t('build.envSettings')}</h3>
+          <button
+            onClick={saveBuildEnv}
+            disabled={!envDirty || envSaving}
+            className="px-3 py-1 text-sm bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {envSaving ? '...' : t('common.save')}
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Android SDK Path</label>
+            <input
+              type="text"
+              value={buildEnv.android?.sdkPath || ''}
+              onChange={(e) => updateEnvConfig('android.sdkPath', e.target.value)}
+              placeholder="E:\AndroidSDK"
+              className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Java Home</label>
+            <input
+              type="text"
+              value={buildEnv.android?.javaHome || ''}
+              onChange={(e) => updateEnvConfig('android.javaHome', e.target.value)}
+              placeholder="C:\Program Files\Java\jdk-17"
+              className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded font-mono"
+            />
+          </div>
+        </div>
+        {envDirty && (
+          <p className="text-xs text-orange-600 mt-2">{t('common.unsaved')}</p>
+        )}
+      </div>
+
       {/* Environment Check */}
       <div className="border border-slate-200 rounded-lg p-4 bg-white">
         <div className="flex justify-between items-center mb-3">

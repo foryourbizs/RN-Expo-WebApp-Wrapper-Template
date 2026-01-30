@@ -13,6 +13,18 @@
       {
         "name": "rnww-plugin-screen-pinning",
         "namespace": "screen"
+      },
+      {
+        "name": "rnww-plugin-camera",
+        "namespace": "camera"
+      },
+      {
+        "name": "rnww-plugin-background",
+        "namespace": "backgr"
+      },
+      {
+        "name": "rnww-plugin-microphone",
+        "namespace": "microp"
       }
     ],
     "manual": [
@@ -23,6 +35,46 @@
       {
         "path": "./security",
         "namespace": "securi"
+      },
+      {
+        "path": "./orientation",
+        "namespace": "orient"
+      },
+      {
+        "path": "./push",
+        "namespace": "push"
+      },
+      {
+        "path": "./splash",
+        "namespace": "splash"
+      },
+      {
+        "path": "./status-bar",
+        "namespace": "status"
+      },
+      {
+        "path": "./ui",
+        "namespace": "ui"
+      },
+      {
+        "path": "./update",
+        "namespace": "update"
+      },
+      {
+        "path": "./keep-awake",
+        "namespace": "keepaw"
+      },
+      {
+        "path": "./navigation-bar",
+        "namespace": "naviga"
+      },
+      {
+        "path": "./clipboard",
+        "namespace": "clipbo"
+      },
+      {
+        "path": "./device",
+        "namespace": "device"
       }
     ]
   }

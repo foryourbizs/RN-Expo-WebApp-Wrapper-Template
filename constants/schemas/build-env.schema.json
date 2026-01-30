@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Build Environment Configuration",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "android": {
+      "type": "object",
+      "properties": {
+        "sdkPath": {
+          "type": "string",
+          "description": "Android SDK path (e.g., C:\\Users\\user\\AppData\\Local\\Android\\Sdk)"
+        },
+        "javaHome": {
+          "type": "string",
+          "description": "Java JDK home path (e.g., C:\\Program Files\\Java\\jdk-17)"
+        }
+      }
+    },
+    "ios": {
+      "type": "object",
+      "properties": {
+        "xcodeSelectPath": {
+          "type": "string",
+          "description": "Xcode command line tools path"
+        }
+      }
+    }
+  }
+}

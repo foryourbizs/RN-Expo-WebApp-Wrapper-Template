@@ -73,9 +73,11 @@
     "version": "Version",
     "installAndAdd": "Install & Add",
     "scanResults": "lib/bridges folder scan results",
-    "alreadyAdded": "Already added"
+    "alreadyAdded": "Already added",
+    "namespaceConflict": "Namespace conflict detected. Each plugin must have a unique namespace."
   },
   "build": {
+    "envSettings": "Environment Settings",
     "envCheck": "Build Environment Check",
     "checkEnv": "Check Environment",
     "cloudBuild": "Cloud Build (EAS)",
