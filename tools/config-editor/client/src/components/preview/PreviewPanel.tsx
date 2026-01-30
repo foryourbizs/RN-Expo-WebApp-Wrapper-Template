@@ -17,7 +17,7 @@ interface PreviewPanelProps {
 
 export default function PreviewPanel({ appConfig, themeConfig, activeTab }: PreviewPanelProps) {
   const { t } = useTranslation();
-  const { currentScreen, orientation, deviceSize, themeMode, setCurrentScreen, setIsFullscreen, isFullscreen } = usePreview();
+  const { currentScreen, orientation, deviceSize, themeMode, setCurrentScreen, setIsFullscreen } = usePreview();
 
   // 탭에 따라 기본 화면 설정
   useEffect(() => {

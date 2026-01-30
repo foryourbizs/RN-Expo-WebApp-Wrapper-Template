@@ -1,6 +1,6 @@
 // tools/config-editor/client/src/hooks/useAccordionSync.ts
 import { useCallback } from 'react';
-import { usePreview, PreviewScreen, HighlightTarget } from '../contexts/PreviewContext';
+import { usePreview } from '../contexts/PreviewContext';
 import { SECTION_TO_SCREEN_MAP, HIGHLIGHT_SECTIONS } from '../constants/devices';
 
 export function useAccordionSync() {

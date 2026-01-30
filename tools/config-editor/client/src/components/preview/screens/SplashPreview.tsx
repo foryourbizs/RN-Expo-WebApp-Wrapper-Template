@@ -7,7 +7,8 @@ interface SplashPreviewProps {
   themeConfig: ThemeConfig | null;
 }
 
-export default function SplashPreview({ appConfig, themeConfig }: SplashPreviewProps) {
+// themeConfig은 향후 theme 색상 사용 시 활용 예정
+export default function SplashPreview({ appConfig, themeConfig: _themeConfig }: SplashPreviewProps) {
   const { themeMode } = usePreview();
 
   const splash = appConfig?.splash;
