@@ -138,6 +138,64 @@ interface BuildProcess {
 
 const buildProcesses: Map<string, BuildProcess> = new Map();
 
+// Preview proxy state
+let proxyTargetUrl: string | null = null;
+let proxyTargetOrigin: string | null = null;
+
+// Preview AppBridge script (injected into HTML)
+const getPreviewBridgeScript = (): string => {
+  return `
+<script>
+(function() {
+  'use strict';
+  if (window.AppBridge) return;
+  var isPreview = window.parent !== window;
+  var _t = (function(){ var s = Symbol('_'); var o = {}; o[s] = 'preview-token'; return function(){ return o[s]; }; })();
+  var pendingRequests = new Map();
+
+  window.ReactNativeWebView = {
+    postMessage: function(message) {
+      var parsed = JSON.parse(message);
+      if (isPreview) {
+        window.parent.postMessage({ type: 'PREVIEW_BRIDGE_MESSAGE', data: parsed }, '*');
+      }
+      console.log('[AppBridge Preview] Message sent:', parsed);
+    }
+  };
+
+  window.AppBridge = {
+    send: function(action, payload) {
+      var message = { protocol: 'app://' + action, payload: payload || {}, timestamp: Date.now(), __token: _t(), __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9) };
+      window.ReactNativeWebView.postMessage(JSON.stringify(message));
+    },
+    call: function(action, payload, timeout) {
+      timeout = timeout || 10000;
+      return new Promise(function(resolve, reject) {
+        var requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        var timer = setTimeout(function() { pendingRequests.delete(requestId); reject(new Error('Timeout: ' + action)); }, timeout);
+        pendingRequests.set(requestId, { resolve: resolve, reject: reject, timer: timer });
+        var message = { protocol: 'app://' + action, payload: payload || {}, requestId: requestId, timestamp: Date.now(), __token: _t(), __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9) };
+        window.ReactNativeWebView.postMessage(JSON.stringify(message));
+      });
+    },
+    on: function(action, callback) { if (!this._listeners) this._listeners = {}; if (!this._listeners[action]) this._listeners[action] = []; this._listeners[action].push(callback); },
+    once: function(action, callback) { var self = this; var wrapper = function(p, m) { self.off(action, wrapper); callback(p, m); }; this.on(action, wrapper); },
+    off: function(action, callback) { if (!this._listeners || !this._listeners[action]) return; if (callback) { this._listeners[action] = this._listeners[action].filter(function(cb) { return cb !== callback; }); } else { delete this._listeners[action]; } },
+    waitFor: function(action, timeout) { var self = this; timeout = timeout || 10000; return new Promise(function(resolve, reject) { var timer = setTimeout(function() { self.off(action, handler); reject(new Error('Timeout: ' + action)); }, timeout); var handler = function(p, m) { clearTimeout(timer); self.off(action, handler); resolve({ payload: p, message: m }); }; self.on(action, handler); }); },
+    _handleResponse: function(response) { var pending = pendingRequests.get(response.requestId); if (pending) { clearTimeout(pending.timer); pendingRequests.delete(response.requestId); if (response.success) { pending.resolve(response.data); } else { pending.reject(new Error(response.error || 'Unknown error')); } } },
+    _handleMessage: function(message) { if (message.action === 'bridgeResponse') { this._handleResponse(message.payload); return; } if (this._listeners) { if (this._listeners[message.action]) { this._listeners[message.action].forEach(function(cb) { try { cb(message.payload, message); } catch(e) { console.error(e); } }); } if (this._listeners['*']) { this._listeners['*'].forEach(function(cb) { try { cb(message.payload, message); } catch(e) {} }); } } },
+    isApp: function() { return !!window.ReactNativeWebView; },
+    isPreview: function() { return true; },
+    version: '2.1.0-preview'
+  };
+
+  window.addEventListener('message', function(e) { if (e.data && e.data.type === 'PREVIEW_BRIDGE_RESPONSE') { window.AppBridge._handleMessage(e.data.message); } });
+  window.dispatchEvent(new CustomEvent('AppBridgeReady'));
+  console.log('[AppBridge Preview] Initialized');
+})();
+</script>`;
+};
+
 // Project root (where package.json is)
 const projectRoot = path.resolve(__dirname, '../../../..');
 const constantsDir = path.join(projectRoot, 'constants');
@@ -984,6 +1042,106 @@ export function apiPlugin(): Plugin {
   return {
     name: 'config-editor-api',
     configureServer(server: ViteDevServer) {
+      // Preview reverse proxy middleware
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url || '';
+
+        // Only handle /preview/* routes
+        if (!url.startsWith('/preview/') && url !== '/preview') {
+          return next();
+        }
+
+        if (!proxyTargetUrl || !proxyTargetOrigin) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'text/plain');
+          res.end('Preview proxy not configured. Set target URL first.');
+          return;
+        }
+
+        try {
+          // Extract path after /preview
+          const proxyPath = url.replace(/^\/preview\/?/, '/');
+          const targetUrl = new URL(proxyPath, proxyTargetOrigin).href;
+
+          console.log('[Preview Proxy]', req.method, url, '->', targetUrl);
+
+          // Forward headers (except host)
+          const headers: Record<string, string> = {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'Accept': req.headers.accept || '*/*',
+            'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.9',
+            'Accept-Encoding': 'identity', // Don't accept compressed to allow modification
+          };
+
+          if (req.headers.referer) {
+            // Rewrite referer to target origin
+            headers['Referer'] = proxyTargetOrigin;
+          }
+
+          const response = await fetch(targetUrl, {
+            method: req.method,
+            headers,
+            redirect: 'manual' // Handle redirects ourselves
+          });
+
+          // Handle redirects
+          if (response.status >= 300 && response.status < 400) {
+            const location = response.headers.get('location');
+            if (location) {
+              // Rewrite redirect to go through proxy
+              const redirectUrl = new URL(location, targetUrl);
+              if (redirectUrl.origin === proxyTargetOrigin) {
+                res.statusCode = response.status;
+                res.setHeader('Location', '/preview' + redirectUrl.pathname + redirectUrl.search);
+                res.end();
+                return;
+              }
+            }
+          }
+
+          // Copy status and relevant headers
+          res.statusCode = response.status;
+          const contentType = response.headers.get('content-type') || 'application/octet-stream';
+          res.setHeader('Content-Type', contentType);
+
+          // Get response body
+          const body = await response.arrayBuffer();
+          let content = Buffer.from(body);
+
+          // Inject bridge script into HTML responses
+          if (contentType.includes('text/html')) {
+            let html = content.toString('utf-8');
+
+            // Inject bridge script at the beginning of <head>
+            const bridgeScript = getPreviewBridgeScript();
+            const headMatch = html.match(/<head[^>]*>/i);
+            if (headMatch && headMatch.index !== undefined) {
+              const insertPos = headMatch.index + headMatch[0].length;
+              html = html.slice(0, insertPos) + bridgeScript + html.slice(insertPos);
+            } else {
+              // No head tag, inject at beginning
+              html = bridgeScript + html;
+            }
+
+            // Rewrite absolute URLs to go through proxy
+            html = html.replace(
+              new RegExp(`(href|src|action)=["'](${proxyTargetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(/[^"']*)["']`, 'gi'),
+              '$1="/preview$3"'
+            );
+
+            content = Buffer.from(html, 'utf-8');
+          }
+
+          res.end(content);
+        } catch (error: any) {
+          console.error('[Preview Proxy] Error:', error.message);
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'text/plain');
+          res.end('Proxy error: ' + error.message);
+        }
+      });
+
+      // API routes middleware
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || '';
 
@@ -1481,54 +1639,33 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             return;
           }
 
-          // GET /api/proxy - Proxy for fetching external URLs (CORS bypass for preview)
-          if (url.startsWith('/api/proxy') && req.method === 'GET') {
-            const urlObj = new URL(url, 'http://localhost');
-            const targetUrl = urlObj.searchParams.get('url');
+          // GET /api/proxy/config - Get current proxy target URL
+          if (url === '/api/proxy/config' && req.method === 'GET') {
+            sendJson(res, 200, { targetUrl: proxyTargetUrl });
+            return;
+          }
 
-            if (!targetUrl) {
-              sendJson(res, 400, { error: 'url parameter is required' });
-              return;
-            }
-
-            // URL 유효성 검사
-            try {
-              const parsedUrl = new URL(targetUrl);
-              if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-                sendJson(res, 400, { error: 'Only http/https URLs are allowed' });
-                return;
+          // POST /api/proxy/config - Set proxy target URL
+          if (url === '/api/proxy/config' && req.method === 'POST') {
+            const { targetUrl } = await readBody(req);
+            if (targetUrl) {
+              try {
+                const parsed = new URL(targetUrl);
+                if (!['http:', 'https:'].includes(parsed.protocol)) {
+                  sendJson(res, 400, { error: 'Only http/https URLs allowed' });
+                  return;
+                }
+                proxyTargetUrl = targetUrl;
+                proxyTargetOrigin = parsed.origin;
+                console.log('[api-plugin] Proxy target set to:', proxyTargetUrl);
+                sendJson(res, 200, { success: true, targetUrl: proxyTargetUrl });
+              } catch {
+                sendJson(res, 400, { error: 'Invalid URL' });
               }
-            } catch {
-              sendJson(res, 400, { error: 'Invalid URL' });
-              return;
-            }
-
-            try {
-              // Node.js fetch로 외부 URL 가져오기
-              const response = await fetch(targetUrl, {
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                  'Accept-Language': 'en-US,en;q=0.9'
-                },
-                redirect: 'follow'
-              });
-
-              if (!response.ok) {
-                sendJson(res, response.status, { error: `Failed to fetch: ${response.statusText}` });
-                return;
-              }
-
-              const contentType = response.headers.get('content-type') || 'text/html';
-              const content = await response.text();
-
-              res.statusCode = 200;
-              res.setHeader('Content-Type', contentType);
-              res.setHeader('Access-Control-Allow-Origin', '*');
-              res.end(content);
-            } catch (error: any) {
-              console.error('[api-plugin] Proxy fetch error:', error.message);
-              sendJson(res, 500, { error: `Proxy error: ${error.message}` });
+            } else {
+              proxyTargetUrl = null;
+              proxyTargetOrigin = null;
+              sendJson(res, 200, { success: true, targetUrl: null });
             }
             return;
           }

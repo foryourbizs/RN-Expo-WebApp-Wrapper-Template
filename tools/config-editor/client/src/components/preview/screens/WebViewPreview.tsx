@@ -1,7 +1,6 @@
 // tools/config-editor/client/src/components/preview/screens/WebViewPreview.tsx
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePreview } from '../../../contexts/PreviewContext';
-import { getPreviewBridgeScript } from '../../../utils/previewBridge';
 import BridgeConsole from '../BridgeConsole';
 import type { AppConfig } from '../../../types/config';
 
@@ -9,16 +8,15 @@ interface WebViewPreviewProps {
   appConfig: AppConfig | null;
 }
 
-type LoadMode = 'idle' | 'fetching' | 'injected' | 'direct' | 'error';
+type LoadMode = 'idle' | 'configuring' | 'ready' | 'error';
 
 export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   const { settings, themeMode } = usePreview();
   const [loadMode, setLoadMode] = useState<LoadMode>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showBridgeConsole, setShowBridgeConsole] = useState(true);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const baseUrl = appConfig?.webview?.baseUrl || '';
   const loadIframe = settings.loadIframe && baseUrl;
@@ -29,128 +27,53 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     ? (safeArea?.darkBackgroundColor || '#000000')
     : (safeArea?.backgroundColor || '#ffffff');
 
-  // HTML에 브릿지 스크립트 주입
-  const injectBridgeIntoHtml = useCallback((html: string, originalUrl: string): string => {
-    const bridgeScript = `<script>${getPreviewBridgeScript()}</script>`;
+  // 프록시 설정
+  const configureProxy = useCallback(async (targetUrl: string | null) => {
+    try {
+      const response = await fetch('/api/proxy/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl })
+      });
 
-    // <base> 태그 추가 (상대 경로 리소스 로드용)
-    const baseTag = `<base href="${originalUrl}">`;
+      if (!response.ok) {
+        throw new Error('Failed to configure proxy');
+      }
 
-    // <head> 태그 찾아서 바로 뒤에 삽입
-    const headMatch = html.match(/<head[^>]*>/i);
-    if (headMatch) {
-      const insertPos = headMatch.index! + headMatch[0].length;
-      return html.slice(0, insertPos) + baseTag + bridgeScript + html.slice(insertPos);
+      return true;
+    } catch (e) {
+      console.error('[Preview] Failed to configure proxy:', e);
+      return false;
     }
-
-    // <head>가 없으면 <html> 바로 뒤에 삽입
-    const htmlMatch = html.match(/<html[^>]*>/i);
-    if (htmlMatch) {
-      const insertPos = htmlMatch.index! + htmlMatch[0].length;
-      return html.slice(0, insertPos) + '<head>' + baseTag + bridgeScript + '</head>' + html.slice(insertPos);
-    }
-
-    // 둘 다 없으면 맨 앞에 삽입
-    return baseTag + bridgeScript + html;
   }, []);
 
-  // URL에서 HTML 가져와서 브릿지 주입
-  const fetchAndInject = useCallback(async () => {
-    if (!baseUrl) return;
-
-    setLoadMode('fetching');
-    setErrorMessage('');
-
-    // 타임아웃 설정
-    timeoutRef.current = setTimeout(() => {
-      setLoadMode('error');
-      setErrorMessage('Request timeout');
-    }, 15000);
-
-    try {
-      // 프록시 서버를 통해 HTML 가져오기 (CORS 우회)
-      // 프록시가 없으면 직접 fetch 시도 (same-origin만 성공)
-      const proxyUrl = `/api/proxy?url=${encodeURIComponent(baseUrl)}`;
-
-      let response: Response;
-      let html: string;
-
-      try {
-        // 먼저 프록시 시도
-        response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('Proxy failed');
-        html = await response.text();
-      } catch {
-        // 프록시 실패 시 직접 fetch 시도 (same-origin only)
-        console.log('[Preview] Proxy not available, trying direct fetch...');
-        try {
-          response = await fetch(baseUrl, {
-            mode: 'cors',
-            credentials: 'omit'
-          });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          html = await response.text();
-        } catch (e) {
-          // CORS 에러 - 직접 iframe 로드로 폴백 (브릿지 없이)
-          console.log('[Preview] Direct fetch failed (CORS), falling back to direct iframe load');
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setLoadMode('direct');
-          return;
-        }
-      }
-
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-      // HTML에 브릿지 주입
-      const injectedHtml = injectBridgeIntoHtml(html, baseUrl);
-
-      // Blob URL 생성
-      const blob = new Blob([injectedHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-
-      // 이전 Blob URL 정리
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
-
-      setBlobUrl(url);
-      setLoadMode('injected');
-      console.log('[Preview] Bridge injected before page load');
-    } catch (e) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      console.error('[Preview] Failed to fetch and inject:', e);
-      setLoadMode('error');
-      setErrorMessage(e instanceof Error ? e.message : 'Failed to load');
-    }
-  }, [baseUrl, injectBridgeIntoHtml, blobUrl]);
-
-  // loadIframe 변경 시 fetch 시작
+  // loadIframe 변경 시 프록시 설정
   useEffect(() => {
-    if (loadIframe) {
-      fetchAndInject();
+    if (loadIframe && baseUrl) {
+      setLoadMode('configuring');
+      setErrorMessage('');
+
+      configureProxy(baseUrl).then(success => {
+        if (success) {
+          setLoadMode('ready');
+          setIframeKey(k => k + 1); // iframe 리로드
+          console.log('[Preview] Proxy configured for:', baseUrl);
+        } else {
+          setLoadMode('error');
+          setErrorMessage('Failed to configure proxy');
+        }
+      });
     } else {
       setLoadMode('idle');
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-        setBlobUrl(null);
-      }
+      // 프록시 해제
+      configureProxy(null);
     }
 
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      // cleanup: 프록시 해제
+      configureProxy(null);
     };
-  }, [loadIframe, baseUrl]); // fetchAndInject 제외 (의도적)
-
-  // 컴포넌트 언마운트 시 Blob URL 정리
-  useEffect(() => {
-    return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
-    };
-  }, [blobUrl]);
+  }, [loadIframe, baseUrl, configureProxy]);
 
   // Bridge 응답 전송
   const sendBridgeResponse = useCallback((requestId: string, response: unknown) => {
@@ -173,11 +96,18 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   }, []);
 
   const handleRetry = () => {
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-      setBlobUrl(null);
+    if (baseUrl) {
+      setLoadMode('configuring');
+      configureProxy(baseUrl).then(success => {
+        if (success) {
+          setLoadMode('ready');
+          setIframeKey(k => k + 1);
+        } else {
+          setLoadMode('error');
+          setErrorMessage('Failed to configure proxy');
+        }
+      });
     }
-    fetchAndInject();
   };
 
   // 플레이스홀더 모드
@@ -228,89 +158,46 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     );
   }
 
-  // 로딩 중
-  if (loadMode === 'fetching') {
+  // 설정 중
+  if (loadMode === 'configuring' || loadMode === 'idle') {
     return (
       <div className="w-full h-full flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin mb-2" />
-          <p className="text-xs text-slate-500">Loading with AppBridge...</p>
+          <p className="text-xs text-slate-500">Setting up preview...</p>
         </div>
       </div>
     );
   }
 
-  // 브릿지 주입 모드 (Blob URL 사용)
-  if (loadMode === 'injected' && blobUrl) {
-    return (
-      <div className="w-full h-full relative">
-        {/* Bridge Status Indicator */}
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
-          <button
-            onClick={() => setShowBridgeConsole(!showBridgeConsole)}
-            className="px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 bg-green-500/80 text-white"
-            title="AppBridge injected before page load"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-white" />
-            Bridge ✓
-          </button>
-        </div>
-
-        {/* iframe with injected HTML */}
-        <iframe
-          ref={iframeRef}
-          src={blobUrl}
-          className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          title="WebView Preview"
-        />
-
-        {/* Bridge Console */}
-        {showBridgeConsole && (
-          <BridgeConsole onSendResponse={sendBridgeResponse} />
-        )}
+  // 준비 완료 - 프록시 URL로 iframe 로드
+  return (
+    <div className="w-full h-full relative">
+      {/* Bridge Status Indicator */}
+      <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+        <button
+          onClick={() => setShowBridgeConsole(!showBridgeConsole)}
+          className="px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 bg-green-500/80 text-white"
+          title="AppBridge injected via proxy"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-white" />
+          Bridge ✓
+        </button>
       </div>
-    );
-  }
 
-  // 직접 로드 모드 (브릿지 없음 - CORS 실패 시 폴백)
-  if (loadMode === 'direct') {
-    return (
-      <div className="w-full h-full relative">
-        {/* Bridge Status Indicator */}
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
-          <button
-            onClick={() => setShowBridgeConsole(!showBridgeConsole)}
-            className="px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 bg-yellow-500/80 text-white"
-            title="AppBridge not injected (cross-origin restriction)"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-200" />
-            Bridge ✗
-          </button>
-        </div>
+      {/* iframe via proxy */}
+      <iframe
+        key={iframeKey}
+        ref={iframeRef}
+        src="/preview/"
+        className="w-full h-full border-0"
+        title="WebView Preview"
+      />
 
-        {/* Direct iframe (no bridge) */}
-        <iframe
-          ref={iframeRef}
-          src={baseUrl}
-          className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-          title="WebView Preview"
-        />
-
-        {/* Bridge Console (receive only) */}
-        {showBridgeConsole && (
-          <BridgeConsole />
-        )}
-
-        {/* CORS Warning */}
-        <div className="absolute bottom-12 left-2 right-2 bg-yellow-100 border border-yellow-300 rounded p-2 text-[10px] text-yellow-800">
-          <strong>Cross-origin restriction:</strong> AppBridge cannot be injected.
-          The web app will show PC view instead of app view.
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+      {/* Bridge Console */}
+      {showBridgeConsole && (
+        <BridgeConsole onSendResponse={sendBridgeResponse} />
+      )}
+    </div>
+  );
 }
