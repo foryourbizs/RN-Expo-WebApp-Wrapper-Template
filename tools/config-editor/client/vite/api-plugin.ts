@@ -22,35 +22,65 @@ function detectLicenseError(text: string): boolean {
   return LICENSE_ERROR_PATTERNS.some(pattern => pattern.test(text));
 }
 
+// SDK 루트 경로 추정 (잘못된 경로에서 올바른 경로 추정) - acceptSdkLicenses용
+function inferSdkRootFromPath(inputPath: string): string {
+  const normalizedPath = path.normalize(inputPath).toLowerCase();
+
+  // bin 폴더인 경우 -> 2-3단계 상위로
+  if (normalizedPath.endsWith('bin') || normalizedPath.endsWith('bin\\') || normalizedPath.endsWith('bin/')) {
+    const parent = path.dirname(inputPath);
+    const grandParent = path.dirname(parent);
+    // cmdline-tools/bin 또는 cmdline-tools/latest/bin 구조 처리
+    if (grandParent.toLowerCase().includes('cmdline-tools')) {
+      return path.dirname(grandParent);
+    }
+    // cmdline-tools/bin 구조
+    if (parent.toLowerCase().endsWith('cmdline-tools') || parent.toLowerCase().endsWith('tools')) {
+      return path.dirname(parent);
+    }
+    return grandParent;
+  }
+
+  // cmdline-tools 폴더인 경우 -> 1단계 상위로
+  if (normalizedPath.endsWith('cmdline-tools') || normalizedPath.endsWith('cmdline-tools\\') || normalizedPath.endsWith('cmdline-tools/')) {
+    return path.dirname(inputPath);
+  }
+
+  // tools 폴더인 경우 -> 1단계 상위로
+  if (normalizedPath.endsWith('tools') || normalizedPath.endsWith('tools\\') || normalizedPath.endsWith('tools/')) {
+    return path.dirname(inputPath);
+  }
+
+  return inputPath;
+}
+
 // SDK 라이선스 자동 수락
 async function acceptSdkLicenses(sdkPath?: string): Promise<{ success: boolean; message: string }> {
-  // SDK 경로 결정
-  const androidHome = sdkPath || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT ||
+  // SDK 경로 결정 및 루트 추정
+  let inputPath = sdkPath || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT ||
     (process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'Android', 'Sdk') : '');
 
-  if (!androidHome) {
+  if (!inputPath) {
     return { success: false, message: 'Android SDK path not found' };
   }
+
+  // 잘못된 경로 패턴 자동 수정 (bin 또는 cmdline-tools 직접 지정 시)
+  const sdkRoot = inferSdkRootFromPath(inputPath);
 
   const sdkmanagerName = process.platform === 'win32' ? 'sdkmanager.bat' : 'sdkmanager';
 
   // sdkmanager 경로 찾기 (다양한 SDK 구조 지원)
   const sdkmanagerPaths = [
-    // 설정된 경로가 bin 폴더를 직접 가리키는 경우
-    path.join(androidHome, sdkmanagerName),
-    // 설정된 경로가 cmdline-tools 폴더인 경우
-    path.join(androidHome, 'bin', sdkmanagerName),
     // 표준 SDK 구조: cmdline-tools/latest/bin
-    path.join(androidHome, 'cmdline-tools', 'latest', 'bin', sdkmanagerName),
+    path.join(sdkRoot, 'cmdline-tools', 'latest', 'bin', sdkmanagerName),
     // 이전 버전 SDK 구조: cmdline-tools/bin
-    path.join(androidHome, 'cmdline-tools', 'bin', sdkmanagerName),
+    path.join(sdkRoot, 'cmdline-tools', 'bin', sdkmanagerName),
     // 레거시 SDK 구조: tools/bin
-    path.join(androidHome, 'tools', 'bin', sdkmanagerName),
-    // 부모 폴더에서 찾기 (bin 경로가 설정된 경우)
-    path.join(path.dirname(androidHome), sdkmanagerName),
-    path.join(path.dirname(androidHome), 'bin', sdkmanagerName),
-    // cmdline-tools 폴더 구조 (버전 폴더 없이)
-    path.join(path.dirname(path.dirname(androidHome)), 'cmdline-tools', 'bin', sdkmanagerName),
+    path.join(sdkRoot, 'tools', 'bin', sdkmanagerName),
+    // 입력 경로가 bin 폴더인 경우
+    path.join(inputPath, sdkmanagerName),
+    // 입력 경로가 cmdline-tools 폴더인 경우
+    path.join(inputPath, 'bin', sdkmanagerName),
   ];
 
   let sdkmanagerPath: string | null = null;
@@ -62,39 +92,22 @@ async function acceptSdkLicenses(sdkPath?: string): Promise<{ success: boolean; 
   }
 
   if (!sdkmanagerPath) {
-    return { success: false, message: `sdkmanager not found. Searched paths:\n${sdkmanagerPaths.slice(0, 4).join('\n')}` };
-  }
-
-  // ANDROID_HOME 환경 변수 설정을 위한 SDK 루트 경로 추정
-  // sdkmanager가 있는 bin 폴더의 상위 구조에서 SDK 루트 찾기
-  let sdkRoot = androidHome;
-  const sdkmanagerDir = path.dirname(sdkmanagerPath);
-  // bin 폴더에서 SDK 루트 추정 (cmdline-tools/bin -> SDK root, cmdline-tools/latest/bin -> SDK root)
-  if (sdkmanagerDir.endsWith('bin')) {
-    const parent = path.dirname(sdkmanagerDir);
-    if (parent.endsWith('cmdline-tools') || parent.endsWith('tools')) {
-      sdkRoot = path.dirname(parent);
-    } else if (path.basename(path.dirname(parent)) === 'cmdline-tools') {
-      // cmdline-tools/latest/bin 구조
-      sdkRoot = path.dirname(path.dirname(parent));
-    }
+    return { success: false, message: `sdkmanager not found. Searched paths:\n${sdkmanagerPaths.slice(0, 3).join('\n')}` };
   }
 
   try {
-    // 라이선스 수락 (yes를 여러 번 전송)
-    const yesInput = 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\n';
-
     if (process.platform === 'win32') {
       // Windows: PowerShell 사용하여 yes 입력 파이프
-      const psCommand = `powershell -Command "& { 1..20 | ForEach-Object { 'y' } | & '${sdkmanagerPath.replace(/'/g, "''")}' --licenses }"`;
+      // --sdk_root 파라미터를 사용하여 라이선스를 올바른 위치에 저장
+      const psCommand = `powershell -Command "& { 1..20 | ForEach-Object { 'y' } | & '${sdkmanagerPath.replace(/'/g, "''")}' --sdk_root='${sdkRoot.replace(/'/g, "''")}' --licenses }"`;
       await execAsync(psCommand, {
-        timeout: 120000,
+        timeout: 180000,
         env: { ...process.env, ANDROID_HOME: sdkRoot, ANDROID_SDK_ROOT: sdkRoot }
       });
     } else {
       // Unix: yes 명령어 사용
-      await execAsync(`yes | "${sdkmanagerPath}" --licenses`, {
-        timeout: 120000,
+      await execAsync(`yes | "${sdkmanagerPath}" --sdk_root="${sdkRoot}" --licenses`, {
+        timeout: 180000,
         env: { ...process.env, ANDROID_HOME: sdkRoot, ANDROID_SDK_ROOT: sdkRoot }
       });
     }
@@ -336,8 +349,91 @@ async function updateLocalProperties(sdkPath: string): Promise<void> {
   await fs.writeFile(localPropsPath, content, 'utf-8');
 }
 
-async function checkBuildEnvironment(): Promise<Array<{ name: string; status: string; message: string; detail?: string }>> {
-  const checks: Array<{ name: string; status: string; message: string; detail?: string }> = [];
+// SDK 경로 유효성 검사 - 잘못된 경로 패턴 감지
+function validateSdkPath(sdkPath: string): { valid: boolean; issue?: string; suggestion?: string } {
+  const normalizedPath = path.normalize(sdkPath).toLowerCase();
+
+  // cmdline-tools/bin 또는 tools/bin을 직접 가리키는 경우
+  if (normalizedPath.endsWith('bin') || normalizedPath.endsWith('bin\\') || normalizedPath.endsWith('bin/')) {
+    const parentDir = path.dirname(sdkPath);
+    const grandParentDir = path.dirname(parentDir);
+    return {
+      valid: false,
+      issue: 'SDK path points to bin folder',
+      suggestion: `Use SDK root instead: ${grandParentDir}`
+    };
+  }
+
+  // cmdline-tools 폴더를 직접 가리키는 경우
+  if (normalizedPath.endsWith('cmdline-tools') || normalizedPath.endsWith('cmdline-tools\\') || normalizedPath.endsWith('cmdline-tools/')) {
+    const parentDir = path.dirname(sdkPath);
+    return {
+      valid: false,
+      issue: 'SDK path points to cmdline-tools folder',
+      suggestion: `Use SDK root instead: ${parentDir}`
+    };
+  }
+
+  // tools 폴더를 직접 가리키는 경우
+  if (normalizedPath.endsWith('tools') || normalizedPath.endsWith('tools\\') || normalizedPath.endsWith('tools/')) {
+    const parentDir = path.dirname(sdkPath);
+    return {
+      valid: false,
+      issue: 'SDK path points to tools folder',
+      suggestion: `Use SDK root instead: ${parentDir}`
+    };
+  }
+
+  return { valid: true };
+}
+
+// SDK 라이선스 상태 확인
+async function checkSdkLicenses(sdkPath: string): Promise<{ accepted: boolean; missing: string[] }> {
+  const licensesDir = path.join(sdkPath, 'licenses');
+
+  if (!fsSync.existsSync(licensesDir)) {
+    return { accepted: false, missing: ['licenses folder not found'] };
+  }
+
+  // 필수 라이선스 파일 목록
+  const requiredLicenses = ['android-sdk-license'];
+  const missing: string[] = [];
+
+  for (const license of requiredLicenses) {
+    const licensePath = path.join(licensesDir, license);
+    if (!fsSync.existsSync(licensePath)) {
+      missing.push(license);
+    }
+  }
+
+  return { accepted: missing.length === 0, missing };
+}
+
+// SDK 루트 경로 추정 (잘못된 경로에서 올바른 경로 추정)
+function inferSdkRoot(inputPath: string): string {
+  const normalizedPath = path.normalize(inputPath).toLowerCase();
+
+  // bin 폴더인 경우 -> 2-3단계 상위로
+  if (normalizedPath.endsWith('bin') || normalizedPath.endsWith('bin\\') || normalizedPath.endsWith('bin/')) {
+    const parent = path.dirname(inputPath);
+    const grandParent = path.dirname(parent);
+    // cmdline-tools/bin 또는 cmdline-tools/latest/bin 구조 처리
+    if (grandParent.toLowerCase().includes('cmdline-tools')) {
+      return path.dirname(grandParent);
+    }
+    return grandParent;
+  }
+
+  // cmdline-tools 폴더인 경우 -> 1단계 상위로
+  if (normalizedPath.endsWith('cmdline-tools') || normalizedPath.endsWith('cmdline-tools\\') || normalizedPath.endsWith('cmdline-tools/')) {
+    return path.dirname(inputPath);
+  }
+
+  return inputPath;
+}
+
+async function checkBuildEnvironment(): Promise<Array<{ name: string; status: string; message: string; detail?: string; guidance?: string }>> {
+  const checks: Array<{ name: string; status: string; message: string; detail?: string; guidance?: string }> = [];
   const buildEnv = await loadBuildEnv();
 
   // 1. Node.js
@@ -345,7 +441,12 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
     const { stdout } = await execAsync('node -v');
     checks.push({ name: 'Node.js', status: 'ok', message: stdout.trim() });
   } catch {
-    checks.push({ name: 'Node.js', status: 'error', message: 'Not installed' });
+    checks.push({
+      name: 'Node.js',
+      status: 'error',
+      message: 'Not installed',
+      guidance: 'Install Node.js from https://nodejs.org/'
+    });
   }
 
   // 2. npm
@@ -353,7 +454,12 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
     const { stdout } = await execAsync('npm -v');
     checks.push({ name: 'npm', status: 'ok', message: `v${stdout.trim()}` });
   } catch {
-    checks.push({ name: 'npm', status: 'error', message: 'Not installed' });
+    checks.push({
+      name: 'npm',
+      status: 'error',
+      message: 'Not installed',
+      guidance: 'npm is included with Node.js installation'
+    });
   }
 
   // 3. Java - build-env.json의 javaHome 우선 사용
@@ -370,7 +476,13 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
       } else if (major > 21) {
         checks.push({ name: 'Java', status: 'warning', message: version, detail: 'JDK 17-21 recommended' });
       } else {
-        checks.push({ name: 'Java', status: 'error', message: version, detail: 'JDK 17+ required' });
+        checks.push({
+          name: 'Java',
+          status: 'error',
+          message: version,
+          detail: 'JDK 17+ required',
+          guidance: 'Install JDK 17 or higher from https://adoptium.net/'
+        });
       }
     } catch {
       // fallback to system java
@@ -380,7 +492,13 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
         const version = match ? match[1] : 'Unknown';
         checks.push({ name: 'Java', status: 'ok', message: version });
       } catch {
-        checks.push({ name: 'Java', status: 'error', message: 'Not installed', detail: 'Install JDK 17+' });
+        checks.push({
+          name: 'Java',
+          status: 'error',
+          message: 'Not installed',
+          detail: 'JDK 17+ required',
+          guidance: 'Install JDK 17 from https://adoptium.net/'
+        });
       }
     }
   } else {
@@ -390,7 +508,13 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
       const version = match ? match[1] : 'Unknown';
       checks.push({ name: 'Java', status: 'ok', message: version });
     } catch {
-      checks.push({ name: 'Java', status: 'error', message: 'Not installed', detail: 'Install JDK 17+' });
+      checks.push({
+        name: 'Java',
+        status: 'error',
+        message: 'Not installed',
+        detail: 'JDK 17+ required',
+        guidance: 'Install JDK 17 from https://adoptium.net/'
+      });
     }
   }
 
@@ -400,18 +524,86 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
   } else if (process.env.JAVA_HOME) {
     checks.push({ name: 'JAVA_HOME', status: 'ok', message: process.env.JAVA_HOME });
   } else {
-    checks.push({ name: 'JAVA_HOME', status: 'warning', message: 'Not set' });
+    checks.push({
+      name: 'JAVA_HOME',
+      status: 'warning',
+      message: 'Not set',
+      guidance: 'Set Java Home path in Environment Settings above'
+    });
   }
 
   // 5. Android SDK - build-env.json의 sdkPath 우선 사용
   const androidHome = buildEnv.android?.sdkPath || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
-  if (androidHome && fsSync.existsSync(path.join(androidHome, 'platform-tools'))) {
-    const source = buildEnv.android?.sdkPath ? '(config)' : undefined;
-    checks.push({ name: 'Android SDK', status: 'ok', message: androidHome, detail: source });
-  } else if (androidHome) {
-    checks.push({ name: 'Android SDK', status: 'warning', message: androidHome, detail: 'platform-tools missing' });
+  if (androidHome) {
+    // 먼저 경로 유효성 검사
+    const pathValidation = validateSdkPath(androidHome);
+
+    if (!pathValidation.valid) {
+      // 잘못된 경로 패턴 감지
+      const inferredRoot = inferSdkRoot(androidHome);
+      checks.push({
+        name: 'Android SDK',
+        status: 'error',
+        message: pathValidation.issue || 'Invalid SDK path',
+        detail: androidHome,
+        guidance: pathValidation.suggestion || `SDK root should contain cmdline-tools, licenses folders. Try: ${inferredRoot}`
+      });
+    } else if (fsSync.existsSync(path.join(androidHome, 'cmdline-tools')) ||
+               fsSync.existsSync(path.join(androidHome, 'tools')) ||
+               fsSync.existsSync(path.join(androidHome, 'licenses'))) {
+      // cmdline-tools, tools, 또는 licenses 폴더가 있으면 유효한 SDK로 인정
+      const source = buildEnv.android?.sdkPath ? '(config)' : undefined;
+      const hasPlatformTools = fsSync.existsSync(path.join(androidHome, 'platform-tools'));
+
+      checks.push({
+        name: 'Android SDK',
+        status: 'ok',
+        message: androidHome,
+        detail: source
+      });
+
+      // platform-tools는 info 레벨로 표시 (빌드에는 필요 없음)
+      if (!hasPlatformTools) {
+        checks.push({
+          name: 'Platform Tools',
+          status: 'info',
+          message: 'Not installed',
+          detail: 'Optional - needed for adb (device debugging)',
+          guidance: 'Run: sdkmanager "platform-tools" if you need adb'
+        });
+      }
+
+      // 라이선스 확인
+      const licenseCheck = await checkSdkLicenses(androidHome);
+      if (!licenseCheck.accepted) {
+        checks.push({
+          name: 'SDK Licenses',
+          status: 'error',
+          message: 'Not accepted',
+          detail: licenseCheck.missing.join(', '),
+          guidance: `Run: sdkmanager --licenses`
+        });
+      } else {
+        checks.push({ name: 'SDK Licenses', status: 'ok', message: 'Accepted' });
+      }
+    } else {
+      // 경로는 있지만 SDK 구조가 아님
+      checks.push({
+        name: 'Android SDK',
+        status: 'error',
+        message: 'Invalid SDK structure',
+        detail: androidHome,
+        guidance: 'The path should be the SDK root containing cmdline-tools or tools folder. Download Android SDK from https://developer.android.com/studio'
+      });
+    }
   } else {
-    checks.push({ name: 'Android SDK', status: 'error', message: 'Not found', detail: 'Set ANDROID_HOME or configure in settings' });
+    checks.push({
+      name: 'Android SDK',
+      status: 'error',
+      message: 'Not found',
+      detail: 'Set ANDROID_HOME or configure in settings',
+      guidance: 'Set Android SDK Path in Environment Settings above, or set ANDROID_HOME environment variable'
+    });
   }
 
   // 6. EAS CLI
@@ -419,14 +611,26 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
     const { stdout } = await execAsync('npx eas --version');
     checks.push({ name: 'EAS CLI', status: 'ok', message: stdout.trim() });
   } catch {
-    checks.push({ name: 'EAS CLI', status: 'info', message: 'Not installed', detail: 'Required for cloud builds' });
+    checks.push({
+      name: 'EAS CLI',
+      status: 'info',
+      message: 'Not installed',
+      detail: 'Required for cloud builds',
+      guidance: 'Run: npm install -g eas-cli'
+    });
   }
 
   // 7. android folder
   if (fsSync.existsSync(path.join(projectRoot, 'android'))) {
     checks.push({ name: 'Android Project', status: 'ok', message: 'Found' });
   } else {
-    checks.push({ name: 'Android Project', status: 'info', message: 'Not found', detail: 'Run expo prebuild first' });
+    checks.push({
+      name: 'Android Project',
+      status: 'info',
+      message: 'Not found',
+      detail: 'Run expo prebuild first',
+      guidance: 'Run: npx expo prebuild --platform android'
+    });
   }
 
   // 8. Keystore
@@ -439,7 +643,13 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
   if (hasKeystore) {
     checks.push({ name: 'Release Keystore', status: 'ok', message: 'Found' });
   } else {
-    checks.push({ name: 'Release Keystore', status: 'info', message: 'Not found', detail: 'Required for release builds' });
+    checks.push({
+      name: 'Release Keystore',
+      status: 'info',
+      message: 'Not found',
+      detail: 'Required for release builds',
+      guidance: 'Generate a keystore in the Keystore section below'
+    });
   }
 
   return checks;
@@ -824,6 +1034,19 @@ export function apiPlugin(): Plugin {
             }
 
             try {
+              // build-env 저장 시 SDK 경로 자동 수정
+              if (type === 'build-env' && body.android?.sdkPath) {
+                const originalPath = body.android.sdkPath;
+                const pathValidation = validateSdkPath(originalPath);
+
+                if (!pathValidation.valid) {
+                  // 잘못된 경로 자동 수정
+                  const correctedPath = inferSdkRoot(originalPath);
+                  body.android.sdkPath = correctedPath;
+                  console.log(`[api-plugin] SDK path auto-corrected: ${originalPath} -> ${correctedPath}`);
+                }
+              }
+
               const content = JSON.stringify(body, null, 2) + '\n';
               await fs.writeFile(filePath, content, 'utf-8');
 
@@ -840,7 +1063,8 @@ export function apiPlugin(): Plugin {
                 }
               }
 
-              sendJson(res, 200, { success: true });
+              // 경로가 수정된 경우 수정된 데이터 반환
+              sendJson(res, 200, { success: true, data: body });
             } catch {
               sendJson(res, 500, { error: `Failed to write ${filename}` });
             }
@@ -949,6 +1173,24 @@ export function apiPlugin(): Plugin {
           if (url === '/api/build/env-check' && req.method === 'GET') {
             const checks = await checkBuildEnvironment();
             sendJson(res, 200, { checks });
+            return;
+          }
+
+          // POST /api/build/accept-licenses - Accept SDK licenses
+          if (url === '/api/build/accept-licenses' && req.method === 'POST') {
+            try {
+              const buildEnv = await loadBuildEnv();
+              const sdkPath = buildEnv.android?.sdkPath;
+              const result = await acceptSdkLicenses(sdkPath);
+
+              if (result.success) {
+                sendJson(res, 200, { success: true, message: result.message });
+              } else {
+                sendJson(res, 500, { error: result.message });
+              }
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
             return;
           }
 

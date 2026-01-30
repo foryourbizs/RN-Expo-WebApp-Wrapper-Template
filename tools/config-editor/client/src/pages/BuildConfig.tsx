@@ -6,6 +6,7 @@ interface EnvCheckResult {
   status: 'ok' | 'error' | 'warning' | 'info';
   message: string;
   detail?: string;
+  guidance?: string;
 }
 
 interface BuildOutput {
@@ -246,6 +247,13 @@ export default function BuildConfigPage() {
         })
       });
       if (res.ok) {
+        const result = await res.json();
+        // 경로가 자동 수정된 경우 반영
+        if (result.data) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { $schema, ...config } = result.data;
+          setBuildEnv(config);
+        }
         setEnvDirty(false);
       }
     } catch (e) {
@@ -301,6 +309,8 @@ export default function BuildConfigPage() {
     return () => clearInterval(interval);
   }, [buildId, building]);
 
+  const [acceptingLicenses, setAcceptingLicenses] = useState(false);
+
   const checkEnvironment = useCallback(async () => {
     setEnvChecking(true);
     setEnvChecks([]);
@@ -316,6 +326,25 @@ export default function BuildConfigPage() {
       setEnvChecking(false);
     }
   }, []);
+
+  const acceptLicenses = useCallback(async () => {
+    setAcceptingLicenses(true);
+    try {
+      const res = await fetch('/api/build/accept-licenses', { method: 'POST' });
+      if (res.ok) {
+        // 성공 시 환경 다시 확인
+        await checkEnvironment();
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Failed to accept licenses');
+      }
+    } catch (e) {
+      console.error('Failed to accept licenses:', e);
+      alert('Failed to accept licenses');
+    } finally {
+      setAcceptingLicenses(false);
+    }
+  }, [checkEnvironment]);
 
   const startBuild = useCallback(async (type: string, profile?: string) => {
     setBuilding(true);
@@ -526,18 +555,40 @@ export default function BuildConfigPage() {
         </div>
 
         {envChecks.length > 0 && (
-          <div className="space-y-1 text-sm">
+          <div className="space-y-2 text-sm">
             {envChecks.map((check, index) => (
-              <div key={index} className="flex items-start gap-2 py-1">
-                <span className={`font-medium ${getStatusColor(check.status)}`}>
-                  {check.status === 'ok' ? '✓' : check.status === 'error' ? '✗' : '!'}
-                </span>
-                <div>
-                  <span className="font-medium text-slate-700">{check.name}:</span>{' '}
-                  <span className={check.status === 'error' ? 'text-red-600' : 'text-slate-600'}>{check.message}</span>
-                  {check.detail && (
-                    <div className="text-slate-400 text-xs">{check.detail}</div>
-                  )}
+              <div key={index} className="py-1.5 border-b border-slate-100 last:border-0">
+                <div className="flex items-start gap-2">
+                  <span className={`font-medium ${getStatusColor(check.status)}`}>
+                    {check.status === 'ok' ? '✓' : check.status === 'error' ? '✗' : '!'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div>
+                      <span className="font-medium text-slate-700">{check.name}:</span>{' '}
+                      <span className={check.status === 'error' ? 'text-red-600' : 'text-slate-600'}>{check.message}</span>
+                    </div>
+                    {check.detail && (
+                      <div className="text-slate-400 text-xs mt-0.5 break-all">{check.detail}</div>
+                    )}
+                    {check.guidance && (check.status === 'error' || check.status === 'warning') && (
+                      <div className="mt-1 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-medium">💡 {t('build.guidance')}:</span> {check.guidance}
+                          </div>
+                          {check.name === 'SDK Licenses' && check.status === 'error' && (
+                            <button
+                              onClick={acceptLicenses}
+                              disabled={acceptingLicenses}
+                              className="shrink-0 px-2 py-1 bg-amber-600 text-white rounded text-xs hover:bg-amber-700 disabled:opacity-50"
+                            >
+                              {acceptingLicenses ? '...' : t('build.acceptLicenses')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

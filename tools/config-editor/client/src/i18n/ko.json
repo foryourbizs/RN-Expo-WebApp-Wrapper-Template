@@ -241,7 +241,9 @@
     "download": "다운로드",
     "openFolder": "폴더 열기",
     "deepClean": "전체 초기화",
-    "deepCleanConfirm": "android 폴더를 삭제하고 다시 생성합니다. 계속하시겠습니까?"
+    "deepCleanConfirm": "android 폴더를 삭제하고 다시 생성합니다. 계속하시겠습니까?",
+    "guidance": "해결 방법",
+    "acceptLicenses": "라이선스 수락"
   },
   "common": {
     "save": "저장",

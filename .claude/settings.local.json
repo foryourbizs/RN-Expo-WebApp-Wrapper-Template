@@ -4,7 +4,9 @@
       "Bash(findstr:*)",
       "Bash(\"%ANDROID_HOME%\\\\cmdline-tools\\\\latest\\\\bin\\\\sdkmanager.bat\" --licenses)",
       "Bash(\"%LOCALAPPDATA%\\\\Android\\\\Sdk\\\\cmdline-tools\\\\latest\\\\bin\\\\sdkmanager.bat\" --licenses)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(\"A:\\\\commandlinetools-win-14742923_latest\\\\cmdline-tools\\\\bin\\\\sdkmanager.bat\":*)",
+      "Bash(yes:*)"
     ]
   }
 }

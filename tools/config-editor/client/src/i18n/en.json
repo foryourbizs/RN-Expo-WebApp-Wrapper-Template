@@ -241,7 +241,9 @@
     "download": "Download",
     "openFolder": "Open Folder",
     "deepClean": "Deep Clean",
-    "deepCleanConfirm": "This will delete the android folder and regenerate it. Continue?"
+    "deepCleanConfirm": "This will delete the android folder and regenerate it. Continue?",
+    "guidance": "How to fix",
+    "acceptLicenses": "Accept Licenses"
   },
   "common": {
     "save": "Save",
