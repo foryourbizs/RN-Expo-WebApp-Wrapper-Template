@@ -1,35 +1,67 @@
 // tools/config-editor/client/src/utils/previewBridge.ts
 /**
  * Preview용 AppBridge 스크립트
- * 실제 ReactNativeWebView 대신 window.postMessage로 부모 창과 통신
+ * 실제 lib/bridge-client.ts 기반으로 작성
+ * ReactNativeWebView 대신 window.postMessage로 부모 창과 통신
  */
 
+/**
+ * 실제 브릿지 스크립트 생성 (lib/bridge-client.ts와 동일한 구조)
+ * Preview 환경에서는 보안 토큰 대신 'preview-token' 사용
+ */
 export const getPreviewBridgeScript = (): string => {
+  // 실제 bridge-client.ts의 코드를 기반으로 preview 환경에 맞게 수정
   return `
 (function() {
   'use strict';
 
-  // 이미 초기화되었으면 스킵
-  if (window.AppBridge) return;
-
+  // ========================================
   // Preview 환경 감지
+  // ========================================
   var isPreview = window.parent !== window;
 
-  // 응답 대기 맵
-  var pendingRequests = new Map();
+  // ========================================
+  // beforeunload 경고창 완전 무력화
+  // (실제 bridge-client.ts와 동일)
+  // ========================================
 
-  // Mock ReactNativeWebView - postMessage를 부모 창으로 전달
-  window.ReactNativeWebView = {
-    postMessage: function(message) {
-      if (isPreview) {
-        window.parent.postMessage({
-          type: 'PREVIEW_BRIDGE_MESSAGE',
-          data: JSON.parse(message)
-        }, '*');
-      }
-      console.log('[AppBridge Preview] Message sent:', JSON.parse(message));
+  Object.defineProperty(window, 'onbeforeunload', {
+    get: function() { return null; },
+    set: function() { return; },
+    configurable: false
+  });
+
+  var originalAddEventListener = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function(type, listener, options) {
+    if (type === 'beforeunload') {
+      return;
     }
+    return originalAddEventListener.call(this, type, listener, options);
   };
+
+  window.addEventListener('beforeunload', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    delete e.returnValue;
+    return undefined;
+  }, true);
+
+  // ========================================
+  // AppBridge 초기화
+  // ========================================
+
+  if (window.AppBridge) return;
+
+  // Preview 환경에서는 고정 토큰 사용
+  var _t = (function(){
+    var s = Symbol('_');
+    var o = {};
+    o[s] = 'preview-token';
+    return function(){ return o[s]; };
+  })();
+
+  var pendingRequests = new Map();
 
   // 파일/바이너리 데이터를 base64로 변환
   function toBase64(data) {
@@ -84,7 +116,27 @@ export const getPreviewBridgeScript = (): string => {
     });
   }
 
-  // 앱 브릿지 객체
+  // ========================================
+  // Mock ReactNativeWebView - Preview용
+  // 실제 앱에서는 ReactNativeWebView.postMessage를 사용하지만
+  // Preview에서는 부모 창으로 메시지 전달
+  // ========================================
+  window.ReactNativeWebView = {
+    postMessage: function(message) {
+      var parsed = JSON.parse(message);
+      if (isPreview) {
+        window.parent.postMessage({
+          type: 'PREVIEW_BRIDGE_MESSAGE',
+          data: parsed
+        }, '*');
+      }
+      console.log('[AppBridge Preview] Message sent:', parsed);
+    }
+  };
+
+  // ========================================
+  // AppBridge 객체 (실제 bridge-client.ts와 동일한 API)
+  // ========================================
   window.AppBridge = {
     /**
      * 앱으로 메시지 전송 (응답 없음)
@@ -95,12 +147,12 @@ export const getPreviewBridgeScript = (): string => {
           protocol: 'app://' + action,
           payload: processed,
           timestamp: Date.now(),
-          __token: 'preview-token',
+          __token: _t(),
           __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
         };
         window.ReactNativeWebView.postMessage(JSON.stringify(message));
       }).catch(function(err) {
-        console.error('[AppBridge Preview] Failed to process payload:', err);
+        console.error('[AppBridge] Failed to process payload:', err);
       });
     },
 
@@ -130,7 +182,7 @@ export const getPreviewBridgeScript = (): string => {
             payload: processed,
             requestId: requestId,
             timestamp: Date.now(),
-            __token: 'preview-token',
+            __token: _t(),
             __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
           };
           window.ReactNativeWebView.postMessage(JSON.stringify(message));
@@ -229,7 +281,7 @@ export const getPreviewBridgeScript = (): string => {
             try {
               cb(message.payload, message);
             } catch(e) {
-              console.error('[AppBridge Preview] Listener error:', e);
+              console.error('[AppBridge] Listener error:', e);
             }
           });
         }
@@ -241,9 +293,9 @@ export const getPreviewBridgeScript = (): string => {
       }
     },
 
-    // 앱 환경 체크 (Preview에서는 true 반환)
+    // 앱 환경 체크 (Preview에서는 true)
     isApp: function() {
-      return true;
+      return !!window.ReactNativeWebView;
     },
 
     // Preview 환경 체크
@@ -254,7 +306,9 @@ export const getPreviewBridgeScript = (): string => {
     version: '2.1.0-preview'
   };
 
-  // 부모 창에서 온 메시지 수신
+  // ========================================
+  // 부모 창에서 온 메시지 수신 (Preview 전용)
+  // ========================================
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'PREVIEW_BRIDGE_RESPONSE') {
       window.AppBridge._handleMessage(e.data.message);
@@ -280,7 +334,7 @@ true;
 };
 
 /**
- * Bridge 메시지 타입
+ * Bridge 메시지 타입 (실제 bridge-client.ts와 동일)
  */
 export interface BridgeMessage {
   protocol: string;
