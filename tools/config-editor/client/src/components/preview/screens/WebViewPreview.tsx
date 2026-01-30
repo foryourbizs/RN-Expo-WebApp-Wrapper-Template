@@ -1,6 +1,8 @@
 // tools/config-editor/client/src/components/preview/screens/WebViewPreview.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePreview } from '../../../contexts/PreviewContext';
+import { getPreviewBridgeScript } from '../../../utils/previewBridge';
+import BridgeConsole from '../BridgeConsole';
 import type { AppConfig } from '../../../types/config';
 
 interface WebViewPreviewProps {
@@ -11,6 +13,8 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   const { settings, themeMode } = usePreview();
   const [iframeError, setIframeError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [bridgeInjected, setBridgeInjected] = useState(false);
+  const [showBridgeConsole, setShowBridgeConsole] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -27,6 +31,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     if (loadIframe) {
       setIsLoading(true);
       setIframeError(false);
+      setBridgeInjected(false);
 
       // 10초 타임아웃
       timeoutRef.current = setTimeout(() => {
@@ -42,11 +47,43 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     };
   }, [loadIframe, baseUrl]);
 
+  // Bridge 스크립트 주입 시도
+  const injectBridge = useCallback(() => {
+    if (!iframeRef.current) return;
+
+    try {
+      const iframeWindow = iframeRef.current.contentWindow;
+      if (!iframeWindow) return;
+
+      // Same-origin 체크 (cross-origin이면 에러 발생)
+      const iframeDocument = iframeRef.current.contentDocument;
+      if (!iframeDocument) {
+        console.log('[Preview] Cross-origin iframe - cannot inject bridge directly');
+        setBridgeInjected(false);
+        return;
+      }
+
+      // Bridge 스크립트 주입
+      const script = iframeDocument.createElement('script');
+      script.textContent = getPreviewBridgeScript();
+      iframeDocument.head.appendChild(script);
+      setBridgeInjected(true);
+      console.log('[Preview] Bridge script injected successfully');
+    } catch (e) {
+      // Cross-origin 에러 예상
+      console.log('[Preview] Cannot inject bridge - cross-origin restriction');
+      setBridgeInjected(false);
+    }
+  }, []);
+
   const handleIframeLoad = () => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     setIsLoading(false);
+
+    // Bridge 주입 시도
+    injectBridge();
   };
 
   const handleIframeError = () => {
@@ -60,10 +97,31 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   const handleRetry = () => {
     setIframeError(false);
     setIsLoading(true);
+    setBridgeInjected(false);
     if (iframeRef.current) {
       iframeRef.current.src = baseUrl;
     }
   };
+
+  // Bridge 응답 전송
+  const sendBridgeResponse = useCallback((requestId: string, response: unknown) => {
+    if (!iframeRef.current?.contentWindow) return;
+
+    try {
+      iframeRef.current.contentWindow.postMessage({
+        type: 'PREVIEW_BRIDGE_RESPONSE',
+        message: {
+          action: 'bridgeResponse',
+          payload: {
+            requestId,
+            ...(response as Record<string, unknown>)
+          }
+        }
+      }, '*');
+    } catch (e) {
+      console.error('[Preview] Failed to send response:', e);
+    }
+  }, []);
 
   // 플레이스홀더 모드
   if (!loadIframe) {
@@ -115,6 +173,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
   return (
     <div className="w-full h-full relative">
+      {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
           <div className="flex flex-col items-center">
@@ -123,15 +182,45 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
           </div>
         </div>
       )}
+
+      {/* Bridge Status Indicator */}
+      {!isLoading && (
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+          <button
+            onClick={() => setShowBridgeConsole(!showBridgeConsole)}
+            className={`
+              px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1
+              ${bridgeInjected
+                ? 'bg-green-500/80 text-white'
+                : 'bg-yellow-500/80 text-white'
+              }
+            `}
+            title={bridgeInjected
+              ? 'AppBridge injected successfully'
+              : 'AppBridge not injected (cross-origin)'
+            }
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${bridgeInjected ? 'bg-white' : 'bg-yellow-200'}`} />
+            {bridgeInjected ? 'Bridge ✓' : 'Bridge ✗'}
+          </button>
+        </div>
+      )}
+
+      {/* iframe */}
       <iframe
         ref={iframeRef}
         src={baseUrl}
         className="w-full h-full border-0"
         onLoad={handleIframeLoad}
         onError={handleIframeError}
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         title="WebView Preview"
       />
+
+      {/* Bridge Console */}
+      {showBridgeConsole && !isLoading && (
+        <BridgeConsole onSendResponse={bridgeInjected ? sendBridgeResponse : undefined} />
+      )}
     </div>
   );
 }
