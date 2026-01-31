@@ -20,6 +20,7 @@ interface PreviewState {
   settings: PreviewSettings;
   highlightTarget: HighlightTarget;
   isFullscreen: boolean;
+  previewUrl: string | null;  // 반영된 URL (null이면 config의 baseUrl 사용)
 }
 
 interface PreviewContextValue extends PreviewState {
@@ -32,6 +33,7 @@ interface PreviewContextValue extends PreviewState {
   updateSettings: (settings: Partial<PreviewSettings>) => void;
   setHighlightTarget: (target: HighlightTarget) => void;
   setIsFullscreen: (isFullscreen: boolean) => void;
+  applyPreviewUrl: (url: string) => void;  // URL 반영 버튼 클릭 시 호출
 }
 
 const defaultSettings: PreviewSettings = {
@@ -50,6 +52,11 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<PreviewSettings>(defaultSettings);
   const [highlightTarget, setHighlightTarget] = useState<HighlightTarget>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const applyPreviewUrl = useCallback((url: string) => {
+    setPreviewUrl(url);
+  }, []);
 
   const toggleOrientation = useCallback(() => {
     setOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait');
@@ -71,6 +78,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     settings,
     highlightTarget,
     isFullscreen,
+    previewUrl,
     setCurrentScreen,
     setOrientation,
     toggleOrientation,
@@ -80,9 +88,10 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     updateSettings,
     setHighlightTarget,
     setIsFullscreen,
+    applyPreviewUrl,
   }), [
     currentScreen, orientation, deviceSize, themeMode, settings,
-    highlightTarget, isFullscreen, toggleOrientation, toggleThemeMode, updateSettings
+    highlightTarget, isFullscreen, previewUrl, toggleOrientation, toggleThemeMode, updateSettings, applyPreviewUrl
   ]);
 
   return (

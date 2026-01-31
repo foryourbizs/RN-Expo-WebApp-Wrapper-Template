@@ -242,6 +242,7 @@
     "openFolder": "폴더 열기",
     "deepClean": "전체 초기화",
     "deepCleanConfirm": "android 폴더를 삭제하고 다시 생성합니다. 계속하시겠습니까?",
+    "leaveWhileBuilding": "빌드가 진행 중입니다. 페이지를 떠나시겠습니까?",
     "guidance": "해결 방법",
     "acceptLicenses": "라이선스 수락"
   },
@@ -258,12 +259,16 @@
   },
   "preview": {
     "title": "미리보기",
+    "back": "뒤로",
+    "forward": "앞으로",
+    "refresh": "새로고침",
     "rotate": "회전",
     "settings": "설정",
     "loadIframe": "실제 URL 로드",
     "showStatusBar": "상태 바 표시",
     "showNavBar": "내비게이션 바 표시",
     "doubleClickHint": "더블클릭으로 전체화면",
-    "showPreview": "미리보기"
+    "showPreview": "미리보기",
+    "apply": "반영"
   }
 }

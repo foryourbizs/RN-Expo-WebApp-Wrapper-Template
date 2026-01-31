@@ -9,15 +9,35 @@
     ]
   },
   "offline": {
-    "enabled": false
+    "enabled": true,
+    "title": "오프라인 상태입니다.",
+    "message": "인터넷을 연결해 주세요.",
+    "retryButtonText": "연결 확인하기",
+    "autoReconnect": true
   },
   "statusBar": {
-    "visible": false
+    "visible": true,
+    "style": "light",
+    "translucent": true,
+    "overlapsWebView": false,
+    "showOverlay": true
   },
   "navigationBar": {
-    "visibility": "hidden"
+    "visibility": "hidden",
+    "buttonStyle": "dark",
+    "backgroundColor": "#ffffff",
+    "behavior": "overlay-swipe"
   },
   "splash": {
+    "enabled": true,
+    "loadingText": "스플레시 이미지",
+    "logoImage": null
+  },
+  "safeArea": {
+    "enabled": false,
+    "edges": "all"
+  },
+  "debug": {
     "enabled": false
   }
 }

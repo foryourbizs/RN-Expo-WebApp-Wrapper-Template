@@ -21,8 +21,15 @@ export default function PhoneMockup({ children, appConfig }: PhoneMockupProps) {
   // Status Bar 설정
   const statusBarConfig = appConfig?.statusBar;
   const showStatusBar = settings.showStatusBar && (statusBarConfig?.visible !== false);
-  const statusBarStyle = statusBarConfig?.style || 'dark';
-  const statusBarOverlay = statusBarConfig?.overlayColor || 'transparent';
+  // style: 'auto'는 themeMode에 따라 결정
+  const statusBarStyle = statusBarConfig?.style === 'auto'
+    ? (themeMode === 'dark' ? 'light' : 'dark')
+    : (statusBarConfig?.style || 'dark');
+  // showOverlay가 true일 때만 overlayColor 적용
+  const showOverlay = statusBarConfig?.showOverlay ?? true;
+  const statusBarBgColor = showOverlay
+    ? (statusBarConfig?.overlayColor || 'rgba(0,0,0,0.3)')
+    : 'transparent';
 
   // Navigation Bar 설정
   const navBarConfig = appConfig?.navigationBar;
@@ -54,7 +61,7 @@ export default function PhoneMockup({ children, appConfig }: PhoneMockupProps) {
             absolute top-0 left-0 right-0 h-11 z-10 flex items-center justify-between px-6
             ${highlightTarget === 'statusBar' ? highlightClass : ''}
           `}
-          style={{ backgroundColor: statusBarOverlay }}
+          style={{ backgroundColor: statusBarBgColor }}
         >
           <span className={`text-xs font-medium ${statusBarStyle === 'light' ? 'text-white' : 'text-black'}`}>
             9:41

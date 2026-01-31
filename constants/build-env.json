@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/build-env.schema.json",
   "android": {
-    "sdkPath": "A:\\commandlinetools-win-14742923_latest",
+    "sdkPath": "E:\\AndroidSDK",
     "javaHome": "A:\\JDK_21"
   },
   "ios": {

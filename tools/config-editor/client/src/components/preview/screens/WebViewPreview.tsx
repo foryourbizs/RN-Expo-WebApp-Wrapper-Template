@@ -3,7 +3,25 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePreview } from '../../../contexts/PreviewContext';
+import { usePreviewNavigation } from '../../../contexts/PreviewNavigationContext';
 import type { AppConfig } from '../../../types/config';
+
+// URL 유효성 검사 (기본적인 형식 체크)
+function isValidUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    // 프로토콜과 호스트네임이 있어야 함
+    if (!parsed.protocol || !parsed.hostname) return false;
+    // 호스트네임에 도메인이 있어야 함 (최소 TLD)
+    if (!parsed.hostname.includes('.')) return false;
+    // 호스트네임이 점으로 끝나면 안됨
+    if (parsed.hostname.endsWith('.')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface WebViewPreviewProps {
   appConfig: AppConfig | null;
@@ -12,7 +30,8 @@ interface WebViewPreviewProps {
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
-  const { settings, deviceSize } = usePreview();
+  const { settings, deviceSize, previewUrl, applyPreviewUrl } = usePreview();
+  const { setHandlers, setIsConnected } = usePreviewNavigation();
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
   const [frameData, setFrameData] = useState<string | null>(null);
@@ -21,8 +40,21 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const currentUrlRef = useRef<string | null>(null);
 
-  const baseUrl = appConfig?.webview?.baseUrl || '';
-  const shouldConnect = settings.loadIframe && baseUrl;
+  const configUrl = appConfig?.webview?.baseUrl || '';
+
+  // previewUrl이 없으면 초기 로드 시 configUrl 사용
+  const effectiveUrl = previewUrl || configUrl;
+
+  // 처음 마운트 시 유효한 URL이면 자동으로 previewUrl 설정
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initializedRef.current && configUrl && isValidUrl(configUrl) && !previewUrl) {
+      initializedRef.current = true;
+      applyPreviewUrl(configUrl);
+    }
+  }, [configUrl, previewUrl, applyPreviewUrl]);
+
+  const shouldConnect = settings.loadIframe && effectiveUrl && isValidUrl(effectiveUrl);
 
   // 디바이스 크기에 따른 뷰포트
   const viewportSizes: Record<string, { width: number; height: number }> = {
@@ -35,7 +67,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
   // WebSocket 연결 및 관리
   useEffect(() => {
-    if (!shouldConnect || !baseUrl) {
+    if (!shouldConnect || !effectiveUrl) {
       // 연결 해제
       if (wsRef.current) {
         wsRef.current.close();
@@ -47,16 +79,31 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
       return;
     }
 
-    // 이미 같은 URL로 연결 중이면 스킵
-    if (wsRef.current && currentUrlRef.current === baseUrl && connectionState === 'connected') {
-      return;
+    // 이미 같은 URL로 연결 중이거나 연결됨이면 스킵
+    if (currentUrlRef.current === effectiveUrl && wsRef.current) {
+      const state = wsRef.current.readyState;
+      if (state === WebSocket.CONNECTING || state === WebSocket.OPEN) {
+        console.log('[WebViewPreview] Already connected/connecting to same URL, skipping');
+        return;
+      }
     }
 
-    // 기존 연결 종료
+    // URL이 변경되면 기존 프레임 클리어
+    if (currentUrlRef.current && currentUrlRef.current !== effectiveUrl) {
+      console.log('[WebViewPreview] URL changed to:', effectiveUrl);
+      setFrameData(null);
+    }
+
+    // 기존 연결 종료 (서버가 세션 관리)
     if (wsRef.current) {
-      wsRef.current.close();
+      const state = wsRef.current.readyState;
+      if (state === WebSocket.CONNECTING || state === WebSocket.OPEN) {
+        wsRef.current.close();
+      }
+      wsRef.current = null;
     }
 
+    currentUrlRef.current = effectiveUrl;
     setConnectionState('connecting');
     setErrorMessage('');
 
@@ -65,17 +112,18 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[WebViewPreview] WebSocket connected');
-      currentUrlRef.current = baseUrl;
+      console.log('[WebViewPreview] WebSocket connected, starting preview for:', effectiveUrl);
 
       // Preview 시작 요청
       ws.send(JSON.stringify({
         type: 'start',
-        url: baseUrl,
+        url: effectiveUrl,
         width: viewport.width,
         height: viewport.height
       }));
     };
+
+    let receivedFirstFrame = false;
 
     ws.onmessage = (event) => {
       try {
@@ -83,15 +131,19 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
         switch (message.type) {
           case 'started':
-            console.log('[WebViewPreview] Preview started');
+            console.log('[WebViewPreview] Preview started, waiting for frames...');
             setConnectionState('connected');
             break;
 
           case 'frame':
-            setFrameData(message.data);
-            if (connectionState !== 'connected') {
-              setConnectionState('connected');
+            // 첫 프레임 수신 로그
+            if (!receivedFirstFrame) {
+              receivedFirstFrame = true;
+              console.log('[WebViewPreview] First frame received');
             }
+            setFrameData(message.data);
+            // 항상 connected 상태로 설정 (stale closure 문제 방지)
+            setConnectionState('connected');
             break;
 
           case 'error':
@@ -118,28 +170,17 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
     ws.onclose = () => {
       console.log('[WebViewPreview] WebSocket closed');
-      if (connectionState !== 'error') {
-        setConnectionState('disconnected');
-      }
+      // 에러 상태가 아닐 때만 disconnected로 변경
+      // (cleanup에 의한 close일 수 있으므로 조건부 처리)
     };
 
     return () => {
+      // Cleanup: WebSocket 종료
+      // wsRef를 null로 설정하지 않음 - 재연결 시 상태 체크를 위해
       ws.close();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldConnect, baseUrl]); // viewport 변경은 resize useEffect에서 처리
-
-  // URL 변경 시 navigate
-  useEffect(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && currentUrlRef.current !== baseUrl && baseUrl) {
-      console.log('[WebViewPreview] Navigating to:', baseUrl);
-      currentUrlRef.current = baseUrl;
-      wsRef.current.send(JSON.stringify({
-        type: 'navigate',
-        url: baseUrl
-      }));
-    }
-  }, [baseUrl]);
+  }, [shouldConnect, effectiveUrl]); // viewport 변경은 resize useEffect에서 처리
 
   // 뷰포트 변경 시 resize
   useEffect(() => {
@@ -152,17 +193,50 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     }
   }, [viewport.width, viewport.height, connectionState]);
 
-  // 마우스 이벤트 핸들러
+  // 마우스 이벤트 핸들러 (object-contain 레터박스 고려)
   const handleMouseEvent = useCallback((e: React.MouseEvent<HTMLDivElement>, eventType: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
-    const scaleX = viewport.width / rect.width;
-    const scaleY = viewport.height / rect.height;
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
 
-    const x = Math.round((e.clientX - rect.left) * scaleX);
-    const y = Math.round((e.clientY - rect.top) * scaleY);
+    // object-contain으로 인해 실제 이미지가 표시되는 크기와 위치 계산
+    const imageAspect = viewport.width / viewport.height;
+    const containerAspect = containerWidth / containerHeight;
+
+    let displayedWidth: number;
+    let displayedHeight: number;
+    let offsetX: number;
+    let offsetY: number;
+
+    if (containerAspect > imageAspect) {
+      // 컨테이너가 더 넓음 - 이미지는 높이에 맞춰지고 좌우에 여백
+      displayedHeight = containerHeight;
+      displayedWidth = containerHeight * imageAspect;
+      offsetX = (containerWidth - displayedWidth) / 2;
+      offsetY = 0;
+    } else {
+      // 컨테이너가 더 높음 - 이미지는 너비에 맞춰지고 상하에 여백
+      displayedWidth = containerWidth;
+      displayedHeight = containerWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (containerHeight - displayedHeight) / 2;
+    }
+
+    // 클릭 위치를 이미지 영역 기준으로 변환
+    const clickX = e.clientX - rect.left - offsetX;
+    const clickY = e.clientY - rect.top - offsetY;
+
+    // 이미지 영역 밖 클릭은 무시
+    if (clickX < 0 || clickX > displayedWidth || clickY < 0 || clickY > displayedHeight) {
+      return;
+    }
+
+    // 뷰포트 좌표로 스케일 변환
+    const x = Math.round((clickX / displayedWidth) * viewport.width);
+    const y = Math.round((clickY / displayedHeight) * viewport.height);
 
     wsRef.current.send(JSON.stringify({
       type: 'mouse',
@@ -214,7 +288,32 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
     // useEffect가 다시 연결을 시도함
   }, []);
 
-  // 플레이스홀더 모드 (loadIframe이 꺼져있거나 baseUrl이 없음)
+  // 네비게이션 핸들러를 컨텍스트에 등록
+  useEffect(() => {
+    const isConnected = connectionState === 'connected';
+    setIsConnected(isConnected);
+
+    if (isConnected) {
+      setHandlers({
+        goBack: handleBack,
+        goForward: handleForward,
+        refresh: handleRefresh,
+      });
+    } else {
+      setHandlers(null);
+    }
+
+    return () => {
+      setHandlers(null);
+      setIsConnected(false);
+    };
+  }, [connectionState, handleBack, handleForward, handleRefresh, setHandlers, setIsConnected]);
+
+  // URL 상태 체크
+  const urlInvalid = configUrl && !isValidUrl(configUrl);
+  const urlPending = configUrl !== effectiveUrl && configUrl.length > 0 && isValidUrl(configUrl);
+
+  // 플레이스홀더 모드 (loadIframe이 꺼져있거나 URL이 없거나 유효하지 않음)
   if (!shouldConnect) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
@@ -225,10 +324,12 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
             <path d="M21 15l-5-5L5 21" strokeWidth="2" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-slate-600">Your Web App</p>
-        {baseUrl && (
-          <p className="text-xs text-slate-400 mt-1 px-4 text-center truncate max-w-full">
-            {baseUrl}
+        <p className="text-sm font-medium text-slate-600">
+          {urlInvalid ? '유효한 URL을 입력하세요' : urlPending ? '반영 버튼을 눌러주세요' : 'Your Web App'}
+        </p>
+        {configUrl && (
+          <p className={`text-xs mt-1 px-4 text-center truncate max-w-full ${urlInvalid ? 'text-red-400' : 'text-slate-400'}`}>
+            {configUrl}
           </p>
         )}
       </div>
@@ -237,19 +338,31 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
   // 에러 상태
   if (connectionState === 'error') {
+    // 에러 메시지에서 원인 추출
+    const isNetworkError = errorMessage?.includes('ERR_NAME_NOT_RESOLVED') ||
+                           errorMessage?.includes('ERR_CONNECTION') ||
+                           errorMessage?.includes('net::');
+
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 px-4">
         <svg className="w-12 h-12 text-red-400 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="12" cy="12" r="10" strokeWidth="2" />
           <path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round" />
         </svg>
-        <p className="text-sm font-medium text-slate-600 mb-1">Failed to load preview</p>
-        <p className="text-xs text-slate-400 mb-3">{errorMessage || 'Connection failed'}</p>
+        <p className="text-sm font-medium text-slate-600 mb-1">
+          {isNetworkError ? 'URL을 찾을 수 없습니다' : 'Failed to load preview'}
+        </p>
+        <p className="text-xs text-slate-400 mb-2 text-center break-all max-w-full">
+          {effectiveUrl}
+        </p>
+        <p className="text-[10px] text-slate-400 mb-3">
+          {isNetworkError ? 'URL이 올바른지 확인해주세요' : (errorMessage || 'Connection failed')}
+        </p>
         <button
           onClick={handleReconnect}
           className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded hover:bg-slate-700"
         >
-          Retry
+          다시 시도
         </button>
       </div>
     );
@@ -271,64 +384,28 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
   // 연결됨 - 프레임 표시
   return (
-    <div className="w-full h-full flex flex-col bg-white">
-      {/* Preview 화면 */}
-      <div
-        ref={containerRef}
-        className="flex-1 cursor-pointer overflow-hidden"
-        onClick={(e) => handleMouseEvent(e, 'click')}
-        onMouseDown={(e) => handleMouseEvent(e, 'mousedown')}
-        onMouseUp={(e) => handleMouseEvent(e, 'mouseup')}
-        onMouseMove={(e) => handleMouseEvent(e, 'mousemove')}
-        onWheel={handleWheel}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        {frameData ? (
-          <img
-            src={frameData}
-            alt="Preview"
-            className="w-full h-full object-contain"
-            draggable={false}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-          </div>
-        )}
-      </div>
-
-      {/* 네비게이션 버튼들 - 하단 고정 */}
-      <div className="flex-shrink-0 flex justify-center items-center gap-2 py-2 bg-slate-50 border-t border-slate-200">
-        <button
-          onClick={handleBack}
-          className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-          title="Back"
-        >
-          <svg className="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <button
-          onClick={handleForward}
-          className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-          title="Forward"
-        >
-          <svg className="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </button>
-        <div className="w-px h-4 bg-slate-300 mx-1" />
-        <button
-          onClick={handleRefresh}
-          className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-          title="Refresh"
-        >
-          <svg className="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 4v6h6M23 20v-6h-6" />
-            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-          </svg>
-        </button>
-      </div>
+    <div
+      ref={containerRef}
+      className="w-full h-full cursor-pointer overflow-hidden bg-white"
+      onClick={(e) => handleMouseEvent(e, 'click')}
+      onMouseDown={(e) => handleMouseEvent(e, 'mousedown')}
+      onMouseUp={(e) => handleMouseEvent(e, 'mouseup')}
+      onMouseMove={(e) => handleMouseEvent(e, 'mousemove')}
+      onWheel={handleWheel}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {frameData ? (
+        <img
+          src={frameData}
+          alt="Preview"
+          className="w-full h-full object-contain"
+          draggable={false}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+        </div>
+      )}
     </div>
   );
 }

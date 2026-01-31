@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePreview, PreviewScreen } from '../../contexts/PreviewContext';
+import { usePreviewNavigation } from '../../contexts/PreviewNavigationContext';
 import { DEVICE_SIZES, DeviceSizeKey } from '../../constants/devices';
 
 interface PreviewControlsProps {
@@ -19,6 +20,7 @@ export default function PreviewControls({ showThemeToggle = false }: PreviewCont
     setDeviceSize,
     toggleThemeMode,
   } = usePreview();
+  const { handlers, isConnected } = usePreviewNavigation();
 
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -49,6 +51,36 @@ export default function PreviewControls({ showThemeToggle = false }: PreviewCont
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      {/* 네비게이션 버튼 - 항상 표시 */}
+      <button
+        onClick={() => handlers?.goBack()}
+        className="p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors"
+        title={t('preview.back')}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <button
+        onClick={() => handlers?.goForward()}
+        className="p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors"
+        title={t('preview.forward')}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </button>
+      <button
+        onClick={() => handlers?.refresh()}
+        className="p-1.5 rounded text-slate-600 hover:bg-slate-200 transition-colors"
+        title={t('preview.refresh')}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+      <div className="w-px h-4 bg-slate-200 mx-1" />
+
       {/* 현재 화면 표시 */}
       <span className="text-xs text-slate-500 mr-2">
         {screenLabels[currentScreen]}

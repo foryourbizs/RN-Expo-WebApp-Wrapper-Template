@@ -1,4 +1,5 @@
 // tools/config-editor/client/src/components/preview/screens/SplashPreview.tsx
+// 실제 React Native custom-splash.tsx와 동일한 스타일 적용
 import { usePreview } from '../../../contexts/PreviewContext';
 import type { AppConfig, ThemeConfig } from '../../../types/config';
 
@@ -7,73 +8,62 @@ interface SplashPreviewProps {
   themeConfig: ThemeConfig | null;
 }
 
-// themeConfig은 향후 theme 색상 사용 시 활용 예정
 export default function SplashPreview({ appConfig, themeConfig: _themeConfig }: SplashPreviewProps) {
   const { themeMode } = usePreview();
+  const isDark = themeMode === 'dark';
 
   const splash = appConfig?.splash;
-  const theme = appConfig?.theme;
 
-  const backgroundColor = themeMode === 'dark'
+  const backgroundColor = isDark
     ? (splash?.darkBackgroundColor || '#000000')
     : (splash?.backgroundColor || '#ffffff');
 
-  const indicatorColor = theme?.loadingIndicatorColor || '#007AFF';
+  // 실제 RN과 동일한 색상 사용
+  const textColor = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
+  const spinnerColor = isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,122,255,0.9)';
+
   const loadingText = splash?.loadingText || '';
   const showIndicator = splash?.showLoadingIndicator !== false;
   const logoImage = splash?.logoImage;
-
-  const textColor = themeMode === 'dark' ? '#ffffff' : '#000000';
 
   return (
     <div
       className="w-full h-full flex flex-col items-center justify-center"
       style={{ backgroundColor }}
     >
-      {/* Logo */}
+      {/* Logo - 실제 RN: 120x120 */}
       {logoImage ? (
         <img
           src={logoImage}
           alt="App Logo"
-          className="w-24 h-24 object-contain mb-4"
+          className="w-[120px] h-[120px] object-contain mb-6"
           onError={(e) => {
-            // 이미지 로드 실패 시 기본 아이콘 표시
             e.currentTarget.style.display = 'none';
           }}
         />
-      ) : (
-        <div
-          className="w-24 h-24 rounded-2xl mb-4 flex items-center justify-center"
-          style={{ backgroundColor: indicatorColor }}
-        >
-          <span className="text-white text-3xl font-bold">A</span>
-        </div>
-      )}
+      ) : null}
 
-      {/* Loading Text */}
+      {/* Loading Text - 실제 RN: fontSize 14, letterSpacing 0.5 */}
       {loadingText && (
         <p
-          className="text-sm mb-4"
+          className="text-sm mb-6 tracking-wide"
           style={{ color: textColor }}
         >
           {loadingText}
         </p>
       )}
 
-      {/* Loading Indicator */}
+      {/* Arc Spinner - 실제 RN과 동일한 스타일 */}
       {showIndicator && (
-        <div className="flex items-center gap-1">
+        <div className="h-10 flex items-center justify-center">
           <div
-            className="w-2 h-2 rounded-full animate-bounce"
-            style={{ backgroundColor: indicatorColor, animationDelay: '0ms' }}
-          />
-          <div
-            className="w-2 h-2 rounded-full animate-bounce"
-            style={{ backgroundColor: indicatorColor, animationDelay: '150ms' }}
-          />
-          <div
-            className="w-2 h-2 rounded-full animate-bounce"
-            style={{ backgroundColor: indicatorColor, animationDelay: '300ms' }}
+            className="w-8 h-8 rounded-full animate-spin"
+            style={{
+              borderWidth: '2px',
+              borderStyle: 'solid',
+              borderColor: `${spinnerColor}15`,
+              borderTopColor: spinnerColor,
+            }}
           />
         </div>
       )}

@@ -1,6 +1,7 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppConfig } from '../contexts/ConfigContext';
+import { usePreview } from '../contexts/PreviewContext';
 import { useAccordionSync } from '../hooks/useAccordionSync';
 import {
   TextInput,
@@ -21,7 +22,20 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
   const { t } = useTranslation();
   const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
     useAppConfig();
+  const { previewUrl, applyPreviewUrl } = usePreview();
   const { handleAccordionToggle } = useAccordionSync();
+
+  // 현재 입력된 URL과 적용된 URL이 다른지 확인
+  const currentBaseUrl = data?.webview?.baseUrl || '';
+  const urlNeedsApply = useMemo(() => {
+    if (!currentBaseUrl) return false;
+    try {
+      new URL(currentBaseUrl);
+      return currentBaseUrl !== previewUrl;
+    } catch {
+      return false;
+    }
+  }, [currentBaseUrl, previewUrl]);
 
   // 변경 사항 알림
   useEffect(() => {
@@ -67,6 +81,19 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           value={data.webview?.baseUrl || ''}
           onChange={(v) => updateField(['webview', 'baseUrl'], v)}
           description={t('app.webview.baseUrlDesc')}
+          action={
+            <button
+              onClick={() => applyPreviewUrl(currentBaseUrl)}
+              disabled={!urlNeedsApply}
+              className={`px-3 py-1.5 text-xs font-medium rounded whitespace-nowrap transition-colors ${
+                urlNeedsApply
+                  ? 'bg-blue-500 text-white hover:bg-blue-600'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              {t('preview.apply', '반영')}
+            </button>
+          }
         />
         <TextInput
           label={t('app.webview.userAgent')}

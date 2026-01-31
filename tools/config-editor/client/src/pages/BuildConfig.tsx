@@ -46,7 +46,11 @@ interface BuildEnvConfig {
   };
 }
 
-export default function BuildConfigPage() {
+interface BuildConfigPageProps {
+  onBuildingChange?: (building: boolean) => void;
+}
+
+export default function BuildConfigPage({ onBuildingChange }: BuildConfigPageProps) {
   const { t } = useTranslation();
   const [envChecks, setEnvChecks] = useState<EnvCheckResult[]>([]);
   const [envChecking, setEnvChecking] = useState(false);
@@ -164,6 +168,25 @@ export default function BuildConfigPage() {
     c: 'US'
   });
   const [keystoreGenerating, setKeystoreGenerating] = useState(false);
+
+  // 빌드 상태 변경 시 부모에게 알림
+  useEffect(() => {
+    onBuildingChange?.(building);
+  }, [building, onBuildingChange]);
+
+  // 빌드 중 창 닫기 방지
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (building) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [building]);
 
   // Load build-env and keystore status on mount
   useEffect(() => {

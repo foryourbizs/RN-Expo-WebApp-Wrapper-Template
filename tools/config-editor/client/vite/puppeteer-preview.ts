@@ -235,9 +235,10 @@ export async function startPreview(url: string, width = 360, height = 640): Prom
     return;
   }
 
-  // 기존 세션 정리
+  // 기존 세션 정리 (클라이언트는 보존)
+  let preservedClients = new Set<WebSocket>();
   if (session) {
-    await stopPreview();
+    preservedClients = await stopPreview(true);
   }
 
   try {
@@ -279,7 +280,7 @@ export async function startPreview(url: string, width = 360, height = 640): Prom
       browser,
       page,
       cdp,
-      clients: new Set(),
+      clients: preservedClients,  // 보존된 클라이언트 연결
       url,
       viewportWidth: width,
       viewportHeight: height,
@@ -299,6 +300,12 @@ export async function startPreview(url: string, width = 360, height = 640): Prom
     if (session) {
       await stopPreview();
     }
+    // 실패 시 보존된 클라이언트에게 에러 전송
+    preservedClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'error', message: String(error) }));
+      }
+    });
     throw error;
   }
 }
@@ -321,10 +328,12 @@ async function startScreencast(): Promise<void> {
   // CDP 이벤트 핸들러 (한 번만 등록)
   if (!screencastHandlerRegistered) {
     screencastHandlerRegistered = true;
+    let frameCount = 0;
     session.cdp.on('Page.screencastFrame', async (params) => {
       if (!session) return;
 
       const { data, sessionId } = params;
+      frameCount++;
 
       // 프레임 ACK
       try {
@@ -332,6 +341,11 @@ async function startScreencast(): Promise<void> {
       } catch (e) {
         // 무시 (세션 종료됨)
         return;
+      }
+
+      // 첫 프레임 로그
+      if (frameCount === 1) {
+        console.log(`[Puppeteer Preview] First frame received, sending to ${session.clients.size} clients`);
       }
 
       // 모든 클라이언트에 프레임 전송
@@ -377,9 +391,9 @@ async function stopScreencast(): Promise<void> {
   }
 }
 
-// Preview 중지
-export async function stopPreview(): Promise<void> {
-  if (!session) return;
+// Preview 중지 (preserveClients: 클라이언트 연결 유지 여부)
+export async function stopPreview(preserveClients = false): Promise<Set<WebSocket>> {
+  if (!session) return new Set();
 
   console.log('[Puppeteer Preview] Stopping preview');
 
@@ -388,11 +402,13 @@ export async function stopPreview(): Promise<void> {
   // CDP 핸들러 등록 상태 리셋
   screencastHandlerRegistered = false;
 
-  // 클라이언트 연결 종료
-  session.clients.forEach(client => {
-    client.close();
-  });
-  session.clients.clear();
+  // 클라이언트 보존 또는 종료
+  const clients = session.clients;
+  if (!preserveClients) {
+    clients.forEach(client => {
+      client.close();
+    });
+  }
 
   // 브라우저 종료
   try {
@@ -402,6 +418,7 @@ export async function stopPreview(): Promise<void> {
   }
 
   session = null;
+  return preserveClients ? clients : new Set();
 }
 
 // 페이지 새로고침
