@@ -8,5 +8,9 @@
     "build": "cd client && npm run build",
     "preview": "cd client && npm run preview",
     "postinstall": "cd client && npm install"
+  },
+  "dependencies": {
+    "puppeteer": "^24.36.1",
+    "ws": "^8.19.0"
   }
 }

@@ -7,6 +7,14 @@ import fsSync from 'fs';
 import path from 'path';
 import { exec, spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
+import {
+  setupWebSocketServer,
+  startPreview,
+  stopPreview,
+  refreshPreview,
+  navigatePreview,
+  getPreviewStatus
+} from './puppeteer-preview';
 
 const execAsync = promisify(exec);
 
@@ -1499,6 +1507,14 @@ export function apiPlugin(): Plugin {
   return {
     name: 'config-editor-api',
     configureServer(server: ViteDevServer) {
+      // Puppeteer Preview WebSocket 서버 설정
+      server.httpServer?.once('listening', () => {
+        if (server.httpServer) {
+          setupWebSocketServer(server.httpServer);
+          console.log('[api-plugin] Puppeteer Preview WebSocket server initialized');
+        }
+      });
+
       // AppBridge Test Page - for debugging
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== '/preview-test') {
