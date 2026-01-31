@@ -221,6 +221,9 @@ interface PreviewSession {
 let session: PreviewSession | null = null;
 let wss: WebSocketServer | null = null;
 
+// 마우스 버튼 상태 추적 (눌린 버튼들)
+const pressedMouseButtons = new Set<'left' | 'right' | 'middle'>();
+
 // Preview 세션 시작
 export async function startPreview(url: string, width = 360, height = 640): Promise<void> {
   console.log('[Puppeteer Preview] Starting preview for:', url);
@@ -402,6 +405,9 @@ export async function stopPreview(preserveClients = false): Promise<Set<WebSocke
   // CDP 핸들러 등록 상태 리셋
   screencastHandlerRegistered = false;
 
+  // 마우스 버튼 상태 리셋
+  pressedMouseButtons.clear();
+
   // 클라이언트 보존 또는 종료
   const clients = session.clients;
   if (!preserveClients) {
@@ -477,10 +483,18 @@ export async function handleMouseEvent(
       await session.page.mouse.click(x, y, { button });
       break;
     case 'mousedown':
+      // 먼저 마우스 위치로 이동 후 버튼 누르기
+      await session.page.mouse.move(x, y);
       await session.page.mouse.down({ button });
+      pressedMouseButtons.add(button);
       break;
     case 'mouseup':
-      await session.page.mouse.up({ button });
+      // 해당 버튼이 눌린 상태일 때만 up 호출 (Puppeteer 에러 방지)
+      if (pressedMouseButtons.has(button)) {
+        await session.page.mouse.move(x, y);
+        await session.page.mouse.up({ button });
+        pressedMouseButtons.delete(button);
+      }
       break;
     case 'mousemove':
       await session.page.mouse.move(x, y);
@@ -495,15 +509,18 @@ export async function handleKeyEvent(
 ): Promise<void> {
   if (!session) return;
 
+  // Puppeteer KeyInput 타입으로 캐스팅
+  const keyInput = key as import('puppeteer').KeyInput;
+
   switch (type) {
     case 'keydown':
-      await session.page.keyboard.down(key);
+      await session.page.keyboard.down(keyInput);
       break;
     case 'keyup':
-      await session.page.keyboard.up(key);
+      await session.page.keyboard.up(keyInput);
       break;
     case 'keypress':
-      await session.page.keyboard.press(key as any);
+      await session.page.keyboard.press(keyInput);
       break;
   }
 }
