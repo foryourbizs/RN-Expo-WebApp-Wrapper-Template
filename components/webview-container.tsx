@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useColorScheme,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type {
@@ -27,6 +28,7 @@ import type {
 
 import DebugOverlay, { debugLog, DebugOverlayRef } from '@/components/debug-overlay';
 import { APP_CONFIG } from '@/constants/app-config';
+import { Colors } from '@/constants/theme';
 import {
   handleBridgeMessage,
   setBridgeWebView
@@ -68,7 +70,12 @@ export default function WebViewContainer() {
   const emptyBodyRetryCount = useRef(0); // 빈 body 재시도 카운터
   const MAX_EMPTY_BODY_RETRIES = 2; // 일반 재시도 횟수
 
-  const { webview, theme, debug, security } = APP_CONFIG;
+  const { webview, debug, security } = APP_CONFIG;
+
+  // 테마 색상 (theme.json에서 일괄 관리)
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const themeColors = isDark ? Colors.dark : Colors.light;
 
   // SecurityEngine 인스턴스 초기화
   // security 설정을 mutable 객체로 변환하여 전달
@@ -493,14 +500,14 @@ export default function WebViewContainer() {
   if (error) {
     const errorInfo = getErrorInfo(error);
     return (
-      <View style={styles.errorContainer}>
+      <View style={[styles.errorContainer, { backgroundColor: themeColors.errorBackground }]}>
         <Text style={styles.errorIcon}>{errorInfo.icon}</Text>
-        <Text style={styles.errorTitle}>{errorInfo.title}</Text>
-        <Text style={styles.errorMessage}>{errorInfo.message}</Text>
+        <Text style={[styles.errorTitle, { color: themeColors.errorTitle }]}>{errorInfo.title}</Text>
+        <Text style={[styles.errorMessage, { color: themeColors.errorMessage }]}>{errorInfo.message}</Text>
         {debug.enabled && errorInfo.detail && (
-          <Text style={styles.errorDetail}>{errorInfo.detail}</Text>
+          <Text style={[styles.errorDetail, { color: themeColors.errorMessage }]}>{errorInfo.detail}</Text>
         )}
-        <Pressable style={styles.retryButtonContainer} onPress={handleRetry}>
+        <Pressable style={[styles.retryButtonContainer, { backgroundColor: themeColors.errorButton }]} onPress={handleRetry}>
           <Text style={styles.retryButtonText}>다시 시도</Text>
         </Pressable>
       </View>
@@ -508,7 +515,7 @@ export default function WebViewContainer() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.errorBackground }]}>
       <WebView
         key={webViewKey}
         ref={ref}
@@ -621,10 +628,10 @@ export default function WebViewContainer() {
       
       {/* 로딩 인디케이터 - 초기 로딩 시에만 표시 */}
       {isInitialLoading && (
-        <View style={styles.loadingOverlay} pointerEvents="none">
-          <ActivityIndicator 
-            size="large" 
-            color={theme.loadingIndicatorColor} 
+        <View style={[styles.loadingOverlay, { backgroundColor: themeColors.errorBackground }]} pointerEvents="none">
+          <ActivityIndicator
+            size="large"
+            color={themeColors.loadingIndicator}
           />
           {debug.enabled && (
             <View style={styles.loadingDebugInfo}>

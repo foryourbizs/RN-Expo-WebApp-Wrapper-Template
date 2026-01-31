@@ -53,7 +53,7 @@ export default function PreviewPanel({ appConfig, themeConfig, activeTab }: Prev
       case 'splash':
         return <SplashPreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'offline':
-        return <OfflinePreview appConfig={appConfig} />;
+        return <OfflinePreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'theme':
         return <ThemePreview themeConfig={themeConfig} />;
       case 'webview':
@@ -87,7 +87,10 @@ export default function PreviewPanel({ appConfig, themeConfig, activeTab }: Prev
 
       {/* Controls */}
       <div className="px-4 py-2 border-b border-slate-200 bg-white">
-        <PreviewControls showThemeToggle={activeTab === 'theme'} />
+        <PreviewControls
+          showThemeToggle={activeTab === 'theme'}
+          showScreenSelector={activeTab === 'theme'}
+        />
       </div>
 
       {/* Preview Area */}

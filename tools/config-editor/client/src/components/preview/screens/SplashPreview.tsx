@@ -8,24 +8,56 @@ interface SplashPreviewProps {
   themeConfig: ThemeConfig | null;
 }
 
-export default function SplashPreview({ appConfig, themeConfig: _themeConfig }: SplashPreviewProps) {
+const DEFAULT_COLORS = {
+  light: {
+    splashBackground: '#ffffff',
+    splashText: 'rgba(0,0,0,0.6)',
+    splashSpinner: 'rgba(0,122,255,0.9)',
+  },
+  dark: {
+    splashBackground: '#000000',
+    splashText: 'rgba(255,255,255,0.8)',
+    splashSpinner: 'rgba(255,255,255,0.9)',
+  },
+};
+
+export default function SplashPreview({ appConfig, themeConfig }: SplashPreviewProps) {
   const { themeMode } = usePreview();
-  const isDark = themeMode === 'dark';
 
   const splash = appConfig?.splash;
+  const colors = themeConfig?.colors?.[themeMode] || {};
+  const d = DEFAULT_COLORS[themeMode];
 
-  const backgroundColor = isDark
-    ? (splash?.darkBackgroundColor || '#000000')
-    : (splash?.backgroundColor || '#ffffff');
+  const backgroundColor = (colors as Record<string, string>).splashBackground || d.splashBackground;
+  const textColor = (colors as Record<string, string>).splashText || d.splashText;
+  const spinnerColor = (colors as Record<string, string>).splashSpinner || d.splashSpinner;
 
-  // 실제 RN과 동일한 색상 사용
-  const textColor = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
-  const spinnerColor = isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,122,255,0.9)';
-
+  const mode = splash?.mode ?? 'default';
+  const fullscreenImage = splash?.fullscreenImage;
   const loadingText = splash?.loadingText || '';
   const showIndicator = splash?.showLoadingIndicator !== false;
   const logoImage = splash?.logoImage;
 
+  // 이미지 모드: 전체 화면 이미지만 표시
+  if (mode === 'image' && fullscreenImage) {
+    return (
+      <div
+        className="w-full h-full"
+        style={{ backgroundColor }}
+      >
+        <img
+          src={fullscreenImage}
+          alt="Splash"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 기본 모드: 로고/텍스트/스피너 표시
   return (
     <div
       className="w-full h-full flex flex-col items-center justify-center"

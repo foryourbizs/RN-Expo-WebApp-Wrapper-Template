@@ -132,16 +132,6 @@
           "type": "string",
           "description": "Retry button text"
         },
-        "backgroundColor": {
-          "type": "string",
-          "description": "Background color (hex)",
-          "default": "#ffffff"
-        },
-        "darkBackgroundColor": {
-          "type": "string",
-          "description": "Dark mode background color (hex)",
-          "default": "#1a1a1a"
-        },
         "autoReconnect": {
           "type": "boolean",
           "description": "Auto refresh when network is restored",
@@ -247,17 +237,6 @@
         }
       }
     },
-    "theme": {
-      "type": "object",
-      "description": "Theme settings",
-      "properties": {
-        "loadingIndicatorColor": {
-          "type": "string",
-          "description": "Loading indicator color (hex)",
-          "default": "#007AFF"
-        }
-      }
-    },
     "splash": {
       "type": "object",
       "description": "Splash screen settings",
@@ -266,6 +245,12 @@
           "type": "boolean",
           "description": "Show custom splash screen",
           "default": true
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["default", "image"],
+          "description": "Splash screen display mode (default: logo/text/indicator, image: fullscreen image)",
+          "default": "default"
         },
         "minDisplayTime": {
           "type": "integer",
@@ -277,15 +262,9 @@
           "description": "Fade out duration in ms",
           "default": 300
         },
-        "backgroundColor": {
-          "type": "string",
-          "description": "Background color (hex)",
-          "default": "#ffffff"
-        },
-        "darkBackgroundColor": {
-          "type": "string",
-          "description": "Dark mode background color (hex)",
-          "default": "#000000"
+        "fullscreenImage": {
+          "type": ["string", "null"],
+          "description": "Fullscreen image path for image mode (fills screen with cover mode)"
         },
         "logoImage": {
           "type": ["string", "null"],

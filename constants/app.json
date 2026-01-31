@@ -12,14 +12,14 @@
     "enabled": true,
     "title": "오프라인 상태입니다.",
     "message": "인터넷을 연결해 주세요.",
-    "retryButtonText": "연결 확인하기",
+    "retryButtonText": "",
     "autoReconnect": true
   },
   "statusBar": {
     "visible": true,
-    "style": "light",
+    "style": "auto",
     "translucent": true,
-    "overlapsWebView": false,
+    "overlapsWebView": true,
     "showOverlay": true
   },
   "navigationBar": {
@@ -31,7 +31,9 @@
   "splash": {
     "enabled": true,
     "loadingText": "스플레시 이미지",
-    "logoImage": null
+    "logoImage": null,
+    "mode": "image",
+    "fullscreenImage": "./assets/images/splash-icon.png"
   },
   "safeArea": {
     "enabled": false,

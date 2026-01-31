@@ -56,11 +56,7 @@
       "retryButtonText": "재시도 버튼 텍스트",
       "retryButtonTextDesc": "재시도 버튼에 표시되는 텍스트",
       "autoReconnect": "자동 재연결",
-      "autoReconnectDesc": "네트워크 복구 시 자동으로 새로고침",
-      "backgroundColor": "배경색",
-      "backgroundColorDesc": "오프라인 화면 배경색",
-      "darkBackgroundColor": "다크모드 배경색",
-      "darkBackgroundColorDesc": "다크모드에서의 오프라인 화면 배경색"
+      "autoReconnectDesc": "네트워크 복구 시 자동으로 새로고침"
     },
     "statusBar": {
       "title": "상태바",
@@ -110,20 +106,22 @@
       "title": "스플래시 스크린",
       "enabled": "활성화",
       "enabledDesc": "앱 시작 시 커스텀 스플래시 화면 표시",
+      "mode": "모드",
+      "modeDesc": "스플래시 화면 표시 방식",
+      "modeDefault": "기본형",
+      "modeImage": "전체 화면 이미지",
       "minDisplayTime": "최소 표시 시간 (ms)",
       "minDisplayTimeDesc": "스플래시 화면 최소 표시 시간",
       "fadeOutDuration": "페이드아웃 시간 (ms)",
       "fadeOutDurationDesc": "페이드아웃 애니메이션 지속 시간",
+      "fullscreenImage": "전체 화면 이미지",
+      "fullscreenImageDesc": "이미지 URL 또는 assets 폴더 기준 경로 (예: https://... 또는 ./assets/splash.png)",
       "loadingText": "로딩 텍스트",
       "loadingTextDesc": "로딩 중 표시되는 텍스트",
-      "logoImage": "로고 이미지 경로",
-      "logoImageDesc": "로고 이미지 경로 (비어있으면 텍스트만)",
+      "logoImage": "로고 이미지",
+      "logoImageDesc": "이미지 URL 또는 assets 폴더 기준 경로 (비어있으면 텍스트만)",
       "showLoadingIndicator": "로딩 인디케이터 표시",
-      "showLoadingIndicatorDesc": "스플래시 화면에 로딩 스피너 표시",
-      "backgroundColor": "배경색",
-      "backgroundColorDesc": "스플래시 화면 배경색",
-      "darkBackgroundColor": "다크모드 배경색",
-      "darkBackgroundColorDesc": "다크모드에서의 스플래시 화면 배경색"
+      "showLoadingIndicatorDesc": "스플래시 화면에 로딩 스피너 표시"
     },
     "security": {
       "title": "보안",
@@ -166,7 +164,26 @@
   "theme": {
     "light": "라이트 모드",
     "dark": "다크 모드",
-    "reset": "기본값으로 초기화"
+    "reset": "기본값으로 초기화",
+    "description": "앱의 네이티브 UI 색상을 화면별로 설정합니다. 웹뷰 콘텐츠에는 적용되지 않습니다.",
+    "group": {
+      "splash": "스플래시 화면",
+      "offline": "오프라인 화면",
+      "error": "에러 화면",
+      "loading": "로딩 인디케이터"
+    },
+    "splashBackground": "배경색",
+    "splashText": "텍스트",
+    "splashSpinner": "스피너",
+    "offlineBackground": "배경색",
+    "offlineText": "제목",
+    "offlineSubText": "설명",
+    "offlineButton": "버튼",
+    "errorBackground": "배경색",
+    "errorTitle": "제목",
+    "errorMessage": "설명",
+    "errorButton": "버튼",
+    "loadingIndicator": "색상"
   },
   "plugins": {
     "auto": "Auto 플러그인 (npm)",

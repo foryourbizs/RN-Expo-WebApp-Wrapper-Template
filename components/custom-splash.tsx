@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { APP_CONFIG } from '@/constants/app-config';
+import { Colors } from '@/constants/theme';
 
 interface CustomSplashProps {
   visible: boolean;
@@ -128,12 +129,11 @@ export default function CustomSplash({ visible, onHidden }: CustomSplashProps) {
   const logoScale = useRef(new Animated.Value(1)).current;
   const { splash } = APP_CONFIG;
 
-  const backgroundColor = colorScheme === 'dark'
-    ? splash.darkBackgroundColor
-    : splash.backgroundColor;
-
-  const textColor = colorScheme === 'dark' ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
-  const spinnerColor = colorScheme === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,122,255,0.9)';
+  // 테마 색상 (theme.json에서 일괄 관리)
+  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const backgroundColor = themeColors.splashBackground;
+  const textColor = themeColors.splashText;
+  const spinnerColor = themeColors.splashSpinner;
 
   // 등장 애니메이션
   useEffect(() => {
@@ -201,6 +201,30 @@ export default function CustomSplash({ visible, onHidden }: CustomSplashProps) {
     return null;
   }
 
+  // 이미지 모드: 전체 화면 이미지만 표시
+  if (splash.mode === 'image' && splash.fullscreenImage) {
+    return (
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            backgroundColor,
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+        pointerEvents={visible ? 'auto' : 'none'}
+      >
+        <Image
+          source={{ uri: splash.fullscreenImage }}
+          style={styles.fullscreenImage}
+          resizeMode="cover"
+        />
+      </Animated.View>
+    );
+  }
+
+  // 기본 모드: 로고/텍스트/로딩 인디케이터 표시
   return (
     <Animated.View
       style={[
@@ -247,6 +271,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
+  },
+  fullscreenImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   content: {
     alignItems: 'center',

@@ -7,15 +7,17 @@ import { DEVICE_SIZES, DeviceSizeKey } from '../../constants/devices';
 
 interface PreviewControlsProps {
   showThemeToggle?: boolean;
+  showScreenSelector?: boolean;
 }
 
-export default function PreviewControls({ showThemeToggle = false }: PreviewControlsProps) {
+export default function PreviewControls({ showThemeToggle = false, showScreenSelector = false }: PreviewControlsProps) {
   const { t } = useTranslation();
   const {
     currentScreen,
     orientation,
     deviceSize,
     themeMode,
+    setCurrentScreen,
     toggleOrientation,
     setDeviceSize,
     toggleThemeMode,
@@ -23,7 +25,9 @@ export default function PreviewControls({ showThemeToggle = false }: PreviewCont
   const { handlers, isConnected } = usePreviewNavigation();
 
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
+  const [showScreenMenu, setShowScreenMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const screenMenuRef = useRef<HTMLDivElement>(null);
 
   // 외부 클릭 시 메뉴 닫기
   useEffect(() => {
@@ -31,16 +35,19 @@ export default function PreviewControls({ showThemeToggle = false }: PreviewCont
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowDeviceMenu(false);
       }
+      if (screenMenuRef.current && !screenMenuRef.current.contains(e.target as Node)) {
+        setShowScreenMenu(false);
+      }
     };
 
-    if (showDeviceMenu) {
+    if (showDeviceMenu || showScreenMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showDeviceMenu]);
+  }, [showDeviceMenu, showScreenMenu]);
 
   const screenLabels: Record<PreviewScreen, string> = {
     splash: 'Splash',
@@ -81,10 +88,44 @@ export default function PreviewControls({ showThemeToggle = false }: PreviewCont
       </button>
       <div className="w-px h-4 bg-slate-200 mx-1" />
 
-      {/* 현재 화면 표시 */}
-      <span className="text-xs text-slate-500 mr-2">
-        {screenLabels[currentScreen]}
-      </span>
+      {/* 화면 선택 */}
+      {showScreenSelector ? (
+        <div className="relative" ref={screenMenuRef}>
+          <button
+            onClick={() => setShowScreenMenu(!showScreenMenu)}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 rounded hover:bg-slate-200 transition-colors"
+          >
+            <span>{screenLabels[currentScreen]}</span>
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showScreenMenu && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20 min-w-[100px]">
+              {(['splash', 'offline', 'theme'] as PreviewScreen[]).map((screen) => (
+                <button
+                  key={screen}
+                  onClick={() => {
+                    setCurrentScreen(screen);
+                    setShowScreenMenu(false);
+                  }}
+                  className={`
+                    w-full px-3 py-1.5 text-left text-xs hover:bg-slate-100 transition-colors
+                    ${currentScreen === screen ? 'bg-blue-50 text-blue-600' : 'text-slate-700'}
+                  `}
+                >
+                  {screenLabels[screen]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <span className="text-xs text-slate-500 mr-2">
+          {screenLabels[currentScreen]}
+        </span>
+      )}
 
       {/* 회전 토글 */}
       <button

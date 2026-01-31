@@ -1,4 +1,6 @@
 // tools/config-editor/client/src/components/preview/screens/ThemePreview.tsx
+// 테마 색상이 실제로 적용되는 네이티브 UI 요소 미리보기
+
 import { usePreview } from '../../../contexts/PreviewContext';
 import type { ThemeConfig } from '../../../types/config';
 
@@ -8,20 +10,32 @@ interface ThemePreviewProps {
 
 const DEFAULT_COLORS = {
   light: {
-    text: '#11181C',
-    background: '#ffffff',
-    tint: '#0a7ea4',
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: '#0a7ea4',
+    splashBackground: '#ffffff',
+    splashText: 'rgba(0,0,0,0.6)',
+    splashSpinner: 'rgba(0,122,255,0.9)',
+    offlineBackground: '#ffffff',
+    offlineText: '#333333',
+    offlineSubText: '#666666',
+    offlineButton: '#007AFF',
+    errorBackground: '#fafafa',
+    errorTitle: '#1a1a1a',
+    errorMessage: '#666666',
+    errorButton: '#007AFF',
+    loadingIndicator: '#007AFF',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: '#ffffff',
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: '#ffffff',
+    splashBackground: '#000000',
+    splashText: 'rgba(255,255,255,0.8)',
+    splashSpinner: 'rgba(255,255,255,0.9)',
+    offlineBackground: '#1a1a1a',
+    offlineText: '#ffffff',
+    offlineSubText: '#aaaaaa',
+    offlineButton: '#007AFF',
+    errorBackground: '#1a1a1a',
+    errorTitle: '#ffffff',
+    errorMessage: '#aaaaaa',
+    errorButton: '#007AFF',
+    loadingIndicator: '#007AFF',
   },
 };
 
@@ -29,112 +43,110 @@ export default function ThemePreview({ themeConfig }: ThemePreviewProps) {
   const { themeMode } = usePreview();
 
   const colors = themeConfig?.colors?.[themeMode] || {};
-  const defaultColors = DEFAULT_COLORS[themeMode];
+  const d = DEFAULT_COLORS[themeMode];
 
-  const textColor = colors.text || defaultColors.text;
-  const backgroundColor = colors.background || defaultColors.background;
-  const tintColor = colors.tint || defaultColors.tint;
-  const iconColor = colors.icon || defaultColors.icon;
-  const tabIconDefault = colors.tabIconDefault || defaultColors.tabIconDefault;
-  const tabIconSelected = colors.tabIconSelected || defaultColors.tabIconSelected;
+  // 색상 가져오기 헬퍼
+  const c = (key: keyof typeof d) => (colors as Record<string, string>)[key] || d[key];
 
   return (
     <div
-      className="w-full h-full flex flex-col"
-      style={{ backgroundColor }}
+      className="w-full h-full flex flex-col overflow-auto"
+      style={{ backgroundColor: c('splashBackground') }}
     >
-      {/* Header */}
-      <div className="px-4 py-3 border-b" style={{ borderColor: iconColor + '30' }}>
-        <h1 className="text-lg font-semibold" style={{ color: textColor }}>
-          Sample App
-        </h1>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 overflow-auto">
-        {/* Text Samples */}
-        <div className="mb-4">
-          <p className="text-sm mb-1" style={{ color: textColor }}>
-            This is primary text color
-          </p>
-          <p className="text-xs" style={{ color: iconColor }}>
-            This is secondary text (icon color)
-          </p>
-        </div>
-
-        {/* Button */}
-        <button
-          className="w-full py-2 rounded-lg text-sm font-medium text-white mb-4"
-          style={{ backgroundColor: tintColor }}
-        >
-          Primary Button (Tint)
-        </button>
-
-        {/* Card */}
+      {/* 스플래시 화면 미리보기 */}
+      <div className="p-4 border-b" style={{ borderColor: c('offlineSubText') + '30' }}>
+        <h3 className="text-[10px] font-medium uppercase tracking-wider mb-3" style={{ color: c('offlineSubText') }}>
+          Splash Screen
+        </h3>
         <div
-          className="p-3 rounded-lg mb-4"
-          style={{ backgroundColor: iconColor + '15' }}
+          className="rounded-lg p-6 flex flex-col items-center justify-center"
+          style={{ backgroundColor: c('splashBackground') }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill={iconColor}>
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
-              <circle cx="12" cy="12" r="3" />
+          <div
+            className="w-12 h-12 rounded-xl mb-3 flex items-center justify-center"
+            style={{ backgroundColor: c('splashSpinner') + '20' }}
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill={c('splashSpinner')}>
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
-            <span className="text-sm font-medium" style={{ color: textColor }}>
-              Icon Color Sample
-            </span>
           </div>
-          <p className="text-xs" style={{ color: iconColor }}>
-            Card with icon and text samples
-          </p>
-        </div>
-
-        {/* Color Swatches */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: 'Text', color: textColor },
-            { label: 'Tint', color: tintColor },
-            { label: 'Icon', color: iconColor },
-          ].map(({ label, color }) => (
-            <div key={label} className="text-center">
-              <div
-                className="w-full h-8 rounded mb-1"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-[10px]" style={{ color: iconColor }}>{label}</span>
-            </div>
-          ))}
+          <p className="text-xs" style={{ color: c('splashText') }}>Loading...</p>
+          <div
+            className="w-5 h-5 mt-3 rounded-full border-2 animate-spin"
+            style={{
+              borderColor: c('splashSpinner') + '30',
+              borderTopColor: c('splashSpinner')
+            }}
+          />
         </div>
       </div>
 
-      {/* Tab Bar */}
-      <div
-        className="flex items-center justify-around py-2 border-t"
-        style={{ borderColor: iconColor + '30' }}
-      >
-        {[
-          { icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', selected: true },
-          { icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z', selected: false },
-          { icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', selected: false },
-        ].map((tab, i) => (
-          <div key={i} className="flex flex-col items-center">
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={tab.selected ? tabIconSelected : tabIconDefault}
-              strokeWidth="2"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
-            </svg>
-            <span
-              className="text-[10px] mt-0.5"
-              style={{ color: tab.selected ? tabIconSelected : tabIconDefault }}
-            >
-              {['Home', 'Search', 'Profile'][i]}
-            </span>
-          </div>
-        ))}
+      {/* 오프라인 화면 미리보기 */}
+      <div className="p-4 border-b" style={{ borderColor: c('offlineSubText') + '30' }}>
+        <h3 className="text-[10px] font-medium uppercase tracking-wider mb-3" style={{ color: c('offlineSubText') }}>
+          Offline Screen
+        </h3>
+        <div
+          className="rounded-lg p-4 flex flex-col items-center"
+          style={{ backgroundColor: c('offlineBackground') }}
+        >
+          <p className="text-sm font-medium mb-1" style={{ color: c('offlineText') }}>
+            No Connection
+          </p>
+          <p className="text-[10px] mb-3 text-center" style={{ color: c('offlineSubText') }}>
+            Please check your internet
+          </p>
+          <button
+            className="px-4 py-1.5 rounded text-xs font-medium text-white"
+            style={{ backgroundColor: c('offlineButton') }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+
+      {/* 에러 화면 미리보기 */}
+      <div className="p-4 border-b" style={{ borderColor: c('offlineSubText') + '30' }}>
+        <h3 className="text-[10px] font-medium uppercase tracking-wider mb-3" style={{ color: c('offlineSubText') }}>
+          Error Screen
+        </h3>
+        <div
+          className="rounded-lg p-4 flex flex-col items-center"
+          style={{ backgroundColor: c('errorBackground') }}
+        >
+          <p className="text-sm font-medium mb-1" style={{ color: c('errorTitle') }}>
+            Something went wrong
+          </p>
+          <p className="text-[10px] mb-3 text-center" style={{ color: c('errorMessage') }}>
+            Unable to load the page
+          </p>
+          <button
+            className="px-4 py-1.5 rounded text-xs font-medium text-white"
+            style={{ backgroundColor: c('errorButton') }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+
+      {/* 로딩 인디케이터 미리보기 */}
+      <div className="p-4">
+        <h3 className="text-[10px] font-medium uppercase tracking-wider mb-3" style={{ color: c('offlineSubText') }}>
+          Loading Indicator
+        </h3>
+        <div className="flex items-center justify-center gap-4">
+          <div
+            className="w-8 h-8 rounded-full border-3 animate-spin"
+            style={{
+              borderWidth: '3px',
+              borderColor: c('loadingIndicator') + '30',
+              borderTopColor: c('loadingIndicator')
+            }}
+          />
+          <span className="text-xs" style={{ color: c('offlineSubText') }}>
+            {c('loadingIndicator')}
+          </span>
+        </div>
       </div>
     </div>
   );

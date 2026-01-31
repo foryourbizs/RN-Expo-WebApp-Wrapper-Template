@@ -50,7 +50,7 @@ export default function FullscreenModal({ appConfig, themeConfig, activeTab }: F
       case 'splash':
         return <SplashPreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'offline':
-        return <OfflinePreview appConfig={appConfig} />;
+        return <OfflinePreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'theme':
         return <ThemePreview themeConfig={themeConfig} />;
       case 'webview':
@@ -69,7 +69,10 @@ export default function FullscreenModal({ appConfig, themeConfig, activeTab }: F
         className="mb-4 p-3 bg-white rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <PreviewControls showThemeToggle={activeTab === 'theme'} />
+        <PreviewControls
+          showThemeToggle={activeTab === 'theme'}
+          showScreenSelector={activeTab === 'theme'}
+        />
       </div>
 
       {/* Phone Mockup */}

@@ -71,10 +71,6 @@ const APP_CONFIG_DEFAULTS = {
     message: '네트워크 연결을 확인해주세요.\nWi-Fi 또는 모바일 데이터가\n활성화되어 있는지 확인하세요.',
     // 재시도 버튼 텍스트
     retryButtonText: '다시 시도',
-    // 배경색
-    backgroundColor: '#ffffff',
-    // 다크모드 배경색
-    darkBackgroundColor: '#1a1a1a',
     // 자동 재연결 시도 (온라인 복구 시 자동 새로고침)
     autoReconnect: true,
   },
@@ -121,29 +117,23 @@ const APP_CONFIG_DEFAULTS = {
     darkBackgroundColor: '#000000',
   },
 
-  // 테마 설정
-  theme: {
-    // 로딩 인디케이터 색상
-    loadingIndicatorColor: '#007AFF',
-  },
-
   // 커스텀 스플래시 스크린 설정
   splash: {
     // 스플래시 활성화 여부
     enabled: true,
+    // 스플래시 모드: 'default' (로고/텍스트/인디케이터) | 'image' (전체 화면 이미지)
+    mode: 'default' as 'default' | 'image',
     // 최소 표시 시간 (ms)
     minDisplayTime: 1000,
     // 페이드 아웃 시간 (ms)
     fadeOutDuration: 300,
-    // 배경색
-    backgroundColor: '#ffffff',
-    // 다크모드 배경색
-    darkBackgroundColor: '#000000',
-    // 로고 이미지 (null이면 텍스트만)
+    // [이미지 모드] 전체 화면 이미지 경로
+    fullscreenImage: null as string | null,
+    // [기본 모드] 로고 이미지 (null이면 텍스트만)
     logoImage: null as string | null,
-    // 로딩 텍스트
+    // [기본 모드] 로딩 텍스트
     loadingText: '로딩 중...',
-    // 로딩 인디케이터 표시
+    // [기본 모드] 로딩 인디케이터 표시
     showLoadingIndicator: true,
   },
 

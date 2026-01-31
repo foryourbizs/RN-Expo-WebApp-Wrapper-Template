@@ -10,24 +10,50 @@ import { deepMerge, DeepPartial } from './utils/deep-merge';
 import themeOverrides from './theme.json';
 
 /**
- * 기본 색상 설정
+ * 기본 색상 설정 (화면별 구분)
  */
 const COLORS_DEFAULTS = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: '#0a7ea4',
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: '#0a7ea4',
+    // 스플래시 화면
+    splashBackground: '#ffffff',
+    splashText: 'rgba(0,0,0,0.6)',
+    splashSpinner: 'rgba(0,122,255,0.9)',
+
+    // 오프라인 화면
+    offlineBackground: '#ffffff',
+    offlineText: '#333333',
+    offlineSubText: '#666666',
+    offlineButton: '#007AFF',
+
+    // 에러 화면
+    errorBackground: '#fafafa',
+    errorTitle: '#1a1a1a',
+    errorMessage: '#666666',
+    errorButton: '#007AFF',
+
+    // 로딩 인디케이터
+    loadingIndicator: '#007AFF',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: '#fff',
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: '#fff',
+    // 스플래시 화면
+    splashBackground: '#000000',
+    splashText: 'rgba(255,255,255,0.8)',
+    splashSpinner: 'rgba(255,255,255,0.9)',
+
+    // 오프라인 화면
+    offlineBackground: '#1a1a1a',
+    offlineText: '#ffffff',
+    offlineSubText: '#aaaaaa',
+    offlineButton: '#007AFF',
+
+    // 에러 화면
+    errorBackground: '#1a1a1a',
+    errorTitle: '#ffffff',
+    errorMessage: '#aaaaaa',
+    errorButton: '#007AFF',
+
+    // 로딩 인디케이터
+    loadingIndicator: '#007AFF',
   },
 };
 

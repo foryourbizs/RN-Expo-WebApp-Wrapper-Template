@@ -1,40 +1,49 @@
 // tools/config-editor/client/src/components/preview/screens/OfflinePreview.tsx
 // 실제 React Native offline-screen.tsx와 동일한 스타일 적용
 import { usePreview } from '../../../contexts/PreviewContext';
-import type { AppConfig } from '../../../types/config';
+import type { AppConfig, ThemeConfig } from '../../../types/config';
 
 interface OfflinePreviewProps {
   appConfig: AppConfig | null;
+  themeConfig: ThemeConfig | null;
 }
 
-export default function OfflinePreview({ appConfig }: OfflinePreviewProps) {
+const DEFAULT_COLORS = {
+  light: {
+    offlineBackground: '#ffffff',
+    offlineText: '#333333',
+    offlineSubText: '#666666',
+    offlineButton: '#007AFF',
+  },
+  dark: {
+    offlineBackground: '#1a1a1a',
+    offlineText: '#ffffff',
+    offlineSubText: '#aaaaaa',
+    offlineButton: '#007AFF',
+  },
+};
+
+export default function OfflinePreview({ appConfig, themeConfig }: OfflinePreviewProps) {
   const { themeMode } = usePreview();
-  const isDark = themeMode === 'dark';
 
   const offline = appConfig?.offline;
+  const colors = themeConfig?.colors?.[themeMode] || {};
+  const d = DEFAULT_COLORS[themeMode];
 
-  const backgroundColor = isDark
-    ? (offline?.darkBackgroundColor || '#1a1a1a')
-    : (offline?.backgroundColor || '#ffffff');
+  const backgroundColor = (colors as Record<string, string>).offlineBackground || d.offlineBackground;
+  const textColor = (colors as Record<string, string>).offlineText || d.offlineText;
+  const subTextColor = (colors as Record<string, string>).offlineSubText || d.offlineSubText;
+  const buttonColor = (colors as Record<string, string>).offlineButton || d.offlineButton;
 
   const title = offline?.title || 'No Connection';
   const message = offline?.message || 'Please check your internet connection';
   const buttonText = offline?.retryButtonText || 'Retry';
-
-  // 실제 RN과 동일한 색상
-  const textColor = isDark ? '#ffffff' : '#333333';
-  const subTextColor = isDark ? '#aaaaaa' : '#666666';
 
   return (
     <div
       className="w-full h-full flex flex-col items-center justify-center px-10"
       style={{ backgroundColor }}
     >
-      {/* 이모지 아이콘 - 실제 RN과 동일 (📡, fontSize 64) */}
-      <div className="mb-6">
-        <span className="text-6xl">📡</span>
-      </div>
-
       {/* Title - 실제 RN: fontSize 20, fontWeight bold */}
       <h2
         className="text-xl font-bold mb-3 text-center"
@@ -54,7 +63,7 @@ export default function OfflinePreview({ appConfig }: OfflinePreviewProps) {
       {/* Retry Button - 실제 RN: #007AFF, px 32, py 14, borderRadius 8 */}
       <button
         className="px-8 py-3.5 rounded-lg text-base font-semibold text-white"
-        style={{ backgroundColor: '#007AFF' }}
+        style={{ backgroundColor: buttonColor }}
       >
         {buttonText}
       </button>

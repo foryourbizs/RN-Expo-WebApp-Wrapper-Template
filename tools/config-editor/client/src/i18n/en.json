@@ -56,11 +56,7 @@
       "retryButtonText": "Retry Button Text",
       "retryButtonTextDesc": "Text displayed on retry button",
       "autoReconnect": "Auto Reconnect",
-      "autoReconnectDesc": "Auto refresh when network is restored",
-      "backgroundColor": "Background Color",
-      "backgroundColorDesc": "Offline screen background color",
-      "darkBackgroundColor": "Dark Mode Background",
-      "darkBackgroundColorDesc": "Offline screen background color in dark mode"
+      "autoReconnectDesc": "Auto refresh when network is restored"
     },
     "statusBar": {
       "title": "Status Bar",
@@ -110,20 +106,22 @@
       "title": "Splash Screen",
       "enabled": "Enabled",
       "enabledDesc": "Show custom splash screen on app launch",
+      "mode": "Mode",
+      "modeDesc": "Splash screen display mode",
+      "modeDefault": "Default",
+      "modeImage": "Fullscreen Image",
       "minDisplayTime": "Min Display Time (ms)",
       "minDisplayTimeDesc": "Minimum time to show splash screen",
       "fadeOutDuration": "Fade Out Duration (ms)",
       "fadeOutDurationDesc": "Duration of fade out animation",
+      "fullscreenImage": "Fullscreen Image",
+      "fullscreenImageDesc": "Image URL or path from assets folder (e.g., https://... or ./assets/splash.png)",
       "loadingText": "Loading Text",
       "loadingTextDesc": "Text shown while loading",
-      "logoImage": "Logo Image Path",
-      "logoImageDesc": "Path to logo image (leave empty for text only)",
+      "logoImage": "Logo Image",
+      "logoImageDesc": "Image URL or path from assets folder (leave empty for text only)",
       "showLoadingIndicator": "Show Loading Indicator",
-      "showLoadingIndicatorDesc": "Display loading spinner on splash screen",
-      "backgroundColor": "Background Color",
-      "backgroundColorDesc": "Splash screen background color",
-      "darkBackgroundColor": "Dark Mode Background",
-      "darkBackgroundColorDesc": "Splash screen background color in dark mode"
+      "showLoadingIndicatorDesc": "Display loading spinner on splash screen"
     },
     "security": {
       "title": "Security",
@@ -166,7 +164,26 @@
   "theme": {
     "light": "Light Mode",
     "dark": "Dark Mode",
-    "reset": "Reset to defaults"
+    "reset": "Reset to defaults",
+    "description": "Configure native UI colors by screen. These do not affect webview content.",
+    "group": {
+      "splash": "Splash Screen",
+      "offline": "Offline Screen",
+      "error": "Error Screen",
+      "loading": "Loading Indicator"
+    },
+    "splashBackground": "Background",
+    "splashText": "Text",
+    "splashSpinner": "Spinner",
+    "offlineBackground": "Background",
+    "offlineText": "Title",
+    "offlineSubText": "Description",
+    "offlineButton": "Button",
+    "errorBackground": "Background",
+    "errorTitle": "Title",
+    "errorMessage": "Description",
+    "errorButton": "Button",
+    "loadingIndicator": "Color"
   },
   "plugins": {
     "auto": "Auto Plugins (npm)",

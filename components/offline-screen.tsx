@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { APP_CONFIG } from '@/constants/app-config';
+import { Colors } from '@/constants/theme';
 
 interface OfflineScreenProps {
   onRetry?: () => void;
@@ -41,9 +42,12 @@ export default function OfflineScreen({ onRetry, isReconnecting = false }: Offli
     onRetry?.();
   }, [onRetry]);
 
-  const backgroundColor = isDark ? offline.darkBackgroundColor : offline.backgroundColor;
-  const textColor = isDark ? '#ffffff' : '#333333';
-  const subTextColor = isDark ? '#aaaaaa' : '#666666';
+  // 테마 색상 (theme.json에서 일괄 관리)
+  const themeColors = isDark ? Colors.dark : Colors.light;
+  const backgroundColor = themeColors.offlineBackground;
+  const textColor = themeColors.offlineText;
+  const subTextColor = themeColors.offlineSubText;
+  const buttonColor = themeColors.offlineButton;
 
   return (
     <Animated.View 
@@ -71,20 +75,20 @@ export default function OfflineScreen({ onRetry, isReconnecting = false }: Offli
         {/* 재시도 버튼 */}
         {isReconnecting ? (
           <View style={styles.reconnectingContainer}>
-            <ActivityIndicator 
-              size="small" 
-              color={APP_CONFIG.theme.loadingIndicatorColor} 
+            <ActivityIndicator
+              size="small"
+              color={themeColors.loadingIndicator}
             />
             <Text style={[styles.reconnectingText, { color: subTextColor }]}>
               연결 확인 중...
             </Text>
           </View>
         ) : (
-          <Pressable 
+          <Pressable
             onPress={handleRetry}
             style={({ pressed }) => [
               styles.retryButton,
-              { opacity: pressed ? 0.7 : 1 }
+              { backgroundColor: buttonColor, opacity: pressed ? 0.7 : 1 }
             ]}
           >
             <Text style={styles.retryButtonText}>
@@ -127,7 +131,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 8,

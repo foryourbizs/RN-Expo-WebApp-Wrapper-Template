@@ -28,8 +28,6 @@ export interface AppConfig {
     title?: string;
     message?: string;
     retryButtonText?: string;
-    backgroundColor?: string;
-    darkBackgroundColor?: string;
     autoReconnect?: boolean;
   };
   statusBar?: {
@@ -55,16 +53,13 @@ export interface AppConfig {
   };
   splash?: {
     enabled?: boolean;
+    mode?: 'default' | 'image';
     minDisplayTime?: number;
     fadeOutDuration?: number;
-    backgroundColor?: string;
-    darkBackgroundColor?: string;
+    fullscreenImage?: string | null;
     logoImage?: string | null;
     loadingText?: string;
     showLoadingIndicator?: boolean;
-  };
-  theme?: {
-    loadingIndicatorColor?: string;
   };
   security?: {
     allowedOrigins?: string[];
@@ -93,20 +88,40 @@ export interface ThemeConfig {
   $schema?: string;
   colors?: {
     light?: {
-      text?: string;
-      background?: string;
-      tint?: string;
-      icon?: string;
-      tabIconDefault?: string;
-      tabIconSelected?: string;
+      // 스플래시 화면
+      splashBackground?: string;
+      splashText?: string;
+      splashSpinner?: string;
+      // 오프라인 화면
+      offlineBackground?: string;
+      offlineText?: string;
+      offlineSubText?: string;
+      offlineButton?: string;
+      // 에러 화면
+      errorBackground?: string;
+      errorTitle?: string;
+      errorMessage?: string;
+      errorButton?: string;
+      // 로딩 인디케이터
+      loadingIndicator?: string;
     };
     dark?: {
-      text?: string;
-      background?: string;
-      tint?: string;
-      icon?: string;
-      tabIconDefault?: string;
-      tabIconSelected?: string;
+      // 스플래시 화면
+      splashBackground?: string;
+      splashText?: string;
+      splashSpinner?: string;
+      // 오프라인 화면
+      offlineBackground?: string;
+      offlineText?: string;
+      offlineSubText?: string;
+      offlineButton?: string;
+      // 에러 화면
+      errorBackground?: string;
+      errorTitle?: string;
+      errorMessage?: string;
+      errorButton?: string;
+      // 로딩 인디케이터
+      loadingIndicator?: string;
     };
   };
 }

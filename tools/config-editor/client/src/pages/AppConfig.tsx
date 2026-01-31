@@ -261,18 +261,6 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           onChange={(v) => updateField(['offline', 'autoReconnect'], v)}
           description={t('app.offline.autoReconnectDesc')}
         />
-        <ColorPicker
-          label={t('app.offline.backgroundColor')}
-          value={data.offline?.backgroundColor || '#ffffff'}
-          onChange={(v) => updateField(['offline', 'backgroundColor'], v)}
-          description={t('app.offline.backgroundColorDesc')}
-        />
-        <ColorPicker
-          label={t('app.offline.darkBackgroundColor')}
-          value={data.offline?.darkBackgroundColor || '#1a1a1a'}
-          onChange={(v) => updateField(['offline', 'darkBackgroundColor'], v)}
-          description={t('app.offline.darkBackgroundColorDesc')}
-        />
       </Accordion>
 
       {/* Status Bar */}
@@ -438,6 +426,16 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           onChange={(v) => updateField(['splash', 'enabled'], v)}
           description={t('app.splash.enabledDesc')}
         />
+        <Select
+          label={t('app.splash.mode')}
+          value={data.splash?.mode ?? 'default'}
+          onChange={(v) => updateField(['splash', 'mode'], v)}
+          description={t('app.splash.modeDesc')}
+          options={[
+            { value: 'default', label: t('app.splash.modeDefault') },
+            { value: 'image', label: t('app.splash.modeImage') },
+          ]}
+        />
         <NumberInput
           label={t('app.splash.minDisplayTime')}
           value={data.splash?.minDisplayTime ?? 1000}
@@ -456,36 +454,40 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           max={2000}
           step={50}
         />
-        <TextInput
-          label={t('app.splash.loadingText')}
-          value={data.splash?.loadingText || ''}
-          onChange={(v) => updateField(['splash', 'loadingText'], v)}
-          description={t('app.splash.loadingTextDesc')}
-        />
-        <TextInput
-          label={t('app.splash.logoImage')}
-          value={data.splash?.logoImage || ''}
-          onChange={(v) => updateField(['splash', 'logoImage'], v || null)}
-          description={t('app.splash.logoImageDesc')}
-        />
-        <Toggle
-          label={t('app.splash.showLoadingIndicator')}
-          value={data.splash?.showLoadingIndicator ?? true}
-          onChange={(v) => updateField(['splash', 'showLoadingIndicator'], v)}
-          description={t('app.splash.showLoadingIndicatorDesc')}
-        />
-        <ColorPicker
-          label={t('app.splash.backgroundColor')}
-          value={data.splash?.backgroundColor || '#ffffff'}
-          onChange={(v) => updateField(['splash', 'backgroundColor'], v)}
-          description={t('app.splash.backgroundColorDesc')}
-        />
-        <ColorPicker
-          label={t('app.splash.darkBackgroundColor')}
-          value={data.splash?.darkBackgroundColor || '#000000'}
-          onChange={(v) => updateField(['splash', 'darkBackgroundColor'], v)}
-          description={t('app.splash.darkBackgroundColorDesc')}
-        />
+
+        {/* 이미지 모드 전용 */}
+        {(data.splash?.mode ?? 'default') === 'image' && (
+          <TextInput
+            label={t('app.splash.fullscreenImage')}
+            value={data.splash?.fullscreenImage || ''}
+            onChange={(v) => updateField(['splash', 'fullscreenImage'], v || null)}
+            description={t('app.splash.fullscreenImageDesc')}
+          />
+        )}
+
+        {/* 기본 모드 전용 */}
+        {(data.splash?.mode ?? 'default') === 'default' && (
+          <>
+            <TextInput
+              label={t('app.splash.logoImage')}
+              value={data.splash?.logoImage || ''}
+              onChange={(v) => updateField(['splash', 'logoImage'], v || null)}
+              description={t('app.splash.logoImageDesc')}
+            />
+            <TextInput
+              label={t('app.splash.loadingText')}
+              value={data.splash?.loadingText || ''}
+              onChange={(v) => updateField(['splash', 'loadingText'], v)}
+              description={t('app.splash.loadingTextDesc')}
+            />
+            <Toggle
+              label={t('app.splash.showLoadingIndicator')}
+              value={data.splash?.showLoadingIndicator ?? true}
+              onChange={(v) => updateField(['splash', 'showLoadingIndicator'], v)}
+              description={t('app.splash.showLoadingIndicatorDesc')}
+            />
+          </>
+        )}
       </Accordion>
 
       {/* Security */}
