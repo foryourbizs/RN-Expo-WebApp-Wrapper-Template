@@ -326,6 +326,9 @@ async function startScreencast(): Promise<void> {
     return;
   }
 
+  // Screencast 시작 시 마우스 상태 초기화 (재연결 시 상태 불일치 방지)
+  pressedMouseButtons.clear();
+
   session.isStreaming = true;
 
   // CDP 이벤트 핸들러 (한 번만 등록)
@@ -478,27 +481,57 @@ export async function handleMouseEvent(
 ): Promise<void> {
   if (!session) return;
 
-  switch (type) {
-    case 'click':
-      await session.page.mouse.click(x, y, { button });
-      break;
-    case 'mousedown':
-      // 먼저 마우스 위치로 이동 후 버튼 누르기
-      await session.page.mouse.move(x, y);
-      await session.page.mouse.down({ button });
-      pressedMouseButtons.add(button);
-      break;
-    case 'mouseup':
-      // 해당 버튼이 눌린 상태일 때만 up 호출 (Puppeteer 에러 방지)
-      if (pressedMouseButtons.has(button)) {
+  try {
+    switch (type) {
+      case 'click':
+        // click 전에 버튼이 눌린 상태면 먼저 해제 (Puppeteer 내부 상태 동기화)
+        if (pressedMouseButtons.has(button)) {
+          try {
+            await session.page.mouse.up({ button });
+          } catch {
+            // 이미 해제된 상태면 무시
+          }
+          pressedMouseButtons.delete(button);
+        }
+        await session.page.mouse.click(x, y, { button });
+        break;
+      case 'mousedown':
+        // 이미 눌린 상태면 먼저 해제 후 다시 누르기
+        if (pressedMouseButtons.has(button)) {
+          try {
+            await session.page.mouse.up({ button });
+          } catch {
+            // 이미 해제된 상태면 무시
+          }
+          pressedMouseButtons.delete(button);
+        }
+        // 먼저 마우스 위치로 이동 후 버튼 누르기
         await session.page.mouse.move(x, y);
-        await session.page.mouse.up({ button });
-        pressedMouseButtons.delete(button);
-      }
-      break;
-    case 'mousemove':
-      await session.page.mouse.move(x, y);
-      break;
+        await session.page.mouse.down({ button });
+        pressedMouseButtons.add(button);
+        break;
+      case 'mouseup':
+        // 해당 버튼이 눌린 상태일 때만 up 호출 (Puppeteer 에러 방지)
+        await session.page.mouse.move(x, y);
+        if (pressedMouseButtons.has(button)) {
+          await session.page.mouse.up({ button });
+          pressedMouseButtons.delete(button);
+        }
+        break;
+      case 'mousemove':
+        await session.page.mouse.move(x, y);
+        break;
+    }
+  } catch (error) {
+    // Puppeteer 마우스 상태 에러 시 상태 리셋
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes('is not pressed') || errorMsg.includes('is already pressed')) {
+      // 상태 불일치 - 모든 버튼 상태 초기화
+      pressedMouseButtons.clear();
+    } else {
+      // 다른 에러는 다시 throw
+      throw error;
+    }
   }
 }
 
