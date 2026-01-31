@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useConfig } from '../hooks/useConfig';
+import { usePluginsConfig } from '../contexts/ConfigContext';
 import { usePlugins } from '../hooks/usePlugins';
 import AddAutoPluginModal from '../components/AddAutoPluginModal';
 import AddManualPluginModal from '../components/AddManualPluginModal';
 import { SaveRevertBar } from '../components/form';
-import type { PluginsConfig } from '../types/config';
 
 interface PluginsConfigProps {
   onUnsavedChange: (hasChanges: boolean) => void;
@@ -13,8 +12,8 @@ interface PluginsConfigProps {
 
 export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProps) {
   const { t } = useTranslation();
-  const { data, setData, loading, error, saving, saveConfig, revert, hasChanges } =
-    useConfig<PluginsConfig>('plugins');
+  const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
+    usePluginsConfig();
   const { installedPackages, fetchInstalled, installPackage } = usePlugins();
 
   const [showAutoModal, setShowAutoModal] = useState(false);

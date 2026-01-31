@@ -143,55 +143,512 @@ let proxyTargetUrl: string | null = null;
 let proxyTargetOrigin: string | null = null;
 
 // Preview AppBridge script (injected into HTML)
-const getPreviewBridgeScript = (): string => {
+// targetOrigin is passed to handle full URL rewriting
+const getPreviewBridgeScript = (targetOrigin: string): string => {
   return `
 <script>
 (function() {
   'use strict';
+
+  var TARGET_ORIGIN = ${JSON.stringify(targetOrigin)};
+
+  // ========================================
+  // Comprehensive URL Rewriting for Preview Proxy
+  // ========================================
+
+  function rewriteUrl(url) {
+    if (typeof url !== 'string') return url;
+
+    // 이미 /preview/로 시작하면 스킵
+    if (url.startsWith('/preview/') || url.startsWith('/preview?')) return url;
+
+    // data:, blob:, javascript: 등은 스킵
+    if (/^(data|blob|javascript|about|mailto):/i.test(url)) return url;
+
+    // 타겟 오리진의 전체 URL이면 리라이트
+    if (url.startsWith(TARGET_ORIGIN + '/')) {
+      return '/preview' + url.slice(TARGET_ORIGIN.length);
+    }
+    if (url === TARGET_ORIGIN) {
+      return '/preview/';
+    }
+
+    // 프로토콜 상대 URL (//example.com/...) - 타겟 도메인이면 리라이트
+    if (url.startsWith('//')) {
+      var targetHost = TARGET_ORIGIN.replace(/^https?:/, '');
+      if (url.startsWith(targetHost + '/') || url === targetHost) {
+        return '/preview' + url.slice(targetHost.length);
+      }
+      return url; // 다른 도메인은 그대로
+    }
+
+    // 절대 경로 (/)로 시작하면 /preview 붙이기
+    if (url.startsWith('/')) {
+      return '/preview' + url;
+    }
+
+    // 상대 경로는 그대로 (브라우저가 base 태그 기준으로 처리)
+    return url;
+  }
+
+  // fetch 오버라이드
+  var originalFetch = window.fetch;
+  window.fetch = function(input, init) {
+    if (typeof input === 'string') {
+      input = rewriteUrl(input);
+    } else if (input instanceof Request) {
+      var newUrl = rewriteUrl(input.url);
+      if (newUrl !== input.url) {
+        input = new Request(newUrl, input);
+      }
+    }
+    return originalFetch.call(this, input, init);
+  };
+
+  // XMLHttpRequest 오버라이드
+  var originalXHROpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+    var newUrl = rewriteUrl(url);
+    return originalXHROpen.call(this, method, newUrl, async !== false, user, password);
+  };
+
+  // EventSource 오버라이드 (SSE)
+  if (window.EventSource) {
+    var OriginalEventSource = window.EventSource;
+    window.EventSource = function(url, config) {
+      return new OriginalEventSource(rewriteUrl(url), config);
+    };
+    window.EventSource.prototype = OriginalEventSource.prototype;
+  }
+
+  // WebSocket은 ws:// 프로토콜이라 리라이트 불가, 그대로 둠
+
+  // Dynamic script/link/img 생성 시 src/href 리라이트
+  var originalCreateElement = document.createElement.bind(document);
+  document.createElement = function(tagName, options) {
+    var el = originalCreateElement(tagName, options);
+    var tag = tagName.toLowerCase();
+
+    if (tag === 'script' || tag === 'img' || tag === 'iframe' || tag === 'video' || tag === 'audio' || tag === 'source') {
+      var originalSetAttribute = el.setAttribute.bind(el);
+      el.setAttribute = function(name, value) {
+        if (name === 'src' && typeof value === 'string') {
+          value = rewriteUrl(value);
+        }
+        return originalSetAttribute(name, value);
+      };
+
+      // src 프로퍼티도 오버라이드
+      var srcDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'src') ||
+                          Object.getOwnPropertyDescriptor(el.__proto__, 'src');
+      if (srcDescriptor && srcDescriptor.set) {
+        Object.defineProperty(el, 'src', {
+          get: srcDescriptor.get,
+          set: function(value) {
+            srcDescriptor.set.call(this, rewriteUrl(value));
+          },
+          configurable: true
+        });
+      }
+    }
+
+    if (tag === 'link' || tag === 'a') {
+      var originalSetAttribute2 = el.setAttribute.bind(el);
+      el.setAttribute = function(name, value) {
+        if (name === 'href' && typeof value === 'string') {
+          value = rewriteUrl(value);
+        }
+        return originalSetAttribute2(name, value);
+      };
+    }
+
+    return el;
+  };
+
+  // import() 동적 임포트는 네이티브라 오버라이드 어려움
+  // 대신 서버에서 JS 파일 내 import 경로를 리라이트해야 함
+
+  // ========================================
+  // URL/Location Spoofing for SPA Routers
+  // ========================================
+
+  (function() {
+    var previewPrefix = '/preview';
+    var originalPathname = window.location.pathname;
+    var originalHref = window.location.href;
+
+    console.log('[Preview] Original URL:', originalHref);
+    console.log('[Preview] Original pathname:', originalPathname);
+
+    // /preview로 시작하면 URL 변경
+    if (originalPathname === previewPrefix || originalPathname.startsWith(previewPrefix + '/')) {
+      var spoofedPath = originalPathname.slice(previewPrefix.length) || '/';
+      var newUrl = spoofedPath + window.location.search + window.location.hash;
+
+      console.log('[Preview] Spoofing to:', newUrl);
+
+      // history.replaceState로 URL 변경
+      try {
+        window.history.replaceState(window.history.state, '', newUrl);
+        console.log('[Preview] After replaceState, location.pathname:', window.location.pathname);
+        console.log('[Preview] After replaceState, location.href:', window.location.href);
+      } catch(e) {
+        console.error('[Preview] replaceState failed:', e);
+      }
+    }
+  })();
+
+  console.log('[Preview] URL rewriting enabled for:', TARGET_ORIGIN);
+
+  // ========================================
+  // beforeunload 경고창 완전 무력화
+  // (폼 데이터 입력 중 페이지 이탈 시 경고창 방지)
+  // ========================================
+
+  // 1. window.onbeforeunload 속성 무력화
+  Object.defineProperty(window, 'onbeforeunload', {
+    get: function() { return null; },
+    set: function() { return; },
+    configurable: false
+  });
+
+  // 2. addEventListener로 등록되는 beforeunload 이벤트 차단
+  var originalAddEventListener = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function(type, listener, options) {
+    if (type === 'beforeunload') {
+      return;
+    }
+    return originalAddEventListener.call(this, type, listener, options);
+  };
+
+  // 3. 이미 등록된 beforeunload 이벤트 무력화
+  window.addEventListener('beforeunload', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    delete e.returnValue;
+    return undefined;
+  }, true);
+
+  // ========================================
+  // AppBridge for Preview (실제 앱과 100% 동일한 구현)
+  // ========================================
+
   if (window.AppBridge) return;
-  var isPreview = window.parent !== window;
-  var _t = (function(){ var s = Symbol('_'); var o = {}; o[s] = 'preview-token'; return function(){ return o[s]; }; })();
+
+  // 토큰을 Symbol 키로 은닉 (외부에서 접근 불가)
+  var _t = (function(){
+    var s = Symbol('_');
+    var o = {};
+    o[s] = 'preview-security-token';
+    return function(){ return o[s]; };
+  })();
+
+  // 응답 대기 맵
   var pendingRequests = new Map();
 
+  // 파일/바이너리 데이터를 base64로 변환
+  function toBase64(data) {
+    if (data instanceof Blob || data instanceof File) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onloadend = function() {
+          resolve({
+            __type: 'base64',
+            data: reader.result.split(',')[1],
+            mimeType: data.type,
+            name: data.name || 'file',
+            size: data.size
+          });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(data);
+      });
+    }
+    return Promise.resolve(data);
+  }
+
+  // 재귀적으로 모든 Blob/File 처리
+  function processPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return Promise.resolve(payload);
+    }
+
+    var promises = [];
+    var keys = [];
+
+    for (var key in payload) {
+      if (payload.hasOwnProperty(key)) {
+        var value = payload[key];
+        if (value instanceof Blob || value instanceof File) {
+          keys.push(key);
+          promises.push(toBase64(value));
+        }
+      }
+    }
+
+    if (promises.length === 0) {
+      return Promise.resolve(payload);
+    }
+
+    return Promise.all(promises).then(function(results) {
+      var processed = Object.assign({}, payload);
+      for (var i = 0; i < keys.length; i++) {
+        processed[keys[i]] = results[i];
+      }
+      return processed;
+    });
+  }
+
+  // Preview용 mock 응답 생성 (다양한 action 지원)
+  var mockResponses = {
+    // 앱/시스템 정보
+    'getAppInfo': { appName: 'Preview App', version: '1.0.0', platform: 'preview', isApp: true },
+    'getDeviceInfo': { platform: 'android', model: 'Preview Device', osVersion: '13', isPreview: true, isApp: true },
+    'getSystemInfo': { platform: 'android', isApp: true, isPreview: true, version: '1.0.0' },
+    'getPlatform': { platform: 'android', isApp: true },
+    'getVersion': { version: '1.0.0' },
+
+    // 권한
+    'checkPermission': { granted: true },
+    'requestPermission': { granted: true },
+    'hasPermission': { granted: true, result: true },
+
+    // 인증/사용자
+    'getToken': { token: 'preview-mock-token' },
+    'getFcmToken': { token: 'preview-fcm-token' },
+    'getPushToken': { token: 'preview-push-token' },
+    'getUserInfo': { isLoggedIn: false },
+    'getUser': { isLoggedIn: false },
+    'isLoggedIn': { loggedIn: false, isLoggedIn: false },
+
+    // 설정/환경
+    'getSettings': { theme: 'light' },
+    'getConfig': { debug: false },
+    'getEnv': { env: 'preview' },
+
+    // UI/레이아웃
+    'getSafeArea': { top: 24, bottom: 34, left: 0, right: 0 },
+    'getStatusBarHeight': { height: 24 },
+    'getNavigationBarHeight': { height: 48 },
+    'getInsets': { top: 24, bottom: 34, left: 0, right: 0 },
+    'getScreenInfo': { width: 360, height: 800, scale: 3 },
+
+    // 네트워크/연결
+    'getNetworkStatus': { connected: true, type: 'wifi' },
+    'isOnline': { online: true, connected: true },
+
+    // 스토리지
+    'getItem': { value: null },
+    'setItem': { success: true },
+    'removeItem': { success: true },
+
+    // 액션
+    'haptic': { success: true },
+    'vibrate': { success: true },
+    'share': { success: true },
+    'openUrl': { success: true },
+    'openBrowser': { success: true },
+    'copyToClipboard': { success: true },
+    'showToast': { success: true },
+    'hideKeyboard': { success: true },
+
+    // 기본 응답 (알 수 없는 action에 대해)
+    '_default': { success: true, isPreview: true, isApp: true }
+  };
+
+  // ReactNativeWebView mock - 실제 앱과 동일한 방식으로 응답 전달
   window.ReactNativeWebView = {
-    postMessage: function(message) {
-      var parsed = JSON.parse(message);
-      if (isPreview) {
+    postMessage: function(messageStr) {
+      var parsed = JSON.parse(messageStr);
+      console.log('[AppBridge Preview] postMessage:', parsed);
+
+      // requestId가 있으면 call() 호출 -> mock 응답 반환
+      if (parsed.requestId) {
+        var action = parsed.protocol.replace('app://', '');
+        var mockData = mockResponses[action] || mockResponses['_default'];
+
+        // 실제 앱처럼 약간의 딜레이 후 nativeMessage 이벤트로 응답
+        setTimeout(function() {
+          var response = {
+            action: 'bridgeResponse',
+            payload: {
+              requestId: parsed.requestId,
+              success: true,
+              data: mockData
+            }
+          };
+          console.log('[AppBridge Preview] Sending mock response via nativeMessage:', response);
+          window.dispatchEvent(new CustomEvent('nativeMessage', { detail: response }));
+        }, 50);
+      }
+
+      // parent frame에도 알림 (디버깅용)
+      if (window.parent !== window) {
         window.parent.postMessage({ type: 'PREVIEW_BRIDGE_MESSAGE', data: parsed }, '*');
       }
-      console.log('[AppBridge Preview] Message sent:', parsed);
     }
   };
 
+  // 앱 브릿지 객체 (실제 bridge-client.ts와 동일한 구조)
   window.AppBridge = {
     send: function(action, payload) {
-      var message = { protocol: 'app://' + action, payload: payload || {}, timestamp: Date.now(), __token: _t(), __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9) };
-      window.ReactNativeWebView.postMessage(JSON.stringify(message));
-    },
-    call: function(action, payload, timeout) {
-      timeout = timeout || 10000;
-      return new Promise(function(resolve, reject) {
-        var requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        var timer = setTimeout(function() { pendingRequests.delete(requestId); reject(new Error('Timeout: ' + action)); }, timeout);
-        pendingRequests.set(requestId, { resolve: resolve, reject: reject, timer: timer });
-        var message = { protocol: 'app://' + action, payload: payload || {}, requestId: requestId, timestamp: Date.now(), __token: _t(), __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9) };
+      processPayload(payload || {}).then(function(processed) {
+        var message = {
+          protocol: 'app://' + action,
+          payload: processed,
+          timestamp: Date.now(),
+          __token: _t(),
+          __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+        };
         window.ReactNativeWebView.postMessage(JSON.stringify(message));
+      }).catch(function(err) {
+        console.error('[AppBridge] Failed to process payload:', err);
       });
     },
-    on: function(action, callback) { if (!this._listeners) this._listeners = {}; if (!this._listeners[action]) this._listeners[action] = []; this._listeners[action].push(callback); },
-    once: function(action, callback) { var self = this; var wrapper = function(p, m) { self.off(action, wrapper); callback(p, m); }; this.on(action, wrapper); },
-    off: function(action, callback) { if (!this._listeners || !this._listeners[action]) return; if (callback) { this._listeners[action] = this._listeners[action].filter(function(cb) { return cb !== callback; }); } else { delete this._listeners[action]; } },
-    waitFor: function(action, timeout) { var self = this; timeout = timeout || 10000; return new Promise(function(resolve, reject) { var timer = setTimeout(function() { self.off(action, handler); reject(new Error('Timeout: ' + action)); }, timeout); var handler = function(p, m) { clearTimeout(timer); self.off(action, handler); resolve({ payload: p, message: m }); }; self.on(action, handler); }); },
-    _handleResponse: function(response) { var pending = pendingRequests.get(response.requestId); if (pending) { clearTimeout(pending.timer); pendingRequests.delete(response.requestId); if (response.success) { pending.resolve(response.data); } else { pending.reject(new Error(response.error || 'Unknown error')); } } },
-    _handleMessage: function(message) { if (message.action === 'bridgeResponse') { this._handleResponse(message.payload); return; } if (this._listeners) { if (this._listeners[message.action]) { this._listeners[message.action].forEach(function(cb) { try { cb(message.payload, message); } catch(e) { console.error(e); } }); } if (this._listeners['*']) { this._listeners['*'].forEach(function(cb) { try { cb(message.payload, message); } catch(e) {} }); } } },
-    isApp: function() { return !!window.ReactNativeWebView; },
-    isPreview: function() { return true; },
-    version: '2.1.0-preview'
+
+    call: function(action, payload, timeout) {
+      timeout = timeout || 10000;
+
+      return processPayload(payload || {}).then(function(processed) {
+        return new Promise(function(resolve, reject) {
+          var requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+          var timer = setTimeout(function() {
+            pendingRequests.delete(requestId);
+            reject(new Error('Request timeout: ' + action));
+          }, timeout);
+
+          pendingRequests.set(requestId, {
+            resolve: resolve,
+            reject: reject,
+            timer: timer
+          });
+
+          var message = {
+            protocol: 'app://' + action,
+            payload: processed,
+            requestId: requestId,
+            timestamp: Date.now(),
+            __token: _t(),
+            __nonce: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+          };
+          window.ReactNativeWebView.postMessage(JSON.stringify(message));
+        });
+      });
+    },
+
+    on: function(action, callback) {
+      if (!this._listeners) this._listeners = {};
+      if (!this._listeners[action]) this._listeners[action] = [];
+      this._listeners[action].push(callback);
+    },
+
+    once: function(action, callback) {
+      var self = this;
+      var wrapper = function(payload, message) {
+        self.off(action, wrapper);
+        callback(payload, message);
+      };
+      this.on(action, wrapper);
+    },
+
+    waitFor: function(action, timeout) {
+      var self = this;
+      timeout = timeout || 10000;
+
+      return new Promise(function(resolve, reject) {
+        var timer = setTimeout(function() {
+          self.off(action, handler);
+          reject(new Error('Timeout waiting for: ' + action));
+        }, timeout);
+
+        var handler = function(payload, message) {
+          clearTimeout(timer);
+          self.off(action, handler);
+          resolve({ payload: payload, message: message });
+        };
+
+        self.on(action, handler);
+      });
+    },
+
+    off: function(action, callback) {
+      if (!this._listeners || !this._listeners[action]) return;
+      if (callback) {
+        this._listeners[action] = this._listeners[action].filter(function(cb) {
+          return cb !== callback;
+        });
+      } else {
+        delete this._listeners[action];
+      }
+    },
+
+    _handleResponse: function(response) {
+      var pending = pendingRequests.get(response.requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingRequests.delete(response.requestId);
+        if (response.success) {
+          pending.resolve(response.data);
+        } else {
+          pending.reject(new Error(response.error || 'Unknown error'));
+        }
+      }
+    },
+
+    _handleMessage: function(message) {
+      console.log('[AppBridge] _handleMessage called', message);
+
+      if (message.action === 'bridgeResponse') {
+        this._handleResponse(message.payload);
+        return;
+      }
+
+      if (this._listeners) {
+        if (this._listeners[message.action]) {
+          console.log('[AppBridge] Found ' + this._listeners[message.action].length + ' listener(s) for: ' + message.action);
+          this._listeners[message.action].forEach(function(cb) {
+            try {
+              cb(message.payload, message);
+            } catch(e) {
+              console.error('[AppBridge] Listener error:', e);
+            }
+          });
+        }
+        if (this._listeners['*']) {
+          this._listeners['*'].forEach(function(cb) {
+            try { cb(message.payload, message); } catch(e) { console.error(e); }
+          });
+        }
+      }
+    },
+
+    isApp: function() {
+      return !!window.ReactNativeWebView;
+    },
+
+    isPreview: function() {
+      return true;
+    },
+
+    version: '2.1.0'
   };
 
-  window.addEventListener('message', function(e) { if (e.data && e.data.type === 'PREVIEW_BRIDGE_RESPONSE') { window.AppBridge._handleMessage(e.data.message); } });
+  // 앱에서 온 메시지 수신 리스너 (실제 앱과 동일)
+  window.addEventListener('nativeMessage', function(e) {
+    console.log('[AppBridge] nativeMessage event received', e.detail);
+    window.AppBridge._handleMessage(e.detail);
+  });
+
+  // 전역 콜백 (호환성)
+  window.onNativeMessage = function(message) {
+    window.AppBridge._handleMessage(message);
+  };
+
+  // 초기화 완료 이벤트
   window.dispatchEvent(new CustomEvent('AppBridgeReady'));
-  console.log('[AppBridge Preview] Initialized');
+  console.log('[AppBridge Preview] Initialized (matching real app implementation)');
 })();
 </script>`;
 };
@@ -1042,6 +1499,143 @@ export function apiPlugin(): Plugin {
   return {
     name: 'config-editor-api',
     configureServer(server: ViteDevServer) {
+      // AppBridge Test Page - for debugging
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== '/preview-test') {
+          return next();
+        }
+
+        const testHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AppBridge Test</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; background: #f8fafc; }
+    .test { margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .pass { border-color: #22c55e; background: #f0fdf4; }
+    .fail { border-color: #ef4444; background: #fef2f2; }
+    .pending { border-color: #f59e0b; background: #fffbeb; }
+    button { padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 4px; }
+    button:hover { background: #2563eb; }
+    pre { background: #1e293b; color: #e2e8f0; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    h1 { color: #1e293b; }
+    .log { max-height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h1>AppBridge Test Page</h1>
+
+  <div id="tests"></div>
+
+  <h2>Manual Tests</h2>
+  <button onclick="testCall('getSystemInfo')">call('getSystemInfo')</button>
+  <button onclick="testCall('getDeviceInfo')">call('getDeviceInfo')</button>
+  <button onclick="testCall('getAppInfo')">call('getAppInfo')</button>
+  <button onclick="testCall('unknownAction')">call('unknownAction')</button>
+
+  <h2>Console Log</h2>
+  <pre id="log" class="log"></pre>
+
+  ${getPreviewBridgeScript(proxyTargetOrigin || 'http://localhost')}
+
+  <script>
+    var logEl = document.getElementById('log');
+    var testsEl = document.getElementById('tests');
+
+    function log(msg) {
+      var time = new Date().toLocaleTimeString();
+      logEl.textContent = '[' + time + '] ' + msg + '\\n' + logEl.textContent;
+      console.log(msg);
+    }
+
+    function addTest(name, status, detail) {
+      var div = document.createElement('div');
+      div.className = 'test ' + status;
+      div.innerHTML = '<strong>' + name + '</strong>: ' + status + (detail ? ' - ' + detail : '');
+      testsEl.appendChild(div);
+    }
+
+    // Auto tests
+    window.addEventListener('load', function() {
+      log('Page loaded, starting tests...');
+
+      // Test 1: ReactNativeWebView exists
+      if (window.ReactNativeWebView) {
+        addTest('ReactNativeWebView exists', 'pass');
+        log('✓ ReactNativeWebView exists');
+      } else {
+        addTest('ReactNativeWebView exists', 'fail');
+        log('✗ ReactNativeWebView missing');
+      }
+
+      // Test 2: AppBridge exists
+      if (window.AppBridge) {
+        addTest('AppBridge exists', 'pass');
+        log('✓ AppBridge exists');
+      } else {
+        addTest('AppBridge exists', 'fail');
+        log('✗ AppBridge missing');
+      }
+
+      // Test 3: AppBridge.isApp()
+      if (window.AppBridge && window.AppBridge.isApp()) {
+        addTest('AppBridge.isApp()', 'pass', 'returns true');
+        log('✓ AppBridge.isApp() = true');
+      } else {
+        addTest('AppBridge.isApp()', 'fail', 'returns false');
+        log('✗ AppBridge.isApp() = false');
+      }
+
+      // Test 4: AppBridge.call()
+      if (window.AppBridge && window.AppBridge.call) {
+        addTest('AppBridge.call() - testing...', 'pending');
+        log('Testing AppBridge.call()...');
+
+        window.AppBridge.call('getSystemInfo').then(function(result) {
+          log('✓ AppBridge.call() response: ' + JSON.stringify(result));
+          // Update test status
+          var tests = document.querySelectorAll('.test.pending');
+          tests.forEach(function(t) {
+            if (t.innerHTML.includes('AppBridge.call()')) {
+              t.className = 'test pass';
+              t.innerHTML = '<strong>AppBridge.call()</strong>: pass - ' + JSON.stringify(result);
+            }
+          });
+        }).catch(function(err) {
+          log('✗ AppBridge.call() error: ' + err.message);
+          var tests = document.querySelectorAll('.test.pending');
+          tests.forEach(function(t) {
+            if (t.innerHTML.includes('AppBridge.call()')) {
+              t.className = 'test fail';
+              t.innerHTML = '<strong>AppBridge.call()</strong>: fail - ' + err.message;
+            }
+          });
+        });
+      }
+    });
+
+    function testCall(action) {
+      log('Calling AppBridge.call("' + action + '")...');
+      if (!window.AppBridge) {
+        log('✗ AppBridge not available');
+        return;
+      }
+      window.AppBridge.call(action).then(function(result) {
+        log('✓ Response: ' + JSON.stringify(result));
+      }).catch(function(err) {
+        log('✗ Error: ' + err.message);
+      });
+    }
+  </script>
+</body>
+</html>`;
+
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html');
+        res.end(testHtml);
+      });
+
       // Preview reverse proxy middleware
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || '';
@@ -1052,26 +1646,26 @@ export function apiPlugin(): Plugin {
         }
 
         if (!proxyTargetUrl || !proxyTargetOrigin) {
-          // 프록시 미설정 시 로딩 페이지 반환
-          res.statusCode = 200;
+          // 프록시 미설정 시 에러 페이지 반환 (자동 새로고침 없음)
+          console.log('[Preview Proxy] No target configured, returning error page');
+          res.statusCode = 503;
           res.setHeader('Content-Type', 'text/html');
           res.end(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui; background: #f8fafc; }
-    .loader { text-align: center; color: #64748b; }
-    .spinner { width: 24px; height: 24px; border: 2px solid #e2e8f0; border-top-color: #475569; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui; background: #fef2f2; }
+    .error { text-align: center; color: #dc2626; }
+    .icon { font-size: 48px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
-  <div class="loader">
-    <div class="spinner"></div>
-    <div>Waiting for preview...</div>
+  <div class="error">
+    <div class="icon">⚠️</div>
+    <div>Preview proxy not configured</div>
+    <div style="font-size: 12px; color: #6b7280; margin-top: 8px;">Check that baseUrl is set in app config</div>
   </div>
-  <script>setTimeout(() => location.reload(), 1000);</script>
 </body>
 </html>`);
           return;
@@ -1092,61 +1686,107 @@ export function apiPlugin(): Plugin {
             'Accept-Encoding': 'identity', // Don't accept compressed to allow modification
           };
 
+          // Forward cookies if present
+          if (req.headers.cookie) {
+            headers['Cookie'] = req.headers.cookie;
+          }
+
           if (req.headers.referer) {
             // Rewrite referer to target origin
             headers['Referer'] = proxyTargetOrigin;
           }
 
-          const response = await fetch(targetUrl, {
-            method: req.method,
-            headers,
-            redirect: 'manual' // Handle redirects ourselves
-          });
-
-          // Handle redirects
-          if (response.status >= 300 && response.status < 400) {
-            const location = response.headers.get('location');
-            if (location) {
-              // Rewrite redirect to go through proxy
-              const redirectUrl = new URL(location, targetUrl);
-              if (redirectUrl.origin === proxyTargetOrigin) {
-                res.statusCode = response.status;
-                res.setHeader('Location', '/preview' + redirectUrl.pathname + redirectUrl.search);
-                res.end();
-                return;
-              }
+          // Forward Next.js RSC headers (critical for App Router)
+          const nextHeaders = [
+            'rsc',
+            'next-router-state-tree',
+            'next-router-prefetch',
+            'next-router-segment-prefetch',
+            'next-url'
+          ];
+          for (const h of nextHeaders) {
+            const value = req.headers[h];
+            if (value) {
+              headers[h] = Array.isArray(value) ? value[0] : value;
+              console.log('[Preview Proxy] Forwarding header:', h, '=', headers[h]);
             }
           }
 
-          // Copy status and relevant headers
+          const response = await fetch(targetUrl, {
+            method: req.method,
+            headers,
+            redirect: 'follow' // Follow redirects automatically
+          });
+
+          // 응답 헤더 전체 로깅 (디버깅용)
+          const respHeaders: Record<string, string> = {};
+          response.headers.forEach((v, k) => { respHeaders[k] = v; });
+          console.log('[Preview Proxy] Response:', response.status, JSON.stringify(respHeaders, null, 2));
+
+          // Copy status
           res.statusCode = response.status;
+
           const contentType = response.headers.get('content-type') || 'application/octet-stream';
           res.setHeader('Content-Type', contentType);
+
+          // Copy safe headers, strip security headers that block iframe/scripts
+          const safeHeaders = ['content-language', 'cache-control', 'expires', 'last-modified', 'etag'];
+          for (const header of safeHeaders) {
+            const value = response.headers.get(header);
+            if (value) res.setHeader(header, value);
+          }
+
+          // Set permissive headers for iframe preview
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', '*');
+          // Remove X-Frame-Options to allow iframe embedding
+          // Don't set CSP - let the page work without restrictions
 
           // Get response body
           const body = await response.arrayBuffer();
           let content = Buffer.from(body);
 
-          // Inject bridge script into HTML responses
+          // Helper to rewrite URLs in content
+          const originEscaped = proxyTargetOrigin!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const rewriteUrlsInText = (text: string): string => {
+            // Full origin URLs
+            text = text.replace(
+              new RegExp(`(["'])(${originEscaped})(/[^"']*)(["'])`, 'g'),
+              '$1/preview$3$4'
+            );
+            // Protocol-relative URLs for same host
+            const hostPattern = proxyTargetOrigin!.replace(/^https?:/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            text = text.replace(
+              new RegExp(`(["'])(${hostPattern})(/[^"']*)(["'])`, 'g'),
+              '$1/preview$3$4'
+            );
+            return text;
+          };
+
+          // Process HTML responses
           if (contentType.includes('text/html')) {
             let html = content.toString('utf-8');
+            console.log('[Preview Proxy] Processing HTML:', html.length, 'chars');
+
+            // Remove existing CSP meta tags
+            html = html.replace(/<meta[^>]*http-equiv=["']?content-security-policy["']?[^>]*>/gi, '');
 
             // Inject bridge script and base tag at the beginning of <head>
-            const bridgeScript = getPreviewBridgeScript();
+            const bridgeScript = getPreviewBridgeScript(proxyTargetOrigin!);
             const baseTag = `<base href="/preview/">`;
             const headMatch = html.match(/<head[^>]*>/i);
             if (headMatch && headMatch.index !== undefined) {
               const insertPos = headMatch.index + headMatch[0].length;
               html = html.slice(0, insertPos) + baseTag + bridgeScript + html.slice(insertPos);
             } else {
-              // No head tag, inject at beginning
               html = baseTag + bridgeScript + html;
             }
 
-            // Rewrite URLs to go through proxy
-            // 1. Absolute URLs with full origin
+            // Rewrite URLs in HTML attributes
+            // 1. Full origin URLs
             html = html.replace(
-              new RegExp(`(href|src|action)=["'](${proxyTargetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(/[^"']*)["']`, 'gi'),
+              new RegExp(`(href|src|action|srcset)=["'](${originEscaped})(/[^"']*)["']`, 'gi'),
               '$1="/preview$3"'
             );
             // 2. Root-relative URLs (starting with /) - but not //protocol URLs
@@ -1154,9 +1794,95 @@ export function apiPlugin(): Plugin {
               /(href|src|action)=["'](?!\/\/)(\/[^"']*?)["']/gi,
               '$1="/preview$2"'
             );
+            // 3. srcset with root-relative URLs
+            html = html.replace(
+              /srcset=["']([^"']+)["']/gi,
+              (match, srcset) => {
+                const rewritten = srcset.replace(/(?:^|,\s*)(\/[^\s,]+)/g, (m: string, path: string) => {
+                  return m.replace(path, '/preview' + path);
+                });
+                return `srcset="${rewritten}"`;
+              }
+            );
+
+            // 4. Next.js __NEXT_DATA__ 스크립트 수정 (URL 경로 정보)
+            // /preview를 제거하여 Next.js 라우터가 올바른 경로로 인식하도록
+            html = html.replace(
+              /(<script\s+id="__NEXT_DATA__"[^>]*>)([\s\S]*?)(<\/script>)/gi,
+              (match, openTag, jsonContent, closeTag) => {
+                try {
+                  // JSON 파싱 후 URL 관련 필드 수정
+                  const data = JSON.parse(jsonContent);
+
+                  // page 필드 수정
+                  if (data.page && data.page.startsWith('/preview')) {
+                    data.page = data.page.replace(/^\/preview/, '') || '/';
+                  }
+
+                  // query에서 경로 관련 정보 수정
+                  if (data.query) {
+                    for (const key of Object.keys(data.query)) {
+                      if (typeof data.query[key] === 'string' && data.query[key].startsWith('/preview')) {
+                        data.query[key] = data.query[key].replace(/^\/preview/, '') || '/';
+                      }
+                    }
+                  }
+
+                  // buildId는 그대로 유지
+                  // assetPrefix 처리
+                  if (data.assetPrefix && data.assetPrefix.startsWith('/preview')) {
+                    data.assetPrefix = data.assetPrefix.replace(/^\/preview/, '');
+                  }
+
+                  console.log('[Preview Proxy] Modified __NEXT_DATA__ page:', data.page);
+                  return openTag + JSON.stringify(data) + closeTag;
+                } catch (e) {
+                  console.warn('[Preview Proxy] Failed to parse __NEXT_DATA__:', e);
+                  return match;
+                }
+              }
+            );
 
             content = Buffer.from(html, 'utf-8');
           }
+          // RSC 응답은 수정하지 않음 (text/x-component 또는 RSC 헤더가 있는 경우)
+          else if (contentType.includes('text/x-component') || req.headers['rsc']) {
+            console.log('[Preview Proxy] RSC response - not modifying');
+            // RSC 응답은 그대로 전달
+          }
+          // Process JavaScript responses
+          else if (contentType.includes('javascript') || contentType.includes('application/json')) {
+            let js = content.toString('utf-8');
+
+            // Rewrite URLs in JS/JSON strings
+            js = rewriteUrlsInText(js);
+
+            // Also rewrite root-relative paths that look like resource URLs
+            // Be careful not to break code - only rewrite obvious URL patterns
+            js = js.replace(
+              /["'](\/(?:_next|static|assets|api|images|fonts|css|js)\/[^"']+)["']/g,
+              '"/preview$1"'
+            );
+
+            content = Buffer.from(js, 'utf-8');
+          }
+          // Process CSS responses
+          else if (contentType.includes('text/css')) {
+            let css = content.toString('utf-8');
+
+            // Rewrite url() references
+            css = css.replace(
+              /url\(["']?(\/[^)"']+)["']?\)/gi,
+              'url("/preview$1")'
+            );
+            // Rewrite full origin URLs
+            css = rewriteUrlsInText(css);
+
+            content = Buffer.from(css, 'utf-8');
+          }
+
+          // Update Content-Length after modifications
+          res.setHeader('Content-Length', content.length);
 
           res.end(content);
         } catch (error: any) {
@@ -1671,9 +2397,77 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             return;
           }
 
+          // GET /api/proxy/diagnose - Diagnose proxy issues
+          if (url === '/api/proxy/diagnose' && req.method === 'GET') {
+            if (!proxyTargetUrl || !proxyTargetOrigin) {
+              sendJson(res, 200, {
+                status: 'not_configured',
+                message: 'Proxy target URL not set'
+              });
+              return;
+            }
+
+            try {
+              console.log('[Diagnose] Testing connection to:', proxyTargetUrl);
+              const testResponse = await fetch(proxyTargetUrl, {
+                method: 'GET',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36',
+                  'Accept': 'text/html',
+                  'Accept-Encoding': 'identity'
+                },
+                redirect: 'follow'
+              });
+
+              const headers: Record<string, string> = {};
+              testResponse.headers.forEach((v, k) => { headers[k] = v; });
+
+              const body = await testResponse.text();
+              const bodyPreview = body.slice(0, 500);
+
+              // 문제 분석
+              const issues: string[] = [];
+
+              if (headers['content-security-policy']) {
+                issues.push('CSP header present - may block scripts');
+              }
+              if (headers['x-frame-options']) {
+                issues.push('X-Frame-Options present - may block iframe');
+              }
+              if (!body.includes('<html') && !body.includes('<HTML')) {
+                issues.push('Response may not be HTML');
+              }
+              if (body.includes('<!DOCTYPE html>') && body.length < 1000) {
+                issues.push('Very short HTML - might be error page or redirect');
+              }
+
+              sendJson(res, 200, {
+                status: 'ok',
+                targetUrl: proxyTargetUrl,
+                targetOrigin: proxyTargetOrigin,
+                response: {
+                  status: testResponse.status,
+                  statusText: testResponse.statusText,
+                  headers,
+                  bodyLength: body.length,
+                  bodyPreview,
+                  issues
+                }
+              });
+            } catch (error: any) {
+              sendJson(res, 200, {
+                status: 'error',
+                targetUrl: proxyTargetUrl,
+                error: error.message
+              });
+            }
+            return;
+          }
+
           // POST /api/proxy/config - Set proxy target URL
           if (url === '/api/proxy/config' && req.method === 'POST') {
             const { targetUrl } = await readBody(req);
+            console.log('[api-plugin] Proxy config request:', targetUrl);
             if (targetUrl) {
               try {
                 const parsed = new URL(targetUrl);
@@ -1683,7 +2477,7 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
                 }
                 proxyTargetUrl = targetUrl;
                 proxyTargetOrigin = parsed.origin;
-                console.log('[api-plugin] Proxy target set to:', proxyTargetUrl);
+                console.log('[api-plugin] ✓ Proxy configured:', proxyTargetUrl, '(origin:', proxyTargetOrigin, ')');
                 sendJson(res, 200, { success: true, targetUrl: proxyTargetUrl });
               } catch {
                 sendJson(res, 400, { error: 'Invalid URL' });
@@ -1691,6 +2485,7 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             } else {
               proxyTargetUrl = null;
               proxyTargetOrigin = null;
+              console.log('[api-plugin] Proxy cleared');
               sendJson(res, 200, { success: true, targetUrl: null });
             }
             return;

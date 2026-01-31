@@ -35,7 +35,7 @@ interface PreviewContextValue extends PreviewState {
 }
 
 const defaultSettings: PreviewSettings = {
-  loadIframe: false,
+  loadIframe: true,  // 기본적으로 실제 URL 로드
   showStatusBar: true,
   showNavBar: true,
 };

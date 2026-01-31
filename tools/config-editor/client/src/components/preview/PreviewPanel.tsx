@@ -21,8 +21,16 @@ export default function PreviewPanel({ appConfig, themeConfig, activeTab }: Prev
 
   // 탭에 따라 기본 화면 설정
   useEffect(() => {
-    if (activeTab === 'theme') {
-      setCurrentScreen('theme');
+    switch (activeTab) {
+      case 'theme':
+        setCurrentScreen('theme');
+        break;
+      case 'appSettings':
+      case 'plugins':
+      case 'build':
+      default:
+        setCurrentScreen('webview');
+        break;
     }
   }, [activeTab, setCurrentScreen]);
 

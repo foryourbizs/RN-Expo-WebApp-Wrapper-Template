@@ -8,16 +8,15 @@ import PluginsConfigPage from './pages/PluginsConfig';
 import BuildConfigPage from './pages/BuildConfig';
 import { PreviewPanel, FullscreenModal } from './components/preview';
 import { PreviewProvider } from './contexts/PreviewContext';
-import { useConfig } from './hooks';
-import type { AppConfig, ThemeConfig } from './types/config';
+import { ConfigProvider, useAppConfig, useThemeConfig } from './contexts/ConfigContext';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('appSettings');
   const [unsavedTabs, setUnsavedTabs] = useState<string[]>([]);
 
-  // 미리보기를 위해 config 데이터 로드
-  const { data: appConfig } = useConfig<AppConfig>('app');
-  const { data: themeConfig } = useConfig<ThemeConfig>('theme');
+  // 공유 Context에서 config 데이터 로드 (변경 즉시 반영)
+  const { data: appConfig } = useAppConfig();
+  const { data: themeConfig } = useThemeConfig();
 
   const handleUnsavedChange = useCallback((tab: string) => (hasChanges: boolean) => {
     setUnsavedTabs(prev => {
@@ -75,8 +74,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <PreviewProvider>
-      <AppContent />
-    </PreviewProvider>
+    <ConfigProvider>
+      <PreviewProvider>
+        <AppContent />
+      </PreviewProvider>
+    </ConfigProvider>
   );
 }

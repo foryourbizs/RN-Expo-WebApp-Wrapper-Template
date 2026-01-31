@@ -27,13 +27,16 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
 
   // 프록시 설정
   useEffect(() => {
+    // loadIframe이 꺼지거나 baseUrl이 없으면 idle
     if (!loadIframe || !baseUrl) {
       setLoadMode('idle');
+      configuredUrlRef.current = null;
       return;
     }
 
-    // 이미 같은 URL로 설정되어 있으면 스킵
-    if (configuredUrlRef.current === baseUrl && loadMode === 'ready') {
+    // 이미 같은 URL로 설정됐으면 바로 ready (서버 재시작 대응)
+    if (configuredUrlRef.current === baseUrl) {
+      setLoadMode('ready');
       return;
     }
 
@@ -44,6 +47,7 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
       setErrorMessage('');
 
       try {
+        console.log('[WebViewPreview] Configuring proxy:', baseUrl);
         const response = await fetch('/api/proxy/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -53,15 +57,19 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
         if (cancelled) return;
 
         if (response.ok) {
+          console.log('[WebViewPreview] Proxy configured successfully');
           configuredUrlRef.current = baseUrl;
           setLoadMode('ready');
           setIframeKey(k => k + 1);
         } else {
+          const errData = await response.json().catch(() => ({}));
+          console.error('[WebViewPreview] Proxy config failed:', errData);
           setLoadMode('error');
-          setErrorMessage('Failed to configure proxy');
+          setErrorMessage(errData.error || 'Failed to configure proxy');
         }
-      } catch {
+      } catch (err) {
         if (cancelled) return;
+        console.error('[WebViewPreview] Configure error:', err);
         setLoadMode('error');
         setErrorMessage('Network error');
       }
@@ -155,7 +163,15 @@ export default function WebViewPreview({ appConfig }: WebViewPreviewProps) {
       <div className="w-full h-full flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin mb-2" />
-          <p className="text-xs text-slate-500">Loading...</p>
+          <p className="text-xs text-slate-500">
+            {loadMode === 'idle' ? 'Waiting...' : 'Configuring...'}
+          </p>
+          <div className="text-[10px] text-slate-400 mt-2 text-center space-y-0.5">
+            <p>mode: {loadMode}</p>
+            <p>config: {appConfig ? 'loaded' : 'loading'}</p>
+            <p>url: {baseUrl || '(empty)'}</p>
+            <p>iframe: {settings.loadIframe ? 'on' : 'off'}</p>
+          </div>
         </div>
       </div>
     );

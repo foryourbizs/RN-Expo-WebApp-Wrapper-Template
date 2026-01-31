@@ -1,8 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useConfig } from '../hooks/useConfig';
+import { useThemeConfig } from '../contexts/ConfigContext';
 import { ColorPicker, SaveRevertBar } from '../components/form';
-import type { ThemeConfig } from '../types/config';
 
 interface ThemeConfigProps {
   onUnsavedChange: (hasChanges: boolean) => void;
@@ -32,8 +31,8 @@ type ColorKey = typeof COLOR_KEYS[number];
 
 export default function ThemeConfigPage({ onUnsavedChange }: ThemeConfigProps) {
   const { t } = useTranslation();
-  const { data, setData, loading, error, saving, saveConfig, revert, hasChanges } =
-    useConfig<ThemeConfig>('theme');
+  const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
+    useThemeConfig();
 
   useEffect(() => {
     onUnsavedChange(hasChanges);

@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useConfig } from '../hooks/useConfig';
+import { useAppConfig } from '../contexts/ConfigContext';
 import { useAccordionSync } from '../hooks/useAccordionSync';
 import {
   TextInput,
@@ -12,7 +12,6 @@ import {
   Accordion,
   SaveRevertBar
 } from '../components/form';
-import type { AppConfig } from '../types/config';
 
 interface AppConfigProps {
   onUnsavedChange: (hasChanges: boolean) => void;
@@ -20,8 +19,8 @@ interface AppConfigProps {
 
 export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
   const { t } = useTranslation();
-  const { data, setData, loading, error, saving, saveConfig, revert, hasChanges } =
-    useConfig<AppConfig>('app');
+  const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
+    useAppConfig();
   const { handleAccordionToggle } = useAccordionSync();
 
   // 변경 사항 알림
