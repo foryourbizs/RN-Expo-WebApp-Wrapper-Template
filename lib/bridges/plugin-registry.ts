@@ -11,13 +11,8 @@
 
 /** Auto 플러그인 매핑 (npm 패키지) */
 export const AUTO_PLUGINS: Record<string, () => Promise<any>> = {
-  'rnww-plugin-background': () => import('rnww-plugin-background'),
-  'rnww-plugin-bluetooth': () => import('rnww-plugin-bluetooth'),
-  'rnww-plugin-camera': () => import('rnww-plugin-camera'),
-  'rnww-plugin-microphone': () => import('rnww-plugin-microphone'),
-  'rnww-plugin-screen-pinning': () => import('rnww-plugin-screen-pinning'),
-  'rnww-plugin-wifi': () => import('rnww-plugin-wifi'),
   'rnww-plugin-gps': () => import('rnww-plugin-gps'),
+  'rnww-plugin-background': () => import('rnww-plugin-background'),
 };
 
 /** Manual 플러그인 매핑 (로컬 구현) */

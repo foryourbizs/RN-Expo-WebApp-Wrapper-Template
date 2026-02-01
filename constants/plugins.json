@@ -3,33 +3,14 @@
   "plugins": {
     "auto": [
       {
-        "name": "rnww-plugin-background",
-        "namespace": "backgr"
-      },
-      {
-        "name": "rnww-plugin-bluetooth",
-        "namespace": "blueto"
-      },
-      {
-        "name": "rnww-plugin-camera",
-        "namespace": "camera"
-      },
-      {
-        "name": "rnww-plugin-microphone",
-        "namespace": "microp"
-      },
-      {
-        "name": "rnww-plugin-screen-pinning",
-        "namespace": "screen"
-      },
-      {
-        "name": "rnww-plugin-wifi",
-        "namespace": "wifi"
-      },
-      {
         "name": "rnww-plugin-gps",
         "namespace": "gps",
         "method": "registerGpsHandlers"
+      },
+      {
+        "name": "rnww-plugin-background",
+        "namespace": "backgr",
+        "method": "registerBackgroundHandlers"
       }
     ],
     "manual": [
