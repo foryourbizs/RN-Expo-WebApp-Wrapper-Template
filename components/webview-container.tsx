@@ -601,7 +601,7 @@ export default function WebViewContainer() {
         onRenderProcessGone={handleRenderProcessGone}
         onContentProcessDidTerminate={handleContentProcessDidTerminate}
         // 보안 경계 + 브릿지 클라이언트 주입 (페이지 로드 전)
-        // L1 보안 경계가 먼저 주입된 후 브릿지 클라이언트가 로드됨
+        // L1 보안 경계(Vue 호환) + 브릿지 클라이언트
         injectedJavaScriptBeforeContentLoaded={
           securityHandlers.injectedJavaScriptBeforeContentLoaded + bridgeClientScript
         }

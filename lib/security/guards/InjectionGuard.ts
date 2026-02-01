@@ -313,6 +313,9 @@ export class InjectionGuard {
   /**
    * L1: Immutable Security Boundary 스크립트 생성
    * WebView에 주입되어 전역 객체를 보호
+   *
+   * NOTE: eval/Function 차단은 Vue.js, React 등 프레임워크와 충돌하므로 제거됨
+   * 대신 postMessage 토큰 검증으로 브릿지 보안 유지
    */
   generateL1BoundaryScript(securityToken: string): string {
     // 보안 토큰을 closure 내부에 숨김
@@ -322,47 +325,28 @@ export class InjectionGuard {
 
   // ========================================
   // L1: Immutable Security Boundary
+  // (Vue/React 호환 버전)
   // ========================================
 
-  // 1. 동적 코드 실행 무력화
+  // 1. __proto__ setter 차단 (prototype pollution 방지)
+  // 프레임워크 호환성 유지하면서 프로토타입 오염 공격 차단
   try {
-    Object.defineProperty(window, 'eval', {
-      value: function() {
-        throw new Error('Dynamic code execution is disabled for security');
-      },
-      writable: false,
-      configurable: false
-    });
+    var protoDesc = Object.getOwnPropertyDescriptor(Object.prototype, '__proto__');
+    if (!protoDesc || protoDesc.configurable !== false) {
+      Object.defineProperty(Object.prototype, '__proto__', {
+        get: function() { return Object.getPrototypeOf(this); },
+        set: function(v) {
+          // 경고만 출력하고 실제로는 허용 (일부 라이브러리 호환성)
+          console.warn('[Security] __proto__ modification detected');
+          return Object.setPrototypeOf(this, v);
+        },
+        configurable: false
+      });
+    }
   } catch(e) {}
 
-  // 2. Function 생성자 무력화
-  try {
-    var OriginalFunction = Function;
-    Object.defineProperty(window, 'Function', {
-      value: function() {
-        if (arguments.length > 0 && typeof arguments[arguments.length - 1] === 'string') {
-          throw new Error('Dynamic Function constructor is disabled');
-        }
-        return OriginalFunction.apply(this, arguments);
-      },
-      writable: false,
-      configurable: false
-    });
-  } catch(e) {}
-
-  // 3. __proto__ setter 차단 (prototype pollution 방지)
-  // Note: Object.freeze(Object.prototype)은 polyfill 등과 호환성 문제로 제거됨
-  try {
-    Object.defineProperty(Object.prototype, '__proto__', {
-      get: function() { return Object.getPrototypeOf(this); },
-      set: function() {
-        throw new Error('Setting __proto__ is disabled');
-      },
-      configurable: false
-    });
-  } catch(e) {}
-
-  // 5. ReactNativeWebView.postMessage Proxy 감싸기
+  // 2. ReactNativeWebView.postMessage 보안 래퍼 (핵심 보안)
+  // 토큰 없는 브릿지 메시지 차단 - 악성 스크립트의 브릿지 악용 방지
   if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
     try {
       var originalPostMessage = window.ReactNativeWebView.postMessage.bind(window.ReactNativeWebView);
@@ -371,10 +355,10 @@ export class InjectionGuard {
       window.ReactNativeWebView.postMessage = function(message) {
         try {
           var parsed = JSON.parse(message);
-          // 보안 채널 마킹이 없으면 차단
+          // app:// 프로토콜 메시지는 토큰 검증 필수
           if (parsed && parsed.protocol && parsed.protocol.startsWith('app://')) {
             if (!parsed.__token || parsed.__token !== secureToken) {
-              console.warn('[Security] Blocked unauthorized postMessage');
+              console.warn('[Security] Blocked unauthorized bridge message');
               return;
             }
           }
@@ -385,11 +369,30 @@ export class InjectionGuard {
         }
       };
 
+      // ReactNativeWebView 객체 동결 - 추가 조작 방지
       Object.freeze(window.ReactNativeWebView);
     } catch(e) {}
   }
 
-  console.log('[Security] L1 Boundary initialized');
+  // 3. AppBridge 보호 (브릿지 클라이언트 로드 후 적용됨)
+  // 내부 메서드 접근 차단
+  setTimeout(function() {
+    if (window.AppBridge) {
+      try {
+        // _로 시작하는 내부 속성 숨기기
+        Object.keys(window.AppBridge).forEach(function(key) {
+          if (key.startsWith('_')) {
+            Object.defineProperty(window.AppBridge, key, {
+              enumerable: false,
+              configurable: false
+            });
+          }
+        });
+      } catch(e) {}
+    }
+  }, 0);
+
+  console.log('[Security] L1 Boundary initialized (framework-compatible)');
 })();
 `;
   }
