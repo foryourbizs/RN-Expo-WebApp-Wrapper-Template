@@ -2,36 +2,43 @@
   "$schema": "./schemas/app.schema.json",
   "webview": {
     "baseUrl": "https://laravel-app-production-9cb3.up.railway.app/app",
-    "userAgent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    "userAgent": "dev",
+    "performance": {
+      "setSupportMultipleWindows": true,
+      "nestedScrollEnabled": true,
+      "overScrollMode": "never"
+    }
   },
   "security": {
-    "allowedOrigins": [],
-    "allowInsecureHttp": false,
-    "debug": false
+    "allowedOrigins": [
+      "https://laravel-app-production-9cb3.up.railway.app"
+    ],
+    "allowInsecureHttp": true,
+    "debug": true
   },
   "offline": {
     "enabled": true,
     "title": "오프라인 상태입니다.",
     "message": "인터넷을 연결해 주세요.",
-    "retryButtonText": "다시 시도",
+    "retryButtonText": "",
     "autoReconnect": true
   },
   "statusBar": {
     "visible": true,
     "style": "auto",
     "translucent": true,
-    "overlapsWebView": true,
+    "overlapsWebView": false,
     "showOverlay": true
   },
   "navigationBar": {
-    "visibility": "hidden",
-    "buttonStyle": "dark",
+    "visibility": "visible",
+    "buttonStyle": "light",
     "backgroundColor": "#ffffff",
     "behavior": "overlay-swipe"
   },
   "splash": {
     "enabled": true,
-    "loadingText": "로딩 중...",
+    "loadingText": "스플레시 이미지",
     "logoImage": null,
     "mode": "image",
     "fullscreenImage": "./assets/images/splash-icon.png"
@@ -41,6 +48,10 @@
     "edges": "all"
   },
   "debug": {
-    "enabled": false
+    "enabled": false,
+    "maxLogLines": 999
+  },
+  "theme": {
+    "loadingIndicatorColor": "#ececec"
   }
 }
