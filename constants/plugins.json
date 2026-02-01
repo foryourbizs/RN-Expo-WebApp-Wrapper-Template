@@ -25,6 +25,10 @@
       {
         "name": "rnww-plugin-wifi",
         "namespace": "wifi"
+      },
+      {
+        "name": "rnww-plugin-gps",
+        "namespace": "gps"
       }
     ],
     "manual": [
