@@ -1,11 +1,12 @@
 {
   "$schema": "./schemas/app.schema.json",
   "webview": {
-    "baseUrl": "https://webapp-sample.example-page.cc/"
+    "baseUrl": "https://laravel-app-production-9cb3.up.railway.app/app",
+    "userAgent": "dev"
   },
   "security": {
     "allowedOrigins": [
-      "https://webapp-sample.example-page.cc"
+      "https://laravel-app-production-9cb3.up.railway.app"
     ]
   },
   "offline": {
@@ -36,7 +37,7 @@
     "fullscreenImage": "./assets/images/splash-icon.png"
   },
   "safeArea": {
-    "enabled": false,
+    "enabled": true,
     "edges": "all"
   },
   "debug": {
