@@ -79,7 +79,8 @@ export default function DebugConfigPage() {
       setEnvStatus(data);
       if (data.adbAvailable) {
         addLog('success', `ADB ${t('adb.available')}: ${data.adbVersion}`);
-        await refreshDevices();
+        // adbAvailable 값을 직접 전달 (상태 업데이트가 비동기라서)
+        await refreshDevices(true);
       } else {
         addLog('error', `ADB ${t('adb.unavailable')}: ${data.error || 'Not found'}`);
       }
@@ -91,7 +92,8 @@ export default function DebugConfigPage() {
   };
 
   // 디바이스 목록 조회
-  const refreshDevices = async () => {
+  // adbAvailable 파라미터: 환경 확인 직후 호출 시 상태가 아직 업데이트 안됐을 수 있어서 직접 전달
+  const refreshDevices = async (adbAvailable?: boolean) => {
     try {
       const res = await fetch('/api/adb/devices');
       const data = await res.json();
@@ -100,9 +102,11 @@ export default function DebugConfigPage() {
 
       // 연결된 디바이스가 있으면 ready 단계로
       const connected = (data.devices || []).filter((d: Device) => d.status === 'device');
+      const isAdbAvailable = adbAvailable ?? envStatus?.adbAvailable;
+
       if (connected.length > 0) {
         setCurrentStep('ready');
-      } else if (envStatus?.adbAvailable) {
+      } else if (isAdbAvailable) {
         setCurrentStep('select-method');
       }
     } catch (e) {

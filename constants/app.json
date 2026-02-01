@@ -2,17 +2,15 @@
   "$schema": "./schemas/app.schema.json",
   "webview": {
     "baseUrl": "https://laravel-app-production-9cb3.up.railway.app/app",
-    "userAgent": "dev"
+    "userAgent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
   },
   "security": {
-    "allowedOrigins": [
-      "https://laravel-app-production-9cb3.up.railway.app"
-    ],
+    "allowedOrigins": [],
     "allowInsecureHttp": true,
     "debug": true
   },
   "offline": {
-    "enabled": true,
+    "enabled": false,
     "title": "오프라인 상태입니다.",
     "message": "인터넷을 연결해 주세요.",
     "retryButtonText": "",
@@ -32,7 +30,7 @@
     "behavior": "overlay-swipe"
   },
   "splash": {
-    "enabled": true,
+    "enabled": false,
     "loadingText": "스플레시 이미지",
     "logoImage": null,
     "mode": "image",
@@ -43,6 +41,6 @@
     "edges": "all"
   },
   "debug": {
-    "enabled": false
+    "enabled": true
   }
 }

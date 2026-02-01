@@ -605,58 +605,6 @@ export default function WebViewContainer() {
         injectedJavaScriptBeforeContentLoaded={
           securityHandlers.injectedJavaScriptBeforeContentLoaded + bridgeClientScript
         }
-        // 페이지 로드 후 스크립트
-        injectedJavaScript={`
-          (function() {
-            // 중복 실행 방지
-            if (window.__pageReadySent) return;
-            window.__pageReadySent = true;
-            
-            // 디버그: DOM 상태 확인
-            function checkDOMState() {
-              var bodyLen = document.body ? document.body.innerHTML.length : 0;
-              var bodyBg = document.body ? window.getComputedStyle(document.body).backgroundColor : 'N/A';
-              
-              window.ReactNativeWebView.postMessage(JSON.stringify({ 
-                type: 'DEBUG_DOM_STATE',
-                bodyLength: bodyLen,
-                bodyBg: bodyBg
-              }));
-            }
-            
-            // 페이지 로드 감지 (한 번만)
-            function sendPageReady() {
-              if (window.__pageReadyEventSent) return;
-              window.__pageReadyEventSent = true;
-              
-              checkDOMState();
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAGE_READY' }));
-            }
-            
-            if (document.readyState === 'complete') {
-              sendPageReady();
-            } else {
-              window.addEventListener('load', sendPageReady, { once: true });
-            }
-            
-            // 에러 감지
-            if (!window.__errorHandlerSet) {
-              window.__errorHandlerSet = true;
-              window.onerror = function(msg, url, line, col, error) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'JS_ERROR',
-                  message: msg
-                }));
-              };
-            }
-            
-            // 빈 화면 감지를 위해 여러 번 체크 (1초, 2초, 5초)
-            setTimeout(checkDOMState, 1000);
-            setTimeout(checkDOMState, 2000);
-            setTimeout(checkDOMState, 5000);
-          })();
-          true;
-        `}
       />
       
       {/* 로딩 인디케이터 - 초기 로딩 시에만 표시 */}
