@@ -55,7 +55,8 @@ async function main() {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const devProcess = spawn(npmCmd, ['run', 'dev'], {
       cwd: clientRoot,
-      stdio: 'inherit'
+      stdio: 'inherit',
+      shell: true
     });
 
     devProcess.on('close', (code) => {

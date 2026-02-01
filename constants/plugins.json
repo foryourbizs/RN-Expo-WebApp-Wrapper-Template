@@ -28,7 +28,8 @@
       },
       {
         "name": "rnww-plugin-gps",
-        "namespace": "gps"
+        "namespace": "gps",
+        "method": "registerGpsHandlers"
       }
     ],
     "manual": [

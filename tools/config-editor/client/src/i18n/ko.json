@@ -199,6 +199,7 @@
     "deactivate": "비활성화",
     "activate": "활성화",
     "namespace": "네임스페이스",
+    "method": "메서드",
     "searchPlaceholder": "패키지 검색...",
     "addAutoTitle": "Auto 플러그인 추가",
     "addManualTitle": "Manual 플러그인 추가",

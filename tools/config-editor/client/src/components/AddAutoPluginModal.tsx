@@ -5,7 +5,7 @@ import { usePlugins } from '../hooks/usePlugins';
 interface AddAutoPluginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, namespace: string, needsInstall: boolean) => void;
+  onAdd: (name: string, namespace: string, needsInstall: boolean, method?: string) => void;
   existingPlugins: string[];
 }
 
@@ -21,6 +21,7 @@ export default function AddAutoPluginModal({
   const [searchQuery, setSearchQuery] = useState('rnww-plugin-');
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [namespace, setNamespace] = useState('');
+  const [method, setMethod] = useState('');
   const [version, setVersion] = useState('latest');
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function AddAutoPluginModal({
       fetchInstalled();
       setSelectedPackage(null);
       setNamespace('');
+      setMethod('');
       setVersion('latest');
       setSearchQuery('rnww-plugin-');
     }
@@ -50,10 +52,10 @@ export default function AddAutoPluginModal({
   const handleAdd = useCallback(() => {
     if (selectedPackage && namespace) {
       const isInstalled = installedPackages.some(p => p.name === selectedPackage);
-      onAdd(selectedPackage, namespace, !isInstalled);
+      onAdd(selectedPackage, namespace, !isInstalled, method || undefined);
       onClose();
     }
-  }, [selectedPackage, namespace, installedPackages, onAdd, onClose]);
+  }, [selectedPackage, namespace, method, installedPackages, onAdd, onClose]);
 
   if (!isOpen) return null;
 
@@ -147,7 +149,7 @@ export default function AddAutoPluginModal({
               <p className="text-sm text-slate-600 mb-2">
                 {t('plugins.selected')}: <strong>{selectedPackage}</strong>
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">{t('plugins.version')}</label>
                   <input
@@ -164,6 +166,16 @@ export default function AddAutoPluginModal({
                     value={namespace}
                     onChange={(e) => setNamespace(e.target.value)}
                     className="w-20 px-2 py-1 text-xs border border-slate-200 rounded font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">{t('plugins.method')}</label>
+                  <input
+                    type="text"
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value)}
+                    placeholder="registerHandlers"
+                    className="w-36 px-2 py-1 text-xs border border-slate-200 rounded font-mono"
                   />
                 </div>
               </div>

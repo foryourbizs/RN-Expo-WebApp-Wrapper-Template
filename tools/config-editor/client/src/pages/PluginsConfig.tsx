@@ -62,7 +62,7 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
   const isInstalled = useCallback((name: string) =>
     installedPackages.some(p => p.name === name), [installedPackages]);
 
-  const handleAddAutoPlugin = useCallback(async (name: string, namespace: string, needsInstall: boolean) => {
+  const handleAddAutoPlugin = useCallback(async (name: string, namespace: string, needsInstall: boolean, method?: string) => {
     if (needsInstall) {
       setInstalling(name);
       const success = await installPackage(name);
@@ -71,24 +71,28 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
     }
     setData((prevData) => {
       if (!prevData) return prevData;
+      const newPlugin: { name: string; namespace: string; method?: string } = { name, namespace };
+      if (method) newPlugin.method = method;
       return {
         ...prevData,
         plugins: {
           ...prevData.plugins,
-          auto: [...(prevData.plugins?.auto || []), { name, namespace }]
+          auto: [...(prevData.plugins?.auto || []), newPlugin]
         }
       };
     });
   }, [installPackage, setData]);
 
-  const handleAddManualPlugin = useCallback((path: string, namespace: string) => {
+  const handleAddManualPlugin = useCallback((path: string, namespace: string, method?: string) => {
     setData((prevData) => {
       if (!prevData) return prevData;
+      const newPlugin: { path: string; namespace: string; method?: string } = { path, namespace };
+      if (method) newPlugin.method = method;
       return {
         ...prevData,
         plugins: {
           ...prevData.plugins,
-          manual: [...(prevData.plugins?.manual || []), { path, namespace }]
+          manual: [...(prevData.plugins?.manual || []), newPlugin]
         }
       };
     });
@@ -171,6 +175,11 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                     <span className={`ml-2 text-xs ${hasConflict ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
                       ns: {plugin.namespace}{hasConflict && ' ⚠'}
                     </span>
+                    {plugin.method && (
+                      <span className="ml-2 text-xs text-blue-500">
+                        fn: {plugin.method}
+                      </span>
+                    )}
                     <span className={`ml-2 text-xs ${installed ? 'text-green-600' : 'text-orange-500'}`}>
                       {installed ? 'installed' : 'not installed'}
                     </span>
@@ -229,6 +238,11 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                   <span className={`ml-2 text-xs ${hasConflict ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
                     ns: {plugin.namespace}{hasConflict && ' ⚠'}
                   </span>
+                  {plugin.method && (
+                    <span className="ml-2 text-xs text-blue-500">
+                      fn: {plugin.method}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => handleRemoveManualPlugin(index)}

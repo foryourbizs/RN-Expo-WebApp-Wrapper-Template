@@ -199,6 +199,7 @@
     "deactivate": "Deactivate",
     "activate": "Activate",
     "namespace": "Namespace",
+    "method": "Method",
     "searchPlaceholder": "Search packages...",
     "addAutoTitle": "Add Auto Plugin",
     "addManualTitle": "Add Manual Plugin",

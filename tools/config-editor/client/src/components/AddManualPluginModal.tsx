@@ -5,7 +5,7 @@ import { usePlugins } from '../hooks/usePlugins';
 interface AddManualPluginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (path: string, namespace: string) => void;
+  onAdd: (path: string, namespace: string, method?: string) => void;
   existingPaths: string[];
 }
 
@@ -20,12 +20,14 @@ export default function AddManualPluginModal({
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [namespace, setNamespace] = useState('');
+  const [method, setMethod] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       scanFolders();
       setSelectedPath(null);
       setNamespace('');
+      setMethod('');
     }
   }, [isOpen, scanFolders]);
 
@@ -38,10 +40,10 @@ export default function AddManualPluginModal({
 
   const handleAdd = useCallback(() => {
     if (selectedPath && namespace) {
-      onAdd(selectedPath, namespace);
+      onAdd(selectedPath, namespace, method || undefined);
       onClose();
     }
-  }, [selectedPath, namespace, onAdd, onClose]);
+  }, [selectedPath, namespace, method, onAdd, onClose]);
 
   if (!isOpen) return null;
 
@@ -87,14 +89,26 @@ export default function AddManualPluginModal({
               <p className="text-sm text-slate-600 mb-2">
                 {t('plugins.selected')}: <strong>{selectedPath}</strong>
               </p>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">{t('plugins.namespace')}</label>
-                <input
-                  type="text"
-                  value={namespace}
-                  onChange={(e) => setNamespace(e.target.value)}
-                  className="w-28 px-2 py-1 text-xs border border-slate-200 rounded font-mono"
-                />
+              <div className="flex gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">{t('plugins.namespace')}</label>
+                  <input
+                    type="text"
+                    value={namespace}
+                    onChange={(e) => setNamespace(e.target.value)}
+                    className="w-28 px-2 py-1 text-xs border border-slate-200 rounded font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">{t('plugins.method')}</label>
+                  <input
+                    type="text"
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value)}
+                    placeholder="auto"
+                    className="w-36 px-2 py-1 text-xs border border-slate-200 rounded font-mono"
+                  />
+                </div>
               </div>
             </div>
           )}
