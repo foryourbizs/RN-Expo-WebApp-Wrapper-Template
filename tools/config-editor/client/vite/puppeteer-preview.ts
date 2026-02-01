@@ -224,6 +224,29 @@ let wss: WebSocketServer | null = null;
 // 마우스 버튼 상태 추적 (눌린 버튼들)
 const pressedMouseButtons = new Set<'left' | 'right' | 'middle'>();
 
+// 세션 자동 종료 타이머 (클라이언트 없으면 30초 후 종료)
+let sessionCleanupTimer: ReturnType<typeof setTimeout> | null = null;
+const SESSION_CLEANUP_DELAY = 30000; // 30초
+
+function scheduleSessionCleanup() {
+  if (sessionCleanupTimer) {
+    clearTimeout(sessionCleanupTimer);
+  }
+  sessionCleanupTimer = setTimeout(async () => {
+    if (session && session.clients.size === 0) {
+      console.log('[Puppeteer Preview] No clients connected, closing session');
+      await stopPreview();
+    }
+  }, SESSION_CLEANUP_DELAY);
+}
+
+function cancelSessionCleanup() {
+  if (sessionCleanupTimer) {
+    clearTimeout(sessionCleanupTimer);
+    sessionCleanupTimer = null;
+  }
+}
+
 // Preview 세션 시작
 export async function startPreview(url: string, width = 360, height = 640): Promise<void> {
   console.log('[Puppeteer Preview] Starting preview for:', url);
@@ -402,6 +425,9 @@ export async function stopPreview(preserveClients = false): Promise<Set<WebSocke
   if (!session) return new Set();
 
   console.log('[Puppeteer Preview] Stopping preview');
+
+  // 정리 타이머 취소
+  cancelSessionCleanup();
 
   await stopScreencast();
 
@@ -621,6 +647,9 @@ export function setupWebSocketServer(server: any): void {
   wss.on('connection', (ws: WebSocket) => {
     console.log('[Puppeteer Preview] WebSocket client connected');
 
+    // 새 클라이언트 연결 시 정리 타이머 취소
+    cancelSessionCleanup();
+
     if (session) {
       session.clients.add(ws);
     }
@@ -701,6 +730,10 @@ export function setupWebSocketServer(server: any): void {
       console.log('[Puppeteer Preview] WebSocket client disconnected');
       if (session) {
         session.clients.delete(ws);
+        // 클라이언트가 없으면 세션 정리 예약
+        if (session.clients.size === 0) {
+          scheduleSessionCleanup();
+        }
       }
     });
 

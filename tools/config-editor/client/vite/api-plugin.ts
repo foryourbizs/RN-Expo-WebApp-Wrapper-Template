@@ -18,6 +18,65 @@ import {
 
 const execAsync = promisify(exec);
 
+// ========================================
+// Logcat 프로세스 관리자
+// ========================================
+interface LogcatSession {
+  process: ChildProcess;
+  device: string;
+  logType: string;
+  clients: Set<any>; // HTTP response objects
+  cleanupTimer: ReturnType<typeof setTimeout> | null;
+}
+
+const logcatSessions = new Map<string, LogcatSession>();
+const LOGCAT_CLEANUP_DELAY = 5000; // 5초 후 정리
+
+function getLogcatSessionKey(device: string, logType: string): string {
+  return `${device}:${logType}`;
+}
+
+function cleanupLogcatSession(key: string) {
+  const session = logcatSessions.get(key);
+  if (!session) return;
+
+  if (session.cleanupTimer) {
+    clearTimeout(session.cleanupTimer);
+  }
+
+  console.log(`[Logcat] Cleaning up session: ${key}`);
+  try {
+    session.process.kill();
+  } catch (e) {
+    // 무시
+  }
+  logcatSessions.delete(key);
+}
+
+function scheduleLogcatCleanup(key: string) {
+  const session = logcatSessions.get(key);
+  if (!session) return;
+
+  if (session.cleanupTimer) {
+    clearTimeout(session.cleanupTimer);
+  }
+
+  session.cleanupTimer = setTimeout(() => {
+    const currentSession = logcatSessions.get(key);
+    if (currentSession && currentSession.clients.size === 0) {
+      cleanupLogcatSession(key);
+    }
+  }, LOGCAT_CLEANUP_DELAY);
+}
+
+function cancelLogcatCleanup(key: string) {
+  const session = logcatSessions.get(key);
+  if (session?.cleanupTimer) {
+    clearTimeout(session.cleanupTimer);
+    session.cleanupTimer = null;
+  }
+}
+
 // NDK/SDK 라이선스 에러 패턴
 const LICENSE_ERROR_PATTERNS = [
   /License for package .* not accepted/i,
@@ -2723,7 +2782,7 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             return;
           }
 
-          // GET /api/adb/logcat - 디바이스 로그 스트리밍
+          // GET /api/adb/logcat - 디바이스 로그 스트리밍 (세션 재사용)
           if (url.startsWith('/api/adb/logcat') && req.method === 'GET') {
             const urlObj = new URL(url, 'http://localhost');
             const device = urlObj.searchParams.get('device');
@@ -2731,6 +2790,35 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
 
             if (!device) {
               sendJson(res, 400, { error: 'device parameter is required' });
+              return;
+            }
+
+            const sessionKey = getLogcatSessionKey(device, logType);
+
+            // 스트리밍 응답 설정
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+
+            // 기존 세션이 있으면 재사용
+            let session = logcatSessions.get(sessionKey);
+            if (session) {
+              console.log(`[Logcat] Reusing existing session: ${sessionKey}`);
+              cancelLogcatCleanup(sessionKey);
+              session.clients.add(res);
+
+              // 클라이언트 연결 해제 처리
+              const removeClient = () => {
+                session?.clients.delete(res);
+                if (session?.clients.size === 0) {
+                  scheduleLogcatCleanup(sessionKey);
+                }
+              };
+              req.on('close', removeClient);
+              req.on('aborted', removeClient);
               return;
             }
 
@@ -2752,68 +2840,80 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
               // 로그 버퍼 클리어
               await execAsync(`adb -s ${device} logcat -c`, { timeout: 5000 }).catch(() => {});
 
-              // 스트리밍 응답 설정
-              res.statusCode = 200;
-              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-              res.setHeader('Transfer-Encoding', 'chunked');
-              res.setHeader('Cache-Control', 'no-cache');
-              res.setHeader('Connection', 'keep-alive');
-              res.setHeader('X-Content-Type-Options', 'nosniff');
-
               // Windows에서는 shell 옵션 필요
               const isWindows = process.platform === 'win32';
               const cmd = `adb -s ${device} logcat -v time ${filter}`;
 
-              console.log('[Logcat] Starting:', cmd);
+              console.log('[Logcat] Starting new session:', sessionKey);
 
               const logcatProcess = isWindows
                 ? spawn('cmd', ['/c', cmd], { stdio: ['ignore', 'pipe', 'pipe'] })
                 : spawn('adb', ['-s', device, 'logcat', '-v', 'time', ...filter.split(' ')], { stdio: ['ignore', 'pipe', 'pipe'] });
 
-              let hasData = false;
+              // 새 세션 생성
+              session = {
+                process: logcatProcess,
+                device,
+                logType,
+                clients: new Set([res]),
+                cleanupTimer: null
+              };
+              logcatSessions.set(sessionKey, session);
 
               logcatProcess.stdout.on('data', (data) => {
-                hasData = true;
-                if (!res.writableEnded) {
-                  res.write(data);
-                }
+                const currentSession = logcatSessions.get(sessionKey);
+                if (!currentSession) return;
+
+                // 모든 클라이언트에 데이터 전송
+                currentSession.clients.forEach(client => {
+                  if (!client.writableEnded) {
+                    client.write(data);
+                  }
+                });
               });
 
               logcatProcess.stderr.on('data', (data) => {
-                console.log('[Logcat] stderr:', data.toString());
-                if (!res.writableEnded) {
-                  res.write(data);
-                }
+                const currentSession = logcatSessions.get(sessionKey);
+                if (!currentSession) return;
+
+                currentSession.clients.forEach(client => {
+                  if (!client.writableEnded) {
+                    client.write(data);
+                  }
+                });
               });
 
               logcatProcess.on('error', (err) => {
                 console.error('[Logcat] Process error:', err);
-                if (!res.writableEnded) {
-                  res.write(`Error: ${err.message}\n`);
-                  res.end();
-                }
+                cleanupLogcatSession(sessionKey);
               });
 
               logcatProcess.on('close', (code) => {
-                console.log('[Logcat] Process closed with code:', code);
-                if (!res.writableEnded) {
-                  if (!hasData) {
-                    res.write('No log data received. Check device connection.\n');
-                  }
-                  res.end();
+                console.log(`[Logcat] Process closed with code: ${code}`);
+                const currentSession = logcatSessions.get(sessionKey);
+                if (currentSession) {
+                  currentSession.clients.forEach(client => {
+                    if (!client.writableEnded) {
+                      client.end();
+                    }
+                  });
+                  logcatSessions.delete(sessionKey);
                 }
               });
 
-              // 연결 끊김 시 프로세스 종료
-              req.on('close', () => {
-                console.log('[Logcat] Client disconnected, killing process');
-                logcatProcess.kill();
-              });
+              // 클라이언트 연결 해제 처리
+              const removeClient = () => {
+                const currentSession = logcatSessions.get(sessionKey);
+                if (currentSession) {
+                  currentSession.clients.delete(res);
+                  if (currentSession.clients.size === 0) {
+                    scheduleLogcatCleanup(sessionKey);
+                  }
+                }
+              };
+              req.on('close', removeClient);
+              req.on('aborted', removeClient);
 
-              req.on('aborted', () => {
-                console.log('[Logcat] Request aborted, killing process');
-                logcatProcess.kill();
-              });
             } catch (error: any) {
               console.error('[Logcat] Error:', error);
               sendJson(res, 500, { error: error.message });

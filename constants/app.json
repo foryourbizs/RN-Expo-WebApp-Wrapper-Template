@@ -44,7 +44,7 @@
     "fullscreenImage": "./assets/images/splash-icon.png"
   },
   "safeArea": {
-    "enabled": true,
+    "enabled": false,
     "edges": "all"
   },
   "debug": {

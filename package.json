@@ -13,7 +13,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "postinstall": "patch-package && node ./scripts/setup-plugins.js",
-    "config": "cd tools/config-editor && npm run dev",
+    "config": "node scripts/run-config-editor.js",
+    "config:dev": "cd tools/config-editor && npm run dev",
+    "config:rebuild": "node scripts/run-config-editor.js --rebuild",
     "generate:plugins": "node scripts/generate-plugin-registry.js"
   },
   "dependencies": {

@@ -1,7 +1,32 @@
 {
   "$schema": "./schemas/plugins.schema.json",
   "plugins": {
-    "auto": [],
+    "auto": [
+      {
+        "name": "rnww-plugin-background",
+        "namespace": "backgr"
+      },
+      {
+        "name": "rnww-plugin-bluetooth",
+        "namespace": "blueto"
+      },
+      {
+        "name": "rnww-plugin-camera",
+        "namespace": "camera"
+      },
+      {
+        "name": "rnww-plugin-microphone",
+        "namespace": "microp"
+      },
+      {
+        "name": "rnww-plugin-screen-pinning",
+        "namespace": "screen"
+      },
+      {
+        "name": "rnww-plugin-wifi",
+        "namespace": "wifi"
+      }
+    ],
     "manual": [
       {
         "path": "./push",
@@ -18,6 +43,38 @@
       {
         "path": "./device",
         "namespace": "device"
+      },
+      {
+        "path": "./clipboard",
+        "namespace": "clipbo"
+      },
+      {
+        "path": "./navigation-bar",
+        "namespace": "naviga"
+      },
+      {
+        "path": "./keep-awake",
+        "namespace": "keepaw"
+      },
+      {
+        "path": "./security",
+        "namespace": "securi"
+      },
+      {
+        "path": "./orientation",
+        "namespace": "orient"
+      },
+      {
+        "path": "./ui",
+        "namespace": "ui"
+      },
+      {
+        "path": "./status-bar",
+        "namespace": "status"
+      },
+      {
+        "path": "./webview",
+        "namespace": "webvie"
       }
     ]
   }
