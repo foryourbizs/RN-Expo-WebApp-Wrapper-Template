@@ -60,6 +60,7 @@
     "rnww-plugin-background": "^1.1.3",
     "rnww-plugin-bluetooth": "^1.0.2",
     "rnww-plugin-camera": "^1.1.0",
+    "rnww-plugin-gps": "^1.0.0",
     "rnww-plugin-microphone": "^2.0.0",
     "rnww-plugin-screen-pinning": "^1.1.0",
     "rnww-plugin-wifi": "^1.0.2",
