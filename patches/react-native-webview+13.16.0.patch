@@ -1,0 +1,27 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
+index 1234567..abcdefg 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
+@@ -14,6 +14,7 @@ import android.view.ViewGroup;
+ import android.webkit.ConsoleMessage;
+ import android.webkit.GeolocationPermissions;
+ import android.webkit.PermissionRequest;
++import android.webkit.JsResult;
+ import android.webkit.ValueCallback;
+ import android.webkit.WebChromeClient;
+ import android.webkit.WebView;
+@@ -369,4 +370,14 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
+     public void setHasOnOpenWindowEvent(boolean hasEvent) {
+       mHasOnOpenWindowEvent = hasEvent;
+     }
++
++    /**
++     * beforeunload 확인창 자동 확인 (비활성화)
++     * 페이지 이동/새로고침 시 확인 대화상자 차단
++     */
++    @Override
++    public boolean onJsBeforeUnload(WebView view, String url, String message, JsResult result) {
++        result.confirm();
++        return true;
++    }
+ }

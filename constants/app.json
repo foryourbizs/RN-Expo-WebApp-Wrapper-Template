@@ -2,7 +2,7 @@
   "$schema": "./schemas/app.schema.json",
   "webview": {
     "baseUrl": "https://laravel-app-production-9cb3.up.railway.app/app",
-    "userAgent": "dev",
+    "userAgent": "devs",
     "performance": {
       "setSupportMultipleWindows": true,
       "nestedScrollEnabled": true,

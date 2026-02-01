@@ -24,45 +24,19 @@ export const getBridgeClientScript = (securityToken: string): string => {
   // ========================================
 
   // ========================================
-  // beforeunload 경고창 무력화 (방어적 구현)
-  // (폼 데이터 입력 중 페이지 이탈 시 경고창 방지)
+  // beforeunload 경고창 무력화 (보조)
+  // 메인 차단은 네이티브 Android WebChromeClient.onJsBeforeUnload에서 처리
+  // 이 코드는 iOS 등 다른 플랫폼을 위한 폴백
   // ========================================
 
-  // 1. window.onbeforeunload 속성 무력화 (안전하게)
   try {
-    // 이미 정의된 경우에만 덮어쓰기 시도
-    var descriptor = Object.getOwnPropertyDescriptor(window, 'onbeforeunload');
-    if (!descriptor || descriptor.configurable !== false) {
-      Object.defineProperty(window, 'onbeforeunload', {
-        get: function() { return null; },
-        set: function() { return; },
-        configurable: true  // 다른 스크립트와의 호환성을 위해 configurable 유지
-      });
-    }
-  } catch(e) {
-    // 실패해도 앱 동작에 영향 없음
-    console.log('[AppBridge] onbeforeunload override skipped');
-  }
-
-  // 2. beforeunload 이벤트 핸들러 무력화 (프로토타입 수정 없이)
-  // 주의: EventTarget.prototype.addEventListener 수정은 프레임워크 충돌 발생
-  // 대신 캡처 단계에서 이벤트 무력화
-  try {
-    window.addEventListener('beforeunload', function(e) {
-      // 이벤트 전파 중단 및 기본 동작 방지
-      if (e && typeof e.stopImmediatePropagation === 'function') {
-        e.stopImmediatePropagation();
-      }
-      if (e && typeof e.preventDefault === 'function') {
-        e.preventDefault();
-      }
-      // returnValue 제거 (확인 대화상자 방지)
-      try { delete e.returnValue; } catch(ex) {}
-      return undefined;
-    }, { capture: true, passive: false });
-  } catch(e) {
-    console.log('[AppBridge] beforeunload handler setup skipped');
-  }
+    // returnValue 설정 무력화 - 확인창 트리거 방지
+    Object.defineProperty(BeforeUnloadEvent.prototype, 'returnValue', {
+      get: function() { return ''; },
+      set: function() { /* 무시 */ },
+      configurable: true
+    });
+  } catch(e) {}
   
   // ========================================
   // AppBridge 초기화
