@@ -548,8 +548,10 @@ export default function WebViewContainer() {
         allowsFullscreenVideo={webview.performance.allowsFullscreenVideo}
         startInLoadingState={false}
         // 보안: 허용된 Origin만 허용 (빈 배열이면 모든 Origin 허용)
+        // originWhitelist는 URL 패턴 매칭에 사용되므로 경로 와일드카드 추가
+        // origin 자체와 경로 포함 패턴 모두 추가하여 모든 케이스 처리
         originWhitelist={security.allowedOrigins.length > 0
-          ? [...security.allowedOrigins]
+          ? security.allowedOrigins.flatMap(origin => [origin, `${origin}/*`])
           : ['*']}
         // Android 추가 성능 옵션
         setSupportMultipleWindows={webview.performance.setSupportMultipleWindows}

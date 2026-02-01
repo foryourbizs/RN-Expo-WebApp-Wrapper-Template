@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/app.schema.json",
   "webview": {
-    "baseUrl": "https://laravel-app-production-9cb3.up.railway.app/app",
+    "baseUrl": "https://laravel-app-production-9cb3.up.railway.app",
     "userAgent": "dev"
   },
   "security": {
