@@ -2507,6 +2507,311 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             return;
           }
 
+          // ========== ADB API ==========
+
+          // GET /api/adb/check - ADB 환경 확인
+          if (url === '/api/adb/check' && req.method === 'GET') {
+            try {
+              const { stdout } = await execAsync('adb version', { timeout: 5000 });
+              const versionMatch = stdout.match(/Android Debug Bridge version ([\d.]+)/);
+              sendJson(res, 200, {
+                adbAvailable: true,
+                adbVersion: versionMatch ? versionMatch[1] : 'unknown'
+              });
+            } catch (error: any) {
+              sendJson(res, 200, {
+                adbAvailable: false,
+                error: error.message || 'ADB not found'
+              });
+            }
+            return;
+          }
+
+          // GET /api/adb/devices - 연결된 디바이스 목록
+          if (url === '/api/adb/devices' && req.method === 'GET') {
+            try {
+              const { stdout } = await execAsync('adb devices -l', { timeout: 10000 });
+              const lines = stdout.split('\n').filter(l => l.trim() && !l.startsWith('List of'));
+              const devices = lines.map(line => {
+                const parts = line.trim().split(/\s+/);
+                const id = parts[0];
+                const status = parts[1] as 'device' | 'offline' | 'unauthorized' | 'no permissions';
+                const isWireless = id.includes(':');
+
+                // 추가 정보 파싱
+                const info: Record<string, string> = {};
+                for (let i = 2; i < parts.length; i++) {
+                  const [key, value] = parts[i].split(':');
+                  if (key && value) {
+                    info[key] = value;
+                  }
+                }
+
+                return {
+                  id,
+                  status,
+                  isWireless,
+                  model: info['model'],
+                  product: info['product'],
+                  device: info['device']
+                };
+              }).filter(d => d.id);
+
+              sendJson(res, 200, { devices });
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // POST /api/adb/pair - 무선 디버깅 페어링
+          if (url === '/api/adb/pair' && req.method === 'POST') {
+            const { address, code } = await readBody(req);
+
+            if (!address) {
+              sendJson(res, 400, { error: 'Address is required' });
+              return;
+            }
+
+            try {
+              // adb pair는 stdin으로 코드를 받으므로 spawn 사용
+              const pairProcess = spawn('adb', ['pair', address], {
+                stdio: ['pipe', 'pipe', 'pipe']
+              });
+
+              let stdout = '';
+              let stderr = '';
+
+              pairProcess.stdout.on('data', (data) => { stdout += data.toString(); });
+              pairProcess.stderr.on('data', (data) => { stderr += data.toString(); });
+
+              // 페어링 코드 입력 (프롬프트 대기 후)
+              if (code) {
+                setTimeout(() => {
+                  pairProcess.stdin.write(code + '\n');
+                  pairProcess.stdin.end();
+                }, 500);
+              }
+
+              const exitCode = await new Promise<number>((resolve) => {
+                pairProcess.on('close', resolve);
+                // 타임아웃
+                setTimeout(() => {
+                  pairProcess.kill();
+                  resolve(-1);
+                }, 30000);
+              });
+
+              const output = stdout + stderr;
+              if (exitCode === 0 || output.toLowerCase().includes('success')) {
+                sendJson(res, 200, { success: true });
+              } else {
+                sendJson(res, 200, { success: false, error: output.trim() || 'Pairing failed' });
+              }
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // POST /api/adb/connect - 무선 디버깅 연결
+          if (url === '/api/adb/connect' && req.method === 'POST') {
+            const { address } = await readBody(req);
+
+            if (!address) {
+              sendJson(res, 400, { error: 'Address is required' });
+              return;
+            }
+
+            try {
+              const { stdout, stderr } = await execAsync(`adb connect ${address}`, { timeout: 15000 });
+              const output = stdout + stderr;
+
+              if (output.includes('connected') && !output.includes('cannot')) {
+                // 디바이스 모델 가져오기
+                let device = address;
+                try {
+                  const { stdout: modelOut } = await execAsync(`adb -s ${address} shell getprop ro.product.model`, { timeout: 5000 });
+                  device = modelOut.trim() || address;
+                } catch { /* ignore */ }
+
+                sendJson(res, 200, { success: true, device });
+              } else {
+                sendJson(res, 200, { success: false, error: output.trim() || 'Connection failed' });
+              }
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // POST /api/adb/disconnect - 무선 디버깅 연결 해제
+          if (url === '/api/adb/disconnect' && req.method === 'POST') {
+            const { address } = await readBody(req);
+
+            try {
+              const cmd = address ? `adb disconnect ${address}` : 'adb disconnect';
+              await execAsync(cmd, { timeout: 10000 });
+              sendJson(res, 200, { success: true });
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // POST /api/adb/tcpip - USB를 통한 무선 디버깅 활성화
+          if (url === '/api/adb/tcpip' && req.method === 'POST') {
+            const { port = '5555' } = await readBody(req);
+
+            try {
+              // USB 디바이스 확인
+              const { stdout: devicesOut } = await execAsync('adb devices', { timeout: 5000 });
+              const usbDevices = devicesOut.split('\n')
+                .filter(l => l.includes('device') && !l.includes(':') && !l.startsWith('List'));
+
+              if (usbDevices.length === 0) {
+                sendJson(res, 200, { success: false, error: 'No USB device connected' });
+                return;
+              }
+
+              // 디바이스 IP 가져오기
+              const { stdout: ipOut } = await execAsync('adb shell ip route', { timeout: 5000 });
+              const ipMatch = ipOut.match(/wlan.*src\s+(\d+\.\d+\.\d+\.\d+)/);
+              let deviceIp = '';
+              if (ipMatch) {
+                deviceIp = ipMatch[1];
+              } else {
+                // 대체 방법
+                const { stdout: ipOut2 } = await execAsync('adb shell "ip addr show wlan0 | grep inet"', { timeout: 5000 });
+                const ipMatch2 = ipOut2.match(/inet\s+(\d+\.\d+\.\d+\.\d+)/);
+                if (ipMatch2) {
+                  deviceIp = ipMatch2[1];
+                }
+              }
+
+              if (!deviceIp) {
+                sendJson(res, 200, { success: false, error: 'Cannot find device WiFi IP' });
+                return;
+              }
+
+              // TCP/IP 모드 활성화
+              await execAsync(`adb tcpip ${port}`, { timeout: 10000 });
+
+              // 잠시 대기 후 연결
+              await new Promise(r => setTimeout(r, 2000));
+
+              const address = `${deviceIp}:${port}`;
+              const { stdout: connectOut } = await execAsync(`adb connect ${address}`, { timeout: 10000 });
+
+              if (connectOut.includes('connected')) {
+                sendJson(res, 200, { success: true, address });
+              } else {
+                sendJson(res, 200, { success: false, error: connectOut.trim() || 'Connection failed', address });
+              }
+            } catch (error: any) {
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
+          // GET /api/adb/logcat - 디바이스 로그 스트리밍
+          if (url.startsWith('/api/adb/logcat') && req.method === 'GET') {
+            const urlObj = new URL(url, 'http://localhost');
+            const device = urlObj.searchParams.get('device');
+            const logType = urlObj.searchParams.get('type') || 'native';
+
+            if (!device) {
+              sendJson(res, 400, { error: 'device parameter is required' });
+              return;
+            }
+
+            // 로그 필터 설정
+            let filter = '';
+            switch (logType) {
+              case 'native':
+                filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V *:S';
+                break;
+              case 'webview':
+                filter = 'chromium:V SBrowser:V SBrowserConsole:V WebViewConsole:V cr_console:V *:S';
+                break;
+              case 'all':
+                filter = 'ReactNative:V ReactNativeJS:V expo:V chromium:V SBrowser:V SBrowserConsole:V WebViewConsole:V cr_console:V *:S';
+                break;
+            }
+
+            try {
+              // 로그 버퍼 클리어
+              await execAsync(`adb -s ${device} logcat -c`, { timeout: 5000 }).catch(() => {});
+
+              // 스트리밍 응답 설정
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+              res.setHeader('Transfer-Encoding', 'chunked');
+              res.setHeader('Cache-Control', 'no-cache');
+              res.setHeader('Connection', 'keep-alive');
+              res.setHeader('X-Content-Type-Options', 'nosniff');
+
+              // Windows에서는 shell 옵션 필요
+              const isWindows = process.platform === 'win32';
+              const cmd = `adb -s ${device} logcat -v time ${filter}`;
+
+              console.log('[Logcat] Starting:', cmd);
+
+              const logcatProcess = isWindows
+                ? spawn('cmd', ['/c', cmd], { stdio: ['ignore', 'pipe', 'pipe'] })
+                : spawn('adb', ['-s', device, 'logcat', '-v', 'time', ...filter.split(' ')], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+              let hasData = false;
+
+              logcatProcess.stdout.on('data', (data) => {
+                hasData = true;
+                if (!res.writableEnded) {
+                  res.write(data);
+                }
+              });
+
+              logcatProcess.stderr.on('data', (data) => {
+                console.log('[Logcat] stderr:', data.toString());
+                if (!res.writableEnded) {
+                  res.write(data);
+                }
+              });
+
+              logcatProcess.on('error', (err) => {
+                console.error('[Logcat] Process error:', err);
+                if (!res.writableEnded) {
+                  res.write(`Error: ${err.message}\n`);
+                  res.end();
+                }
+              });
+
+              logcatProcess.on('close', (code) => {
+                console.log('[Logcat] Process closed with code:', code);
+                if (!res.writableEnded) {
+                  if (!hasData) {
+                    res.write('No log data received. Check device connection.\n');
+                  }
+                  res.end();
+                }
+              });
+
+              // 연결 끊김 시 프로세스 종료
+              req.on('close', () => {
+                console.log('[Logcat] Client disconnected, killing process');
+                logcatProcess.kill();
+              });
+
+              req.on('aborted', () => {
+                console.log('[Logcat] Request aborted, killing process');
+                logcatProcess.kill();
+              });
+            } catch (error: any) {
+              console.error('[Logcat] Error:', error);
+              sendJson(res, 500, { error: error.message });
+            }
+            return;
+          }
+
           // Not found
           sendJson(res, 404, { error: 'Not found' });
 

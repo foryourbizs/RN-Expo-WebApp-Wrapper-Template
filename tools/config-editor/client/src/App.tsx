@@ -7,6 +7,7 @@ import AppConfigPage from './pages/AppConfig';
 import ThemeConfigPage from './pages/ThemeConfig';
 import PluginsConfigPage from './pages/PluginsConfig';
 import BuildConfigPage from './pages/BuildConfig';
+import DebugConfigPage from './pages/DebugConfig';
 import { PreviewPanel, FullscreenModal } from './components/preview';
 import { PreviewProvider } from './contexts/PreviewContext';
 import { PreviewNavigationProvider } from './contexts/PreviewNavigationContext';
@@ -77,6 +78,9 @@ function AppContent() {
             )}
             {activeTab === 'build' && (
               <BuildConfigPage onBuildingChange={handleBuildingChange} />
+            )}
+            {activeTab === 'debug' && (
+              <DebugConfigPage />
             )}
           </div>
         </div>
