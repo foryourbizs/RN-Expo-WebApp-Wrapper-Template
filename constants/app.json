@@ -1,13 +1,15 @@
 {
   "$schema": "./schemas/app.schema.json",
   "webview": {
-    "baseUrl": "https://laravel-app-production-9cb3.up.railway.app",
+    "baseUrl": "https://laravel-app-production-9cb3.up.railway.app/app",
     "userAgent": "dev"
   },
   "security": {
     "allowedOrigins": [
       "https://laravel-app-production-9cb3.up.railway.app"
-    ]
+    ],
+    "allowInsecureHttp": true,
+    "debug": true
   },
   "offline": {
     "enabled": true,

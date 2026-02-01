@@ -127,14 +127,45 @@ export default function WebViewContainer() {
     return true;
   }, [securityEngine]);
 
+  // 허용된 origin 목록 (baseUrl origin + allowedOrigins)
+  const allowedOriginSet = useMemo(() => {
+    const origins = new Set<string>();
+    // baseUrl origin 추가
+    try {
+      origins.add(new URL(webview.baseUrl).origin);
+    } catch {
+      // ignore
+    }
+    // allowedOrigins 추가
+    security.allowedOrigins.forEach(origin => {
+      // 와일드카드 없는 정확한 origin만 추가
+      if (!origin.includes('*')) {
+        origins.add(origin);
+      }
+    });
+    return origins;
+  }, [webview.baseUrl, security.allowedOrigins]);
+
   /**
    * URL 요청 처리
+   * - 같은 origin 내 리다이렉트는 항상 허용
    * - SecurityEngine을 통한 네비게이션 검증
    * - 허용된 URL: WebView 내에서 로드
    * - 허용되지 않은 URL: 외부 브라우저로 열기
    */
   const handleShouldStartLoadWithRequest = useCallback((request: ShouldStartLoadRequest): boolean => {
     const { url, mainDocumentURL, navigationType } = request;
+
+    // 허용된 origin 내 네비게이션/리다이렉트는 항상 허용 (빠른 경로)
+    try {
+      const requestOrigin = new URL(url).origin;
+      if (allowedOriginSet.has(requestOrigin)) {
+        debugLog('nav', '✓ 허용된 Origin', url.replace(requestOrigin, ''));
+        return true;
+      }
+    } catch {
+      // URL 파싱 실패 시 SecurityEngine으로 검증
+    }
 
     // SecurityEngine을 통한 네비게이션 검증
     // ShouldStartLoadRequest에서 사용 가능한 속성만 전달
@@ -163,7 +194,7 @@ export default function WebViewContainer() {
     }
 
     return true;
-  }, [securityEngine]);
+  }, [securityEngine, allowedOriginSet]);
 
   // 브릿지 초기화 (최초 1회)
   useEffect(() => {

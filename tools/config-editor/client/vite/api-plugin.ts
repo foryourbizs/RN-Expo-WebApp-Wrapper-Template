@@ -1190,6 +1190,15 @@ function startBuildProcess(type: string, profile: string, buildId: string, retry
     cmd = 'npx';
     args = ['eas', 'build', '--platform', 'android', '--profile', profile, '--non-interactive'];
     output.push({ type: 'info', text: `Starting EAS cloud build (${profile})...`, timestamp: Date.now() });
+  } else if (type === 'expo-dev') {
+    // Expo Development Build (npx expo run:android)
+    cmd = process.platform === 'win32' ? 'cmd' : 'sh';
+    const devScript = process.platform === 'win32'
+      ? `node scripts\\setup-plugins.js && npx expo run:android --no-install`
+      : `node scripts/setup-plugins.js && npx expo run:android --no-install`;
+    args = process.platform === 'win32' ? ['/c', devScript] : ['-c', devScript];
+    output.push({ type: 'info', text: 'Starting Expo development build...', timestamp: Date.now() });
+    output.push({ type: 'info', text: 'Building development client APK...', timestamp: Date.now() });
   } else {
     // Local Build - need to run prebuild first, then gradle
     const gradleTask = profile === 'debug' ? 'assembleDebug' :

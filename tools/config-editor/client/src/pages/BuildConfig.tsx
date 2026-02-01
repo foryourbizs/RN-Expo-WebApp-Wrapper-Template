@@ -619,9 +619,29 @@ export default function BuildConfigPage({ onBuildingChange }: BuildConfigPagePro
         )}
       </div>
 
+      {/* Expo Dev Build - Quick Development */}
+      <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-medium text-blue-800">{t('build.expoDev') || 'Expo Development Build'}</h3>
+            <p className="text-xs text-blue-600 mt-0.5">{t('build.expoDevDesc') || 'Fast rebuild with hot reload support'}</p>
+          </div>
+          <button
+            onClick={() => startBuild('expo-dev', 'dev')}
+            disabled={building}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          >
+            {t('build.runAndroid') || 'Run Android'}
+          </button>
+        </div>
+        <div className="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1.5">
+          💡 {t('build.expoDevTip') || 'Builds and creates APK in android/app/build/outputs. After first build, use `npx expo start --dev-client` for fast iteration.'}
+        </div>
+      </div>
+
       {/* Build Options */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Cloud Build */}
+        {/* Cloud Build (EAS) */}
         <div className="border border-slate-200 rounded-lg p-4 bg-white">
           <h3 className="font-medium text-slate-800 mb-3">{t('build.cloudBuild')}</h3>
           <div className="space-y-2">
@@ -642,7 +662,7 @@ export default function BuildConfigPage({ onBuildingChange }: BuildConfigPagePro
           </div>
         </div>
 
-        {/* Local Build */}
+        {/* Local Build (Gradle) */}
         <div className="border border-slate-200 rounded-lg p-4 bg-white">
           <h3 className="font-medium text-slate-800 mb-3">{t('build.localBuild')}</h3>
           <div className="space-y-2">
