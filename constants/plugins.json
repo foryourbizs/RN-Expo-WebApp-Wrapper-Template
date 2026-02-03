@@ -15,52 +15,9 @@
     ],
     "manual": [
       {
-        "path": "./push",
-        "namespace": "push"
-      },
-      {
-        "path": "./splash",
-        "namespace": "splash"
-      },
-      {
-        "path": "./update",
-        "namespace": "update"
-      },
-      {
-        "path": "./device",
-        "namespace": "device"
-      },
-      {
-        "path": "./clipboard",
-        "namespace": "clipbo"
-      },
-      {
-        "path": "./navigation-bar",
-        "namespace": "naviga"
-      },
-      {
         "path": "./keep-awake",
-        "namespace": "keepaw"
-      },
-      {
-        "path": "./security",
-        "namespace": "securi"
-      },
-      {
-        "path": "./orientation",
-        "namespace": "orient"
-      },
-      {
-        "path": "./ui",
-        "namespace": "ui"
-      },
-      {
-        "path": "./status-bar",
-        "namespace": "status"
-      },
-      {
-        "path": "./webview",
-        "namespace": "webvie"
+        "namespace": "keepaw",
+        "method": "registerKeepAwakeHandlers"
       }
     ]
   }

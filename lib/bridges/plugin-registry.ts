@@ -17,16 +17,5 @@ export const AUTO_PLUGINS: Record<string, () => Promise<any>> = {
 
 /** Manual 플러그인 매핑 (로컬 구현) */
 export const MANUAL_PLUGINS: Record<string, () => Promise<any>> = {
-  './push': () => import('./push'),
-  './splash': () => import('./splash'),
-  './update': () => import('./update'),
-  './device': () => import('./device'),
-  './clipboard': () => import('./clipboard'),
-  './navigation-bar': () => import('./navigation-bar'),
   './keep-awake': () => import('./keep-awake'),
-  './security': () => import('./security'),
-  './orientation': () => import('./orientation'),
-  './ui': () => import('./ui'),
-  './status-bar': () => import('./status-bar'),
-  './webview': () => import('./webview'),
 };
