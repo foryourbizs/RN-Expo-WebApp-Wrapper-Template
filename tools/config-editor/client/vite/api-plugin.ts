@@ -2003,6 +2003,38 @@ export function apiPlugin(): Plugin {
             return;
           }
 
+          // GET /api/config/expo - Expo app.json (프로젝트 루트)
+          if (url === '/api/config/expo' && req.method === 'GET') {
+            const filePath = path.join(projectRoot, 'app.json');
+            try {
+              const content = await fs.readFile(filePath, 'utf-8');
+              sendJson(res, 200, JSON.parse(content));
+            } catch {
+              sendJson(res, 500, { error: 'Failed to read app.json' });
+            }
+            return;
+          }
+
+          // PUT /api/config/expo - Expo app.json (프로젝트 루트)
+          if (url === '/api/config/expo' && req.method === 'PUT') {
+            const filePath = path.join(projectRoot, 'app.json');
+            const body = await readBody(req);
+
+            if (!body || typeof body !== 'object' || Array.isArray(body)) {
+              sendJson(res, 400, { error: 'Request body must be a valid JSON object' });
+              return;
+            }
+
+            try {
+              const content = JSON.stringify(body, null, 2) + '\n';
+              await fs.writeFile(filePath, content, 'utf-8');
+              sendJson(res, 200, { success: true, data: body });
+            } catch {
+              sendJson(res, 500, { error: 'Failed to write app.json' });
+            }
+            return;
+          }
+
           // PUT /api/config/:type
           if (configGetMatch && req.method === 'PUT') {
             const type = configGetMatch[1];

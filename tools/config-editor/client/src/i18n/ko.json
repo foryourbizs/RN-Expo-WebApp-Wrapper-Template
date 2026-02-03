@@ -7,6 +7,20 @@
     "debug": "디버그"
   },
   "app": {
+    "appIcon": {
+      "title": "앱 아이콘",
+      "icon": "기본 아이콘",
+      "iconDesc": "앱 기본 아이콘 이미지 경로 (1024x1024 PNG 권장)",
+      "androidAdaptive": "Android Adaptive 아이콘",
+      "foregroundImage": "전경 이미지",
+      "foregroundImageDesc": "Android Adaptive 아이콘 전경 이미지 (108dp, 투명 배경 PNG)",
+      "backgroundImage": "배경 이미지",
+      "backgroundImageDesc": "Android Adaptive 아이콘 배경 이미지 (배경색 대신 사용)",
+      "backgroundColor": "배경색",
+      "backgroundColorDesc": "Android Adaptive 아이콘 배경색 (배경 이미지 없을 때 사용)",
+      "monochromeImage": "모노크롬 이미지",
+      "monochromeImageDesc": "Android 13+ 테마 아이콘용 단색 이미지"
+    },
     "webview": {
       "title": "웹뷰 설정",
       "baseUrl": "기본 URL",

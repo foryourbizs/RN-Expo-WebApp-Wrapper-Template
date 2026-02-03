@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAppConfig } from '../contexts/ConfigContext';
+import { useAppConfig, useExpoConfig } from '../contexts/ConfigContext';
 import { usePreview } from '../contexts/PreviewContext';
 import { useAccordionSync } from '../hooks/useAccordionSync';
 import {
@@ -22,6 +22,16 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
   const { t } = useTranslation();
   const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
     useAppConfig();
+  const {
+    data: expoData,
+    setData: setExpoData,
+    loading: expoLoading,
+    error: expoError,
+    saving: expoSaving,
+    save: saveExpoConfig,
+    revert: revertExpo,
+    hasChanges: expoHasChanges
+  } = useExpoConfig();
   const { previewUrl, applyPreviewUrl } = usePreview();
   const { handleAccordionToggle } = useAccordionSync();
 
@@ -39,8 +49,8 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
 
   // 변경 사항 알림
   useEffect(() => {
-    onUnsavedChange(hasChanges);
-  }, [hasChanges, onUnsavedChange]);
+    onUnsavedChange(hasChanges || expoHasChanges);
+  }, [hasChanges, expoHasChanges, onUnsavedChange]);
 
   const updateField = useCallback(<T,>(path: string[], value: T) => {
     setData((prevData) => {
@@ -59,20 +69,91 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
     });
   }, [setData]);
 
-  const handleSave = useCallback(async () => {
-    if (data) await saveConfig(data);
-  }, [data, saveConfig]);
+  // Expo config 필드 업데이트
+  const updateExpoField = useCallback(<T,>(path: string[], value: T) => {
+    setExpoData((prevData) => {
+      if (!prevData) return prevData;
+      const newData = structuredClone(prevData);
+      let current: Record<string, unknown> = newData as unknown as Record<string, unknown>;
+      for (let i = 0; i < path.length - 1; i++) {
+        const key = path[i];
+        if (!current[key] || typeof current[key] !== 'object') {
+          current[key] = {};
+        }
+        current = current[key] as Record<string, unknown>;
+      }
+      current[path[path.length - 1]] = value;
+      return newData;
+    });
+  }, [setExpoData]);
 
-  if (loading) return <div className="p-4">{t('common.loading')}</div>;
+  const handleSave = useCallback(async () => {
+    const promises = [];
+    if (data && hasChanges) promises.push(saveConfig(data));
+    if (expoData && expoHasChanges) promises.push(saveExpoConfig(expoData));
+    await Promise.all(promises);
+  }, [data, hasChanges, saveConfig, expoData, expoHasChanges, saveExpoConfig]);
+
+  const handleRevert = useCallback(() => {
+    revert();
+    revertExpo();
+  }, [revert, revertExpo]);
+
+  if (loading || expoLoading) return <div className="p-4">{t('common.loading')}</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
-  if (!data) return null;
+  if (expoError) return <div className="p-4 text-red-500">{expoError}</div>;
+  if (!data || !expoData) return null;
 
   return (
     <div>
+      {/* App Icon Settings */}
+      <Accordion
+        title={t('app.appIcon.title')}
+        defaultOpen
+        sectionId="appIcon"
+        onToggle={(isOpen) => handleAccordionToggle('appIcon', isOpen)}
+      >
+        <TextInput
+          label={t('app.appIcon.icon')}
+          value={expoData.expo?.icon || ''}
+          onChange={(v) => updateExpoField(['expo', 'icon'], v || undefined)}
+          description={t('app.appIcon.iconDesc')}
+        />
+        <Accordion
+          title={t('app.appIcon.androidAdaptive')}
+          sectionId="appIcon-android"
+          onToggle={(isOpen) => handleAccordionToggle('appIcon-android', isOpen)}
+        >
+          <TextInput
+            label={t('app.appIcon.foregroundImage')}
+            value={expoData.expo?.android?.adaptiveIcon?.foregroundImage || ''}
+            onChange={(v) => updateExpoField(['expo', 'android', 'adaptiveIcon', 'foregroundImage'], v || undefined)}
+            description={t('app.appIcon.foregroundImageDesc')}
+          />
+          <TextInput
+            label={t('app.appIcon.backgroundImage')}
+            value={expoData.expo?.android?.adaptiveIcon?.backgroundImage || ''}
+            onChange={(v) => updateExpoField(['expo', 'android', 'adaptiveIcon', 'backgroundImage'], v || undefined)}
+            description={t('app.appIcon.backgroundImageDesc')}
+          />
+          <ColorPicker
+            label={t('app.appIcon.backgroundColor')}
+            value={expoData.expo?.android?.adaptiveIcon?.backgroundColor || '#FFFFFF'}
+            onChange={(v) => updateExpoField(['expo', 'android', 'adaptiveIcon', 'backgroundColor'], v)}
+            description={t('app.appIcon.backgroundColorDesc')}
+          />
+          <TextInput
+            label={t('app.appIcon.monochromeImage')}
+            value={expoData.expo?.android?.adaptiveIcon?.monochromeImage || ''}
+            onChange={(v) => updateExpoField(['expo', 'android', 'adaptiveIcon', 'monochromeImage'], v || undefined)}
+            description={t('app.appIcon.monochromeImageDesc')}
+          />
+        </Accordion>
+      </Accordion>
+
       {/* Webview Settings */}
       <Accordion
         title={t('app.webview.title')}
-        defaultOpen
         sectionId="webview"
         onToggle={(isOpen) => handleAccordionToggle('webview', isOpen)}
       >
@@ -614,10 +695,10 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
       </Accordion>
 
       <SaveRevertBar
-        hasChanges={hasChanges}
-        saving={saving}
+        hasChanges={hasChanges || expoHasChanges}
+        saving={saving || expoSaving}
         onSave={handleSave}
-        onRevert={revert}
+        onRevert={handleRevert}
       />
     </div>
   );

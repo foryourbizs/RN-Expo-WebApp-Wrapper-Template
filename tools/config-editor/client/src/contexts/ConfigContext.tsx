@@ -1,6 +1,6 @@
 // tools/config-editor/client/src/contexts/ConfigContext.tsx
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import type { AppConfig, ThemeConfig, PluginsConfig } from '../types/config';
+import type { AppConfig, ThemeConfig, PluginsConfig, ExpoConfig } from '../types/config';
 
 interface ConfigState<T> {
   data: T | null;
@@ -21,13 +21,14 @@ interface ConfigContextValue {
   app: ConfigState<AppConfig> & ConfigActions<AppConfig>;
   theme: ConfigState<ThemeConfig> & ConfigActions<ThemeConfig>;
   plugins: ConfigState<PluginsConfig> & ConfigActions<PluginsConfig>;
+  expo: ConfigState<ExpoConfig> & ConfigActions<ExpoConfig>;
 }
 
 const ConfigContext = createContext<ConfigContextValue | null>(null);
 
 type SetDataArg<T> = T | null | ((prev: T | null) => T | null);
 
-function useConfigState<T>(type: 'app' | 'theme' | 'plugins') {
+function useConfigState<T>(type: 'app' | 'theme' | 'plugins' | 'expo') {
   const [data, setDataInternal] = useState<T | null>(null);
   const [originalData, setOriginalData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,8 +112,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const app = useConfigState<AppConfig>('app');
   const theme = useConfigState<ThemeConfig>('theme');
   const plugins = useConfigState<PluginsConfig>('plugins');
+  const expo = useConfigState<ExpoConfig>('expo');
 
-  const value = useMemo(() => ({ app, theme, plugins }), [app, theme, plugins]);
+  const value = useMemo(() => ({ app, theme, plugins, expo }), [app, theme, plugins, expo]);
 
   return (
     <ConfigContext.Provider value={value}>
@@ -137,4 +139,10 @@ export function usePluginsConfig() {
   const context = useContext(ConfigContext);
   if (!context) throw new Error('usePluginsConfig must be used within ConfigProvider');
   return context.plugins;
+}
+
+export function useExpoConfig() {
+  const context = useContext(ConfigContext);
+  if (!context) throw new Error('useExpoConfig must be used within ConfigProvider');
+  return context.expo;
 }

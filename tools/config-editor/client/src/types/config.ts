@@ -82,6 +82,9 @@ export interface AppConfig {
       nav?: string;
     };
   };
+  theme?: {
+    loadingIndicatorColor?: string;
+  };
 }
 
 export interface ThemeConfig {
@@ -141,5 +144,47 @@ export interface PluginsConfig {
       entry?: string;
       method?: string;
     }>;
+  };
+}
+
+// Expo app.json 설정 타입
+export interface ExpoConfig {
+  expo: {
+    name?: string;
+    slug?: string;
+    version?: string;
+    orientation?: string;
+    icon?: string;
+    scheme?: string;
+    userInterfaceStyle?: string;
+    newArchEnabled?: boolean;
+    ios?: {
+      supportsTablet?: boolean;
+      bundleIdentifier?: string;
+      infoPlist?: Record<string, string>;
+    };
+    android?: {
+      package?: string;
+      permissions?: string[];
+      adaptiveIcon?: {
+        foregroundImage?: string;
+        backgroundImage?: string;
+        backgroundColor?: string;
+        monochromeImage?: string;
+      };
+      edgeToEdgeEnabled?: boolean;
+      splash?: {
+        backgroundColor?: string;
+        resizeMode?: string;
+      };
+    };
+    splash?: {
+      backgroundColor?: string;
+      resizeMode?: string;
+      image?: string;
+    };
+    plugins?: Array<string | [string, Record<string, unknown>]>;
+    experiments?: Record<string, boolean>;
+    extra?: Record<string, unknown>;
   };
 }

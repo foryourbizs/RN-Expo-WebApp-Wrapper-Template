@@ -7,6 +7,20 @@
     "debug": "Debug"
   },
   "app": {
+    "appIcon": {
+      "title": "App Icon",
+      "icon": "Default Icon",
+      "iconDesc": "App icon image path (1024x1024 PNG recommended)",
+      "androidAdaptive": "Android Adaptive Icon",
+      "foregroundImage": "Foreground Image",
+      "foregroundImageDesc": "Android Adaptive icon foreground image (108dp, transparent PNG)",
+      "backgroundImage": "Background Image",
+      "backgroundImageDesc": "Android Adaptive icon background image (used instead of color)",
+      "backgroundColor": "Background Color",
+      "backgroundColorDesc": "Android Adaptive icon background color (when no background image)",
+      "monochromeImage": "Monochrome Image",
+      "monochromeImageDesc": "Single-color image for Android 13+ themed icons"
+    },
     "webview": {
       "title": "Webview Settings",
       "baseUrl": "Base URL",
