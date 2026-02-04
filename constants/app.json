@@ -48,7 +48,7 @@
     "edges": "all"
   },
   "debug": {
-    "enabled": false,
+    "enabled": true,
     "maxLogLines": 999
   },
   "theme": {

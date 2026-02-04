@@ -2918,16 +2918,22 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             }
 
             // 로그 필터 설정
+            // WebView console.log는 다양한 태그로 출력됨:
+            // - chromium: 대부분의 WebView console 메시지 (I/chromium: [INFO:CONSOLE...])
+            // - Console: 일부 기기에서 사용
+            // - WebViewConsole: react-native-webview 특정
+            // 참고: webviewDebuggingEnabled={true} 필요
             let filter = '';
             switch (logType) {
               case 'native':
                 filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V *:S';
                 break;
               case 'webview':
-                filter = 'chromium:V SBrowser:V SBrowserConsole:V WebViewConsole:V cr_console:V *:S';
+                // chromium 태그만 필터 (CONSOLE 메시지 포함)
+                filter = 'chromium:I *:S';
                 break;
               case 'all':
-                filter = 'ReactNative:V ReactNativeJS:V expo:V chromium:V SBrowser:V SBrowserConsole:V WebViewConsole:V cr_console:V *:S';
+                filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V chromium:I *:S';
                 break;
             }
 

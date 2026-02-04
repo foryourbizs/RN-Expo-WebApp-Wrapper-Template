@@ -588,6 +588,8 @@ export default function WebViewContainer() {
         setSupportMultipleWindows={webview.performance.setSupportMultipleWindows}
         setBuiltInZoomControls={false}
         setDisplayZoomControls={false}
+        // WebView 디버깅 (console.log를 logcat에 출력)
+        webviewDebuggingEnabled={__DEV__ || debug.enabled}
         // 이벤트 핸들러
         onNavigationStateChange={handleNavigationStateChange}
         onLoadStart={handleLoadStart}
