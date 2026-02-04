@@ -106,10 +106,116 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
 
   return (
     <div>
+      {/* App Info Settings */}
+      <Accordion
+        title={t('app.appInfo.title')}
+        defaultOpen
+        sectionId="appInfo"
+        onToggle={(isOpen) => handleAccordionToggle('appInfo', isOpen)}
+      >
+        <TextInput
+          label={t('app.appInfo.name')}
+          value={expoData.expo?.name || ''}
+          onChange={(v) => updateExpoField(['expo', 'name'], v)}
+          description={t('app.appInfo.nameDesc')}
+        />
+        <TextInput
+          label={t('app.appInfo.slug')}
+          value={expoData.expo?.slug || ''}
+          onChange={(v) => updateExpoField(['expo', 'slug'], v)}
+          description={t('app.appInfo.slugDesc')}
+        />
+        <TextInput
+          label={t('app.appInfo.version')}
+          value={expoData.expo?.version || ''}
+          onChange={(v) => updateExpoField(['expo', 'version'], v)}
+          description={t('app.appInfo.versionDesc')}
+        />
+        <TextInput
+          label={t('app.appInfo.description')}
+          value={expoData.expo?.description || ''}
+          onChange={(v) => updateExpoField(['expo', 'description'], v || undefined)}
+          description={t('app.appInfo.descriptionDesc')}
+        />
+        <TextInput
+          label={t('app.appInfo.scheme')}
+          value={expoData.expo?.scheme || ''}
+          onChange={(v) => updateExpoField(['expo', 'scheme'], v || undefined)}
+          description={t('app.appInfo.schemeDesc')}
+        />
+        <Select
+          label={t('app.appInfo.orientation')}
+          value={expoData.expo?.orientation || 'default'}
+          onChange={(v) => updateExpoField(['expo', 'orientation'], v)}
+          description={t('app.appInfo.orientationDesc')}
+          options={[
+            { value: 'default', label: t('app.appInfo.orientationDefault') },
+            { value: 'portrait', label: t('app.appInfo.orientationPortrait') },
+            { value: 'landscape', label: t('app.appInfo.orientationLandscape') }
+          ]}
+        />
+        <Select
+          label={t('app.appInfo.userInterfaceStyle')}
+          value={expoData.expo?.userInterfaceStyle || 'automatic'}
+          onChange={(v) => updateExpoField(['expo', 'userInterfaceStyle'], v)}
+          description={t('app.appInfo.userInterfaceStyleDesc')}
+          options={[
+            { value: 'automatic', label: t('app.appInfo.uiStyleAutomatic') },
+            { value: 'light', label: t('app.appInfo.uiStyleLight') },
+            { value: 'dark', label: t('app.appInfo.uiStyleDark') }
+          ]}
+        />
+
+        {/* Platform Specific */}
+        <Accordion
+          title={t('app.appInfo.androidSettings')}
+          sectionId="appInfo-android"
+          onToggle={(isOpen) => handleAccordionToggle('appInfo-android', isOpen)}
+        >
+          <TextInput
+            label={t('app.appInfo.androidPackage')}
+            value={expoData.expo?.android?.package || ''}
+            onChange={(v) => updateExpoField(['expo', 'android', 'package'], v)}
+            description={t('app.appInfo.androidPackageDesc')}
+          />
+          <NumberInput
+            label={t('app.appInfo.androidVersionCode')}
+            value={expoData.expo?.android?.versionCode ?? 1}
+            onChange={(v) => updateExpoField(['expo', 'android', 'versionCode'], v)}
+            description={t('app.appInfo.androidVersionCodeDesc')}
+            min={1}
+          />
+        </Accordion>
+
+        <Accordion
+          title={t('app.appInfo.iosSettings')}
+          sectionId="appInfo-ios"
+          onToggle={(isOpen) => handleAccordionToggle('appInfo-ios', isOpen)}
+        >
+          <TextInput
+            label={t('app.appInfo.iosBundleIdentifier')}
+            value={expoData.expo?.ios?.bundleIdentifier || ''}
+            onChange={(v) => updateExpoField(['expo', 'ios', 'bundleIdentifier'], v || undefined)}
+            description={t('app.appInfo.iosBundleIdentifierDesc')}
+          />
+          <TextInput
+            label={t('app.appInfo.iosBuildNumber')}
+            value={expoData.expo?.ios?.buildNumber || ''}
+            onChange={(v) => updateExpoField(['expo', 'ios', 'buildNumber'], v || undefined)}
+            description={t('app.appInfo.iosBuildNumberDesc')}
+          />
+          <Toggle
+            label={t('app.appInfo.iosSupportsTablet')}
+            value={expoData.expo?.ios?.supportsTablet ?? true}
+            onChange={(v) => updateExpoField(['expo', 'ios', 'supportsTablet'], v)}
+            description={t('app.appInfo.iosSupportsTabletDesc')}
+          />
+        </Accordion>
+      </Accordion>
+
       {/* App Icon Settings */}
       <Accordion
         title={t('app.appIcon.title')}
-        defaultOpen
         sectionId="appIcon"
         onToggle={(isOpen) => handleAccordionToggle('appIcon', isOpen)}
       >

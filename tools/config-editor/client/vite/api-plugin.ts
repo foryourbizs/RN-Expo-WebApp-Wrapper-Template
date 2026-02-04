@@ -1203,7 +1203,8 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
   }
 
   // 7. android folder
-  if (fsSync.existsSync(path.join(projectRoot, 'android'))) {
+  const androidFolderExists = fsSync.existsSync(path.join(projectRoot, 'android'));
+  if (androidFolderExists) {
     checks.push({ name: 'Android Project', status: 'ok', message: 'Found' });
   } else {
     checks.push({
@@ -1215,7 +1216,69 @@ async function checkBuildEnvironment(): Promise<Array<{ name: string; status: st
     });
   }
 
-  // 8. Keystore
+  // 8. Package Name Mismatch Check
+  if (androidFolderExists) {
+    try {
+      // app.json에서 expected package 읽기
+      const appJsonPath = path.join(projectRoot, 'app.json');
+      const appJson = JSON.parse(fsSync.readFileSync(appJsonPath, 'utf-8'));
+      const expectedPackage = appJson.expo?.android?.package;
+
+      if (expectedPackage) {
+        // build.gradle에서 실제 namespace/applicationId 확인
+        const buildGradlePath = path.join(projectRoot, 'android', 'app', 'build.gradle');
+        let actualPackage: string | null = null;
+
+        if (fsSync.existsSync(buildGradlePath)) {
+          const buildGradleContent = fsSync.readFileSync(buildGradlePath, 'utf-8');
+          // namespace 또는 applicationId 찾기
+          const namespaceMatch = buildGradleContent.match(/namespace\s*[=:]\s*["']([^"']+)["']/);
+          const appIdMatch = buildGradleContent.match(/applicationId\s*[=:]\s*["']([^"']+)["']/);
+          actualPackage = namespaceMatch?.[1] || appIdMatch?.[1] || null;
+        }
+
+        // 또는 src/main/java 폴더 구조에서 패키지 확인
+        if (!actualPackage) {
+          const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java');
+          if (fsSync.existsSync(javaDir)) {
+            // 첫 번째로 발견되는 MainApplication 또는 MainActivity의 패키지 추출
+            const findPackageInDir = (dir: string, prefix = ''): string | null => {
+              const entries = fsSync.readdirSync(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                if (entry.isDirectory()) {
+                  const newPrefix = prefix ? `${prefix}.${entry.name}` : entry.name;
+                  const result = findPackageInDir(path.join(dir, entry.name), newPrefix);
+                  if (result) return result;
+                } else if (entry.name === 'MainApplication.kt' || entry.name === 'MainApplication.java' ||
+                           entry.name === 'MainActivity.kt' || entry.name === 'MainActivity.java') {
+                  return prefix;
+                }
+              }
+              return null;
+            };
+            actualPackage = findPackageInDir(javaDir);
+          }
+        }
+
+        if (actualPackage && actualPackage !== expectedPackage) {
+          checks.push({
+            name: 'Package Name',
+            status: 'error',
+            message: 'Mismatch detected',
+            detail: `app.json: ${expectedPackage} ↔ android: ${actualPackage}`,
+            guidance: 'Run "전체 초기화 (Deep Clean)" or "npx expo prebuild --clean" to regenerate android folder with correct package name'
+          });
+        } else if (actualPackage) {
+          checks.push({ name: 'Package Name', status: 'ok', message: expectedPackage });
+        }
+      }
+    } catch (e) {
+      // 패키지 확인 실패 시 무시 (필수 체크 아님)
+      console.log('[api-plugin] Package name check failed:', e);
+    }
+  }
+
+  // 9. Keystore
   const keystorePaths = [
     path.join(projectRoot, 'android', 'app', 'release.keystore'),
     path.join(projectRoot, 'android', 'app', 'my-release-key.keystore'),

@@ -153,18 +153,22 @@ export interface ExpoConfig {
     name?: string;
     slug?: string;
     version?: string;
-    orientation?: string;
+    description?: string;
+    orientation?: 'default' | 'portrait' | 'landscape';
     icon?: string;
     scheme?: string;
-    userInterfaceStyle?: string;
+    userInterfaceStyle?: 'automatic' | 'light' | 'dark';
     newArchEnabled?: boolean;
+    githubUrl?: string;
     ios?: {
       supportsTablet?: boolean;
       bundleIdentifier?: string;
+      buildNumber?: string;
       infoPlist?: Record<string, string>;
     };
     android?: {
       package?: string;
+      versionCode?: number;
       permissions?: string[];
       adaptiveIcon?: {
         foregroundImage?: string;

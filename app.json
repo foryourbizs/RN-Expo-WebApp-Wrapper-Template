@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "webappsample",
-    "slug": "webappsample",
+    "name": "fitlog",
+    "slug": "fitlogapp",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "webappsample",
+    "scheme": "fitlogapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -16,7 +16,7 @@
       }
     },
     "android": {
-      "package": "com.webappsample.rnwebwrapper",
+      "package": "com.fitlogapp.rnwebwrapper",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO"
@@ -35,7 +35,8 @@
       },
       "intentFilters": [],
       "allowBackup": true,
-      "userInterfaceStyle": "automatic"
+      "userInterfaceStyle": "automatic",
+      "versionCode": 1
     },
     "splash": {
       "backgroundColor": "#ffffff",
@@ -61,6 +62,7 @@
       "eas": {
         "projectId": "0d89fc38-6172-47db-851a-df4adc83fcf1"
       }
-    }
+    },
+    "description": "운동용 샘플 앱"
   }
 }
