@@ -3054,14 +3054,16 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             let filter = '';
             switch (logType) {
               case 'native':
-                filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V *:S';
+                // HeadlessWebViewManager: Headless WebView 디버그 로그
+                // CustomBackgroundModule: 백그라운드 네이티브 모듈 로그
+                filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V HeadlessWebViewManager:D CustomBackgroundModule:D BackgroundTaskService:D *:S';
                 break;
               case 'webview':
                 // chromium 태그만 필터 (CONSOLE 메시지 포함)
                 filter = 'chromium:I *:S';
                 break;
               case 'all':
-                filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V chromium:I *:S';
+                filter = 'ReactNative:V ReactNativeJS:V expo:V ExpoModulesCore:V HeadlessWebViewManager:D CustomBackgroundModule:D BackgroundTaskService:D chromium:I *:S';
                 break;
             }
 

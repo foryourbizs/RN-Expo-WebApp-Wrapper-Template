@@ -430,6 +430,29 @@ export const BridgeExtension: BridgeExtensionAPI = {
         return false;
       }
 
+      // 액션 추출 (보안 검증 전에 필요)
+      const action = data.protocol.replace('app://', '');
+
+      // __console 특수 처리: headless WebView의 console.log 포워딩
+      // 디버깅 전용이므로 보안 검증 스킵
+      if (action === '__console') {
+        const payload = data.payload as { level?: string; message?: string };
+        const level = payload?.level || 'log';
+        const message = payload?.message || '';
+        // ReactNativeJS 로그로 출력 (config editor의 디바이스 로그에 표시됨)
+        switch (level) {
+          case 'error':
+            console.error(message);
+            break;
+          case 'warn':
+            console.warn(message);
+            break;
+          default:
+            console.log(message);
+        }
+        return true;
+      }
+
       // 보안 검증 (기존 로직 재사용)
       const securityEngine = SecurityEngine.getInstance(
         APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]
@@ -440,8 +463,6 @@ export const BridgeExtension: BridgeExtensionAPI = {
         return false;
       }
 
-      // 액션 추출
-      const action = data.protocol.replace('app://', '');
       const decodedPayload = decodeBase64Data(data.payload);
 
       console.log(`[Bridge] External message: ${action}`);

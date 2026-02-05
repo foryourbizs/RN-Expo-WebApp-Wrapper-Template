@@ -39,9 +39,50 @@ export const getBridgeClientScript = (securityToken: string): string => {
   } catch(e) {}
   
   // ========================================
+  // Headless WebView Console 포워딩
+  // chromium WebChromeClient가 없는 headless WebView에서 console.log를 캡처
+  // ========================================
+
+  (function() {
+    // 메인 WebView에서는 스킵 (chromium이 이미 캡처함)
+    if (document.body && document.body.innerHTML.length > 500) return;
+
+    var originalConsole = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error,
+      info: console.info
+    };
+
+    function forwardToNative(level, args) {
+      try {
+        if (window.ReactNativeWebView) {
+          var message = '[HEADLESS:' + level.toUpperCase() + '] ' +
+            Array.prototype.slice.call(args).map(function(a) {
+              return typeof a === 'object' ? JSON.stringify(a) : String(a);
+            }).join(' ');
+          // 네이티브로 직접 로그 전송 (app://__console 프로토콜)
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            protocol: 'app://__console',
+            payload: { level: level, message: message },
+            timestamp: Date.now()
+          }));
+        }
+      } catch(e) {}
+      // 원본 호출
+      originalConsole[level].apply(console, args);
+    }
+
+    console.log = function() { forwardToNative('log', arguments); };
+    console.warn = function() { forwardToNative('warn', arguments); };
+    console.error = function() { forwardToNative('error', arguments); };
+    console.info = function() { forwardToNative('info', arguments); };
+  })();
+
+  // ========================================
   // AppBridge 초기화
   // ========================================
-  
+
   // 이미 초기화되었으면 스킵
   if (window.AppBridge) return;
 
@@ -317,7 +358,10 @@ export const getBridgeClientScript = (securityToken: string): string => {
 
   // 초기화 완료 이벤트
   window.dispatchEvent(new CustomEvent('AppBridgeReady'));
-  console.log('[AppBridge] Initialized');
+
+  // 초기화 정보 로깅 (headless WebView 디버깅용)
+  var isHeadless = !document.body || document.body.innerHTML.length < 500;
+  console.log('[AppBridge] Initialized - isHeadless:', isHeadless, ', ReactNativeWebView:', !!window.ReactNativeWebView);
 })();
 true;
 `;
