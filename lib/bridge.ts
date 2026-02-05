@@ -7,53 +7,6 @@ import type { WebView } from 'react-native-webview';
 import { SecurityEngine } from '@/lib/security';
 import { APP_CONFIG } from '@/constants/app-config';
 
-/**
- * 민감 액션 목록
- * 이 액션들은 추가 보안 검증이 필요할 수 있음
- */
-export const SENSITIVE_ACTIONS: readonly string[] = [
-  // 카메라 (cam:* 네임스페이스)
-  'cam:start',
-  'cam:stop',
-  'cam:capture',
-  'cam:startStream',
-  'cam:stopStream',
-
-  // 마이크 (mic:* 네임스페이스)
-  'mic:start',
-  'mic:stop',
-  'mic:record',
-
-  // 클립보드 (쓰기만 민감)
-  'writeClipboard',
-
-  // 파일 시스템
-  'fs:write',
-  'fs:delete',
-] as const;
-
-/**
- * 민감 액션 패턴 (와일드카드 지원)
- */
-const SENSITIVE_PATTERNS = [
-  /^cam:/,   // 모든 카메라 액션
-  /^mic:/,   // 모든 마이크 액션
-  /^fs:/,    // 모든 파일시스템 액션
-];
-
-/**
- * 민감 액션 여부 확인
- */
-export const isSensitiveAction = (action: string): boolean => {
-  // 직접 매칭
-  if (SENSITIVE_ACTIONS.includes(action)) {
-    return true;
-  }
-
-  // 패턴 매칭
-  return SENSITIVE_PATTERNS.some(pattern => pattern.test(action));
-};
-
 // base64 디코딩 헬퍼
 const decodeBase64Data = (data: any): any => {
   if (!data || typeof data !== 'object') return data;
@@ -229,12 +182,6 @@ export const handleBridgeMessage = (messageData: string): boolean => {
 
     console.log(`[Bridge] Received: ${action}`, message.payload);
 
-    // 민감 액션 로깅
-    if (isSensitiveAction(action)) {
-      console.log(`[Bridge] ⚠️ Sensitive action called: ${action}`);
-      // 향후 추가 검증 로직 (서명 검증 등) 추가 가능
-    }
-
     const handler = handlers.get(action);
     if (handler) {
       // 응답 함수 생성
@@ -358,4 +305,215 @@ export const callWeb = <T = unknown, R = unknown>(
  */
 export const getSecurityToken = () => {
   return SecurityEngine.getInstance(APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]).getSecurityToken();
+};
+
+// ============================================================
+// Bridge Extension API (플러그인 확장용)
+// 기존 코드 수정 없이 외부 WebView(Headless 등) 지원
+// ============================================================
+
+/**
+ * 외부 WebView 어댑터 인터페이스
+ * 플러그인이 구현하여 등록
+ */
+export interface ExternalWebViewAdapter {
+  /** 어댑터 ID (예: 'headless', 'background') */
+  id: string;
+
+  /** 이 어댑터로 메시지 전송 */
+  sendMessage: (action: string, payload: unknown) => void;
+
+  /** 어댑터가 활성 상태인지 */
+  isActive: () => boolean;
+
+  /** 어댑터 정리 */
+  destroy?: () => void;
+}
+
+/**
+ * WebView 타겟 식별자
+ */
+export type WebViewTarget = 'main' | 'headless' | string;
+
+/**
+ * Bridge 확장 API 인터페이스
+ */
+export interface BridgeExtensionAPI {
+  /** 외부 WebView 어댑터 등록 */
+  registerWebViewAdapter: (adapter: ExternalWebViewAdapter) => void;
+
+  /** 외부 WebView 어댑터 해제 */
+  unregisterWebViewAdapter: (adapterId: string) => void;
+
+  /** 특정 타겟으로 메시지 전송 */
+  sendToTarget: (target: WebViewTarget, action: string, payload?: unknown) => void;
+
+  /** 외부 WebView에서 온 메시지 처리 (핸들러 실행) */
+  handleExternalMessage: (
+    messageData: string,
+    responseCallback: (action: string, payload: unknown) => void
+  ) => boolean;
+
+  /** 등록된 모든 핸들러 목록 조회 */
+  getRegisteredHandlers: () => string[];
+
+  /** 핸들러 존재 여부 확인 */
+  hasHandler: (action: string) => boolean;
+}
+
+// 외부 WebView 어댑터 저장소
+const externalAdapters = new Map<string, ExternalWebViewAdapter>();
+
+/**
+ * Bridge 확장 API 구현
+ * 플러그인에서 Headless WebView 등 외부 WebView 지원에 사용
+ */
+export const BridgeExtension: BridgeExtensionAPI = {
+  /**
+   * 외부 WebView 어댑터 등록
+   * 플러그인에서 Headless WebView 등록 시 사용
+   */
+  registerWebViewAdapter(adapter: ExternalWebViewAdapter): void {
+    if (externalAdapters.has(adapter.id)) {
+      console.warn(`[Bridge] Adapter '${adapter.id}' already registered, replacing`);
+      const existing = externalAdapters.get(adapter.id);
+      existing?.destroy?.();
+    }
+    externalAdapters.set(adapter.id, adapter);
+    console.log(`[Bridge] External adapter registered: ${adapter.id}`);
+  },
+
+  /**
+   * 외부 WebView 어댑터 해제
+   */
+  unregisterWebViewAdapter(adapterId: string): void {
+    const adapter = externalAdapters.get(adapterId);
+    if (adapter) {
+      adapter.destroy?.();
+      externalAdapters.delete(adapterId);
+      console.log(`[Bridge] External adapter unregistered: ${adapterId}`);
+    }
+  },
+
+  /**
+   * 특정 타겟으로 메시지 전송
+   * - 'main': 기존 sendToWeb() 사용
+   * - 'headless' 또는 커스텀 ID: 등록된 어댑터 사용
+   */
+  sendToTarget(target: WebViewTarget, action: string, payload?: unknown): void {
+    if (target === 'main') {
+      sendToWeb(action, payload);
+      return;
+    }
+
+    const adapter = externalAdapters.get(target);
+    if (adapter && adapter.isActive()) {
+      adapter.sendMessage(action, payload);
+    } else {
+      console.warn(`[Bridge] Target '${target}' not available`);
+    }
+  },
+
+  /**
+   * 외부 WebView에서 온 메시지를 기존 핸들러로 처리
+   * 기존 handleBridgeMessage와 동일한 로직, 응답만 다른 곳으로
+   */
+  handleExternalMessage(
+    messageData: string,
+    responseCallback: (action: string, payload: unknown) => void
+  ): boolean {
+    try {
+      const data = JSON.parse(messageData);
+
+      // 프로토콜 검증
+      if (!data.protocol || !data.protocol.startsWith('app://')) {
+        return false;
+      }
+
+      // 보안 검증 (기존 로직 재사용)
+      const securityEngine = SecurityEngine.getInstance(
+        APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]
+      );
+      const securityDecision = securityEngine.validateBridgeMessage(data);
+      if (!securityDecision.allowed) {
+        console.warn('[Bridge] External message security validation failed:', securityDecision.reason);
+        return false;
+      }
+
+      // 액션 추출
+      const action = data.protocol.replace('app://', '');
+      const decodedPayload = decodeBase64Data(data.payload);
+
+      console.log(`[Bridge] External message: ${action}`);
+
+      // 핸들러 조회
+      const handler = handlers.get(action);
+      if (!handler) {
+        console.warn(`[Bridge] No handler for external action: ${action}`);
+        if (data.requestId) {
+          responseCallback('bridgeResponse', {
+            requestId: data.requestId,
+            success: false,
+            error: `Unknown action: ${action}`,
+          });
+        }
+        return false;
+      }
+
+      // 응답 함수 생성 (외부 WebView로 응답)
+      const respond = (responseData: unknown) => {
+        if (data.requestId) {
+          responseCallback('bridgeResponse', {
+            requestId: data.requestId,
+            success: true,
+            data: responseData,
+          });
+        }
+      };
+
+      try {
+        const result = handler(decodedPayload, respond);
+        // Promise 처리
+        if (result instanceof Promise) {
+          result.catch((error: Error) => {
+            console.error(`[Bridge] External handler error: ${action}`, error);
+            if (data.requestId) {
+              responseCallback('bridgeResponse', {
+                requestId: data.requestId,
+                success: false,
+                error: error.message,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[Bridge] External handler error: ${action}`, error);
+        if (data.requestId) {
+          responseCallback('bridgeResponse', {
+            requestId: data.requestId,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * 등록된 핸들러 목록 조회
+   */
+  getRegisteredHandlers(): string[] {
+    return Array.from(handlers.keys());
+  },
+
+  /**
+   * 핸들러 존재 여부 확인
+   */
+  hasHandler(action: string): boolean {
+    return handlers.has(action);
+  },
 };
