@@ -129,6 +129,14 @@ export interface ThemeConfig {
   };
 }
 
+export interface BackgroundPluginOptions {
+  enableHeadlessBridge?: boolean;
+}
+
+export interface PluginOptions {
+  background?: BackgroundPluginOptions;
+}
+
 export interface PluginsConfig {
   $schema?: string;
   plugins?: {
@@ -137,6 +145,7 @@ export interface PluginsConfig {
       namespace: string;
       method?: string;
       keepModules?: string[];
+      options?: PluginOptions;
     }>;
     manual?: Array<{
       path: string;

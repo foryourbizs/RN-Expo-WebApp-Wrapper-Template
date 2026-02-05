@@ -259,7 +259,9 @@
     "installAndAdd": "설치 후 추가",
     "scanResults": "lib/bridges 폴더 스캔 결과",
     "alreadyAdded": "이미 추가됨",
-    "namespaceConflict": "네임스페이스 충돌이 있습니다. 각 플러그인은 고유한 네임스페이스를 사용해야 합니다."
+    "namespaceConflict": "네임스페이스 충돌이 있습니다. 각 플러그인은 고유한 네임스페이스를 사용해야 합니다.",
+    "enableHeadlessBridge": "Headless Bridge 연동",
+    "headlessBridgeDesc": "백그라운드에서 기존 핸들러 사용"
   },
   "build": {
     "envSettings": "환경 설정",

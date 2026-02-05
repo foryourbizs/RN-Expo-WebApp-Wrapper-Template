@@ -6,23 +6,52 @@ import AddAutoPluginModal from '../components/AddAutoPluginModal';
 import AddManualPluginModal from '../components/AddManualPluginModal';
 import { SaveRevertBar } from '../components/form';
 
+/**
+ * 다국어 레이블 추출 유틸리티
+ */
+function getLocalizedLabel(
+  label: { ko: string; en: string } | string | undefined,
+  lang: string
+): string {
+  if (!label) return '';
+  if (typeof label === 'string') return label;
+  return lang === 'ko' ? label.ko : label.en;
+}
+
 interface PluginsConfigProps {
   onUnsavedChange: (hasChanges: boolean) => void;
 }
 
 export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
     usePluginsConfig();
-  const { installedPackages, fetchInstalled, installPackage } = usePlugins();
+  const { installedPackages, installedLoaded, pluginMetadata, metadataLoaded, fetchInstalled, fetchMetadata, installPackage } = usePlugins();
 
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [installing, setInstalling] = useState<string | null>(null);
 
+  // 설치된 패키지와 메타데이터 조회
   useEffect(() => {
     fetchInstalled();
   }, [fetchInstalled]);
+
+  // auto 플러그인 목록이 변경되면 해당 플러그인들의 메타데이터 조회
+  const autoPluginNames = useMemo(() =>
+    (data?.plugins?.auto || []).map(p => p.name),
+    [data?.plugins?.auto]
+  );
+
+  useEffect(() => {
+    if (autoPluginNames.length > 0) {
+      // 아직 메타데이터가 없는 플러그인만 조회
+      const missing = autoPluginNames.filter(name => !(name in pluginMetadata));
+      if (missing.length > 0) {
+        fetchMetadata(missing);
+      }
+    }
+  }, [autoPluginNames, pluginMetadata, fetchMetadata]);
 
   useEffect(() => {
     onUnsavedChange(hasChanges);
@@ -111,6 +140,38 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
     });
   }, [setData]);
 
+  // 플러그인 옵션 토글 핸들러 (category 기반)
+  const handleTogglePluginOption = useCallback((
+    index: number,
+    category: string,
+    optionKey: string,
+    value: boolean | string | number
+  ) => {
+    setData((prevData) => {
+      if (!prevData) return prevData;
+      const newAuto = [...(prevData.plugins?.auto || [])];
+      const plugin = { ...newAuto[index] };
+
+      // options.{category} 객체 초기화
+      if (!plugin.options) plugin.options = {};
+      if (!(plugin.options as Record<string, unknown>)[category]) {
+        (plugin.options as Record<string, unknown>)[category] = {};
+      }
+
+      // 옵션 설정
+      ((plugin.options as Record<string, Record<string, unknown>>)[category])[optionKey] = value;
+
+      newAuto[index] = plugin;
+      return {
+        ...prevData,
+        plugins: {
+          ...prevData.plugins,
+          auto: newAuto
+        }
+      };
+    });
+  }, [setData]);
+
   const handleRemoveManualPlugin = useCallback((index: number) => {
     setData((prevData) => {
       if (!prevData) return prevData;
@@ -168,43 +229,88 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
             autoPlugins.map((plugin, index) => {
               const installed = isInstalled(plugin.name);
               const hasConflict = conflictingNamespaces.has(plugin.namespace);
+              const meta = pluginMetadata[plugin.name];
+              const supportedOptions = meta?.supportedOptions;
+
               return (
-                <div key={plugin.name} className={`p-3 bg-white border rounded flex items-center justify-between ${hasConflict ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
-                  <div>
-                    <span className="text-sm font-medium text-slate-800">{plugin.name}</span>
-                    <span className={`ml-2 text-xs ${hasConflict ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
-                      ns: {plugin.namespace}{hasConflict && ' ⚠'}
-                    </span>
-                    {plugin.method && (
-                      <span className="ml-2 text-xs text-blue-500">
-                        fn: {plugin.method}
+                <div key={plugin.name} className={`p-3 bg-white border rounded ${hasConflict ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-slate-800">{plugin.name}</span>
+                      <span className={`ml-2 text-xs ${hasConflict ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
+                        ns: {plugin.namespace}{hasConflict && ' ⚠'}
                       </span>
-                    )}
-                    <span className={`ml-2 text-xs ${installed ? 'text-green-600' : 'text-orange-500'}`}>
-                      {installed ? 'installed' : 'not installed'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    {!installed && (
+                      {plugin.method && (
+                        <span className="ml-2 text-xs text-blue-500">
+                          fn: {plugin.method}
+                        </span>
+                      )}
+                      {installedLoaded ? (
+                        <span className={`ml-2 text-xs ${installed ? 'text-green-600' : 'text-orange-500'}`}>
+                          {installed ? 'installed' : 'not installed'}
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-xs text-slate-400">checking...</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {installedLoaded && !installed && (
+                        <button
+                          onClick={async () => {
+                            setInstalling(plugin.name);
+                            await installPackage(plugin.name);
+                            setInstalling(null);
+                          }}
+                          disabled={installing === plugin.name}
+                          className="px-2 py-1 text-xs border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          {installing === plugin.name ? '...' : t('plugins.install')}
+                        </button>
+                      )}
                       <button
-                        onClick={async () => {
-                          setInstalling(plugin.name);
-                          await installPackage(plugin.name);
-                          setInstalling(null);
-                        }}
-                        disabled={installing === plugin.name}
-                        className="px-2 py-1 text-xs border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50"
+                        onClick={() => handleRemoveAutoPlugin(index)}
+                        className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
                       >
-                        {installing === plugin.name ? '...' : t('plugins.install')}
+                        {t('plugins.remove')}
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleRemoveAutoPlugin(index)}
-                      className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
-                    >
-                      {t('plugins.remove')}
-                    </button>
+                    </div>
                   </div>
+
+                  {/* 플러그인 메타데이터 기반 동적 옵션 UI */}
+                  {metadataLoaded.has(plugin.name) && supportedOptions && Object.keys(supportedOptions).length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-slate-100 space-y-2">
+                      {Object.entries(supportedOptions).map(([category, options]) => (
+                        Object.entries(options).map(([optionKey, optionMeta]) => {
+                          const currentValue = (plugin.options as Record<string, Record<string, unknown>>)?.[category]?.[optionKey];
+                          const defaultValue = optionMeta.default;
+                          const isChecked = currentValue !== undefined ? Boolean(currentValue) : Boolean(defaultValue);
+
+                          // boolean 타입만 체크박스로 렌더링
+                          if (optionMeta.type === 'boolean') {
+                            return (
+                              <label key={`${category}:${optionKey}`} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => handleTogglePluginOption(index, category, optionKey, e.target.checked)}
+                                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs text-slate-600">
+                                  {getLocalizedLabel(optionMeta.label, i18n.language)}
+                                </span>
+                                {optionMeta.description && (
+                                  <span className="text-xs text-slate-400">
+                                    ({getLocalizedLabel(optionMeta.description, i18n.language)})
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          }
+                          return null;
+                        })
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })

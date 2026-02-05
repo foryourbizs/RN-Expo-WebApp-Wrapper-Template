@@ -50,6 +50,47 @@ export interface PluginRegistrationOptions {
 }
 
 /**
+ * 백그라운드 플러그인 옵션
+ */
+export interface BackgroundPluginOptions {
+  /** Headless WebView와 Bridge 자동 연동 */
+  enableHeadlessBridge?: boolean;
+}
+
+/**
+ * 플러그인 옵션 (플러그인별 설정)
+ */
+export interface PluginOptions {
+  /** 백그라운드 플러그인 옵션 */
+  background?: BackgroundPluginOptions;
+}
+
+/**
+ * 플러그인 옵션 메타데이터 (개별 옵션 정의)
+ */
+export interface PluginOptionMeta {
+  type: 'boolean' | 'string' | 'number';
+  default?: boolean | string | number;
+  label: { ko: string; en: string } | string;
+  description?: { ko: string; en: string } | string;
+}
+
+/**
+ * 플러그인 메타데이터
+ * 플러그인이 export하여 호스트 앱에 정보 제공
+ */
+export interface PluginMeta {
+  name: string;
+  version?: string;
+  /** 지원하는 옵션 정의 */
+  supportedOptions?: {
+    [category: string]: {
+      [optionKey: string]: PluginOptionMeta;
+    };
+  };
+}
+
+/**
  * Auto 플러그인 설정 (npm 패키지)
  */
 export interface AutoPluginConfig {
@@ -59,6 +100,8 @@ export interface AutoPluginConfig {
   namespace: string;
   /** 등록 메서드명 (기본: 'registerHandlers') */
   method?: string;
+  /** 플러그인별 옵션 */
+  options?: PluginOptions;
 }
 
 /**

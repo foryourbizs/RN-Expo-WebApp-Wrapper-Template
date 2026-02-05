@@ -825,6 +825,106 @@ async function uninstallPackage(packageName: string) {
   }
 }
 
+/**
+ * 설치된 플러그인의 메타데이터(pluginMeta) 조회
+ * 우선순위:
+ * 1. package.json의 pluginMeta 필드 (가장 안정적)
+ * 2. plugin-meta.json 별도 파일
+ * 3. JS 소스 파싱 (폴백)
+ */
+interface PluginOptionMeta {
+  type: 'boolean' | 'string' | 'number';
+  default?: boolean | string | number;
+  label: { ko: string; en: string } | string;
+  description?: { ko: string; en: string } | string;
+}
+
+interface PluginMeta {
+  name: string;
+  version?: string;
+  supportedOptions?: {
+    [category: string]: {
+      [optionKey: string]: PluginOptionMeta;
+    };
+  };
+}
+
+async function getPluginMetadata(packageNames: string[]): Promise<Record<string, PluginMeta | null>> {
+  const results: Record<string, PluginMeta | null> = {};
+
+  for (const name of packageNames) {
+    if (!name.startsWith('rnww-plugin-')) {
+      results[name] = null;
+      continue;
+    }
+
+    try {
+      // node_modules에서 플러그인의 package.json 읽기
+      const packageJsonPath = path.join(projectRoot, 'node_modules', name, 'package.json');
+      const packageJsonContent = await fs.readFile(packageJsonPath, 'utf-8');
+      const packageJson = JSON.parse(packageJsonContent);
+
+      let meta: PluginMeta | null = null;
+
+      // 1. package.json의 pluginMeta 필드 확인 (가장 안정적)
+      if (packageJson.pluginMeta) {
+        meta = packageJson.pluginMeta as PluginMeta;
+        console.log(`[api-plugin] Metadata from package.json for ${name}:`, !!meta);
+      }
+
+      // 2. plugin-meta.json 별도 파일 확인
+      if (!meta) {
+        try {
+          const metaPath = path.join(projectRoot, 'node_modules', name, 'plugin-meta.json');
+          const metaContent = await fs.readFile(metaPath, 'utf-8');
+          meta = JSON.parse(metaContent);
+          console.log(`[api-plugin] Metadata from plugin-meta.json for ${name}:`, !!meta);
+        } catch {
+          // 파일 없음 - 무시
+        }
+      }
+
+      // 3. JS 소스 파싱 (폴백 - 덜 안정적)
+      if (!meta) {
+        try {
+          const entryFile = packageJson.main || 'index.js';
+          const entryPath = path.join(projectRoot, 'node_modules', name, entryFile);
+          const entryContent = await fs.readFile(entryPath, 'utf-8');
+
+          // exports.pluginMeta 패턴 검색
+          const cjsMatch = entryContent.match(/exports\.pluginMeta\s*=\s*(\{[\s\S]*?\n\};)/);
+          if (cjsMatch) {
+            try {
+              // 간단한 JSON-like 변환
+              const objStr = cjsMatch[1]
+                .replace(/(\w+):/g, '"$1":')
+                .replace(/'/g, '"')
+                .replace(/,(\s*[}\]])/g, '$1');
+              meta = JSON.parse(objStr);
+              console.log(`[api-plugin] Metadata from JS source for ${name}:`, !!meta);
+            } catch {
+              // 파싱 실패 - 기본 정보만 추출
+              const nameMatch = entryContent.match(/name:\s*['"]([^'"]+)['"]/);
+              if (nameMatch) {
+                meta = { name: nameMatch[1] };
+              }
+            }
+          }
+        } catch {
+          // JS 파일 읽기 실패 - 무시
+        }
+      }
+
+      results[name] = meta;
+    } catch (error) {
+      console.error(`[api-plugin] Failed to read metadata for ${name}:`, error);
+      results[name] = null;
+    }
+  }
+
+  return results;
+}
+
 async function regeneratePluginRegistry() {
   try {
     await execAsync('npm run generate:plugins', { cwd: projectRoot });
@@ -2253,6 +2353,34 @@ export function apiPlugin(): Plugin {
             const body = await readBody(req);
             const validation = validatePluginNamespaces(body);
             sendJson(res, 200, validation);
+            return;
+          }
+
+          // GET /api/plugins/metadata - 플러그인 메타데이터 조회
+          // 설치된 플러그인의 supportedOptions 등 메타정보 반환
+          if (url.startsWith('/api/plugins/metadata') && req.method === 'GET') {
+            try {
+              const urlObj = new URL(url, 'http://localhost');
+              const namesParam = urlObj.searchParams.get('names');
+
+              let packageNames: string[];
+              if (namesParam) {
+                // 특정 패키지들만 조회
+                packageNames = namesParam.split(',').map(s => s.trim());
+              } else {
+                // 설치된 rnww-plugin-* 패키지 전체 조회
+                const installed = await getInstalledPackages();
+                packageNames = installed
+                  .filter(p => p.name.startsWith('rnww-plugin-'))
+                  .map(p => p.name);
+              }
+
+              const metadata = await getPluginMetadata(packageNames);
+              sendJson(res, 200, metadata);
+            } catch (error) {
+              console.error('[api-plugin] Plugin metadata error:', error);
+              sendJson(res, 500, { error: 'Failed to fetch plugin metadata' });
+            }
             return;
           }
 

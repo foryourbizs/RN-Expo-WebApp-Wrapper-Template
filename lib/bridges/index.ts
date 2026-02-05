@@ -4,10 +4,14 @@
  */
 
 import { Platform } from 'react-native';
-import { registerHandler, sendToWeb } from '@/lib/bridge';
-import { BridgeAPI, PlatformInfo, toPascalCase } from '@/lib/plugin-system';
+import { registerHandler, sendToWeb, BridgeExtension, getSecurityToken } from '@/lib/bridge';
+import { getBridgeClientScript } from '@/lib/bridge-client';
+import { BridgeAPI, PlatformInfo, PluginMeta, toPascalCase } from '@/lib/plugin-system';
 import { PLUGINS_CONFIG } from '@/constants/plugins.config';
 import { AUTO_PLUGINS, MANUAL_PLUGINS } from './plugin-registry';
+
+/** 로드된 플러그인 메타데이터 저장 */
+const loadedPluginMeta: Map<string, PluginMeta> = new Map();
 
 /**
  * 네임스페이스가 적용된 BridgeAPI 생성
@@ -40,10 +44,20 @@ const loadAutoPlugins = async (platform: PlatformInfo) => {
         continue;
       }
 
-      registerFn({
+      // 플러그인 설정 객체 구성
+      const config: Record<string, unknown> = {
         bridge: createNamespacedBridge(plugin.namespace),
         platform,
-      });
+      };
+
+      // background 플러그인 옵션 처리: Headless Bridge 연동
+      if (plugin.options?.background?.enableHeadlessBridge) {
+        config.bridgeExtension = BridgeExtension;
+        config.bridgeClientScript = getBridgeClientScript(getSecurityToken());
+        console.log(`[Bridge] Headless Bridge enabled for: ${plugin.name}`);
+      }
+
+      registerFn(config);
       console.log(`[Bridge] Auto plugin loaded: ${plugin.name} (${plugin.namespace})`);
     } catch (error) {
       console.error(`[Bridge] Failed to load auto plugin ${plugin.name}:`, error);

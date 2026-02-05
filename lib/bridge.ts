@@ -229,7 +229,7 @@ export const handleBridgeMessage = (messageData: string): boolean => {
  */
 export const sendToWeb = <T = unknown>(action: string, payload?: T) => {
   console.log(`[Bridge] sendToWeb called - action: ${action}, webView: ${webViewInstance ? 'available' : 'NULL'}`);
-  
+
   if (!webViewInstance) {
     console.error('[Bridge] ⚠️⚠️⚠️ WebView is NULL! Cannot send to web!');
     console.error(`[Bridge] - action: ${action}`);
@@ -252,11 +252,11 @@ export const sendToWeb = <T = unknown>(action: string, payload?: T) => {
   const script = `(function(){console.log('[Bridge-Inject] Sending message, action: ${action}');var msg=${messageJSON};console.log('[Bridge-Inject] Message object:', msg);var e=new CustomEvent('nativeMessage',{detail:msg});window.dispatchEvent(e);console.log('[Bridge-Inject] Event dispatched');window.onNativeMessage&&window.onNativeMessage(msg)})();true;`;
 
   webViewInstance.injectJavaScript(script);
-  
+
   // 로그 출력 조건: base64 데이터나 cameraFrame 같은 대용량 데이터는 로그 제외
-  const shouldLog = !action.includes('cameraFrame') && 
+  const shouldLog = !action.includes('cameraFrame') &&
     !messageJSON.includes('base64');
-  
+
   if (shouldLog) {
     console.log(`[Bridge] ✓ Sent to web: ${action}`, payload);
   } else {

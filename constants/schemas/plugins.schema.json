@@ -36,6 +36,11 @@
                 "type": "array",
                 "items": { "type": "string" },
                 "description": "Expo native modules to keep (for prebuild)"
+              },
+              "options": {
+                "type": "object",
+                "description": "Plugin-specific options (defined by each plugin's pluginMeta)",
+                "additionalProperties": true
               }
             }
           }

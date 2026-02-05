@@ -259,7 +259,9 @@
     "installAndAdd": "Install & Add",
     "scanResults": "lib/bridges folder scan results",
     "alreadyAdded": "Already added",
-    "namespaceConflict": "Namespace conflict detected. Each plugin must have a unique namespace."
+    "namespaceConflict": "Namespace conflict detected. Each plugin must have a unique namespace.",
+    "enableHeadlessBridge": "Enable Headless Bridge",
+    "headlessBridgeDesc": "Use existing handlers in background"
   },
   "build": {
     "envSettings": "Environment Settings",
