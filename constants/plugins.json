@@ -10,7 +10,12 @@
       {
         "name": "rnww-plugin-background",
         "namespace": "backgr",
-        "method": "registerBackgroundHandlers"
+        "method": "registerBackgroundHandlers",
+        "options": {
+          "background": {
+            "enableHeadlessBridge": true
+          }
+        }
       }
     ],
     "manual": [
