@@ -79,22 +79,24 @@ if (window.AppBridge?.isApp()) {
 | device | getAppInfo | `{ name, version, buildVersion, bundleId }` | 앱 정보 |
 | ui | toast | - | 토스트 (iOS: Alert) |
 | ui | vibrate | - | 진동 |
-| clipboard | read | `{ text }` | 클립보드 읽기 |
+| clipboard | read | `{ success, text }` | 클립보드 읽기 |
 | clipboard | copy | `{ success }` | 클립보드 복사 |
 | webview | goBack | - | 뒤로가기 |
 | webview | goForward | - | 앞으로가기 |
 | webview | reload | - | 새로고침 |
-| webview | openExternal | `{ success }` | 외부 URL 열기 |
+| webview | openExternal | `{ success, error? }` | 외부 URL 열기 |
 | splash | hide | - | 스플래시 숨김 |
-| orientation | get | `{ orientation, lock }` | 화면 방향 |
+| orientation | get | `{ success, orientation, lock, raw }` | 화면 방향 |
 | orientation | set | `{ success, mode }` | 화면 방향 설정 |
-| status-bar | get | `{ saved }` | 상태바 상태 |
-| status-bar | set | `{ success, hidden, style }` | 상태바 설정 |
+| orientation | unlock | `{ success }` | 화면 회전 잠금 해제 |
+| status-bar | get | `{ success, saved, note }` | 상태바 상태 |
+| status-bar | set | `{ success, hidden, style, color }` | 상태바 설정 |
 | status-bar | restore | `{ success, restored }` | 상태바 복원 |
-| navigation-bar | get | `{ visible, buttonStyle, ... }` | 네비바 상태 (Android) |
-| navigation-bar | set | `{ success }` | 네비바 설정 (Android) |
-| push | requestPermission | `{ granted, token? }` | 푸시 권한 요청 |
-| push | getToken | `{ token, type }` | 푸시 토큰 획득 |
+| navigation-bar | get | `{ success, visible, buttonStyle, backgroundColor, saved }` | 네비바 상태 (Android) |
+| navigation-bar | set | `{ success, visible, color, buttonStyle }` | 네비바 설정 (Android) |
+| navigation-bar | restore | `{ success, restored }` | 네비바 복원 (Android) |
+| push | requestPermission | `{ granted, token?, error? }` | 푸시 권한 요청 |
+| push | getToken | `{ token, type }` or `{ error }` | 푸시 토큰 획득 |
 | keep-awake | activate | `{ success, isActive }` | 화면 켜짐 유지 |
 | keep-awake | deactivate | `{ success, isActive }` | 화면 켜짐 유지 해제 |
 | keep-awake | get | `{ success, isActive }` | 상태 확인 |

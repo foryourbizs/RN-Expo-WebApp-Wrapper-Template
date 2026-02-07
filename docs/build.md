@@ -37,11 +37,6 @@ sdkmanager --licenses
 
 ## CLI 빌드
 
-### Windows
-```bash
-.\build.bat
-```
-
 ### 수동 빌드
 ```bash
 # prebuild

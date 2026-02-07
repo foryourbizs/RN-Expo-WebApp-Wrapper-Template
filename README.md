@@ -125,12 +125,12 @@ npm run config
 | device | getInfo, getAppInfo | 기기/앱 정보 |
 | ui | toast, vibrate | UI 피드백 |
 | clipboard | copy, read | 클립보드 |
-| status-bar | get, set | 상태바 제어 |
+| status-bar | get, set, restore | 상태바 제어 |
 | navigation-bar | get, set | 네비게이션바 (Android) |
-| orientation | get, set, lock | 화면 방향 |
+| orientation | get, set, unlock | 화면 방향 |
 | splash | hide | 스플래시 제어 |
 | push | requestPermission, getToken, onReceived | 푸시 알림 |
-| webview | goBack, goForward, reload | 웹뷰 네비게이션 |
+| webview | goBack, goForward, reload, openExternal | 웹뷰 네비게이션 |
 | keep-awake | activate, deactivate, get | 화면 켜짐 유지 |
 
 npm 플러그인:
@@ -143,6 +143,7 @@ npm 플러그인:
 | rnww-plugin-wifi | WiFi 스캔, 연결 |
 | rnww-plugin-screen-pinning | 앱 고정 (키오스크) |
 | rnww-plugin-background | 백그라운드 작업 |
+| rnww-plugin-gps | GPS/위치 |
 
 ## 웹에서 타입 지원
 
@@ -171,10 +172,6 @@ npm run config  # 빌드 탭
 
 ### CLI
 ```bash
-# Windows
-.\build.bat
-
-# 수동
 npx expo prebuild --clean
 cd android && .\gradlew assembleRelease
 ```

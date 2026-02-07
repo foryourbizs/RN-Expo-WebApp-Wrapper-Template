@@ -19,9 +19,6 @@ npx expo run:ios            # Run on iOS
 # Linting
 npm run lint                # Run ESLint
 
-# Build (Windows)
-.\build.bat                 # Interactive build script
-
 # Build (Manual)
 npx expo prebuild --clean
 cd android && .\gradlew assembleRelease

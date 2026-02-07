@@ -35,6 +35,7 @@ npm install rnww-plugin-bluetooth
 | `rnww-plugin-wifi` | WiFi |
 | `rnww-plugin-screen-pinning` | 앱 고정 (키오스크 모드) |
 | `rnww-plugin-background` | 백그라운드 작업 |
+| `rnww-plugin-gps` | GPS/위치 |
 
 > npm에서 `rnww-plugin-` 으로 검색하면 더 많은 플러그인을 찾을 수 있습니다.
 
@@ -77,6 +78,9 @@ export const notifyWeb = (data: any) => {
 ### 2. 플러그인 레지스트리에 등록
 
 `lib/bridges/plugin-registry.ts`:
+
+> ⚠️ **주의**: 이 파일은 자동 생성됩니다. 수동 편집하지 마세요!
+> `npm run generate:plugins` 명령으로 `constants/plugins.json`에서 생성됩니다.
 
 ```typescript
 export const MANUAL_PLUGINS: Record<string, () => Promise<any>> = {
