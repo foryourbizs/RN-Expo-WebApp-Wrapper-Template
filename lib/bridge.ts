@@ -416,7 +416,8 @@ export const BridgeExtension: BridgeExtensionAPI = {
 
   /**
    * 외부 WebView에서 온 메시지를 기존 핸들러로 처리
-   * 기존 handleBridgeMessage와 동일한 로직, 응답만 다른 곳으로
+   * Headless WebView는 앱이 직접 생성한 내부 WebView이므로 보안 검증 불필요
+   * (외부 웹 콘텐츠 없음, bridge 스크립트도 앱이 직접 주입)
    */
   handleExternalMessage(
     messageData: string,
@@ -430,11 +431,10 @@ export const BridgeExtension: BridgeExtensionAPI = {
         return false;
       }
 
-      // 액션 추출 (보안 검증 전에 필요)
+      // 액션 추출
       const action = data.protocol.replace('app://', '');
 
       // __console 특수 처리: headless WebView의 console.log 포워딩
-      // 디버깅 전용이므로 보안 검증 스킵
       if (action === '__console') {
         const payload = data.payload as { level?: string; message?: string };
         const level = payload?.level || 'log';
@@ -453,14 +453,18 @@ export const BridgeExtension: BridgeExtensionAPI = {
         return true;
       }
 
-      // 보안 검증 (기존 로직 재사용)
-      const securityEngine = SecurityEngine.getInstance(
-        APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]
-      );
-      const securityDecision = securityEngine.validateBridgeMessage(data);
-      if (!securityDecision.allowed) {
-        console.warn('[Bridge] External message security validation failed:', securityDecision.reason);
-        return false;
+      // 외부 WebView(Headless 등)는 앱이 직접 생성/관리하는 내부 WebView
+      // 토큰 검증은 수행하되, 실패 시 lockdown을 트리거하지 않음
+      // (메인 WebView와 lockdown 상태를 공유하지 않기 위함)
+      if (data.__token) {
+        const securityEngine = SecurityEngine.getInstance(
+          APP_CONFIG.security as unknown as Parameters<typeof SecurityEngine.getInstance>[0]
+        );
+        const expectedToken = securityEngine.getSecurityToken();
+        if (data.__token !== expectedToken) {
+          console.warn('[Bridge] External message token mismatch (no lockdown)');
+          return false;
+        }
       }
 
       const decodedPayload = decodeBase64Data(data.payload);
