@@ -7,16 +7,25 @@ import AddManualPluginModal from '../components/AddManualPluginModal';
 import { SaveRevertBar } from '../components/form';
 
 /**
- * 다국어 레이블 추출 유틸리티
+ * 알려진 플러그인 옵션 레지스트리
+ * pluginMeta.supportedOptions 배열의 옵션명과 매칭하여 UI 렌더링
  */
-function getLocalizedLabel(
-  label: { ko: string; en: string } | string | undefined,
-  lang: string
-): string {
-  if (!label) return '';
-  if (typeof label === 'string') return label;
-  return lang === 'ko' ? label.ko : label.en;
-}
+const KNOWN_PLUGIN_OPTIONS: Record<string, {
+  labelKey: string;
+  descriptionKey: string;
+  type: 'boolean';
+  defaultValue: boolean;
+  /** options 객체 내 저장 경로 (카테고리) */
+  category: string;
+}> = {
+  enableHeadlessBridge: {
+    labelKey: 'plugins.enableHeadlessBridge',
+    descriptionKey: 'plugins.headlessBridgeDesc',
+    type: 'boolean',
+    defaultValue: false,
+    category: 'background',
+  },
+};
 
 interface PluginsConfigProps {
   onUnsavedChange: (hasChanges: boolean) => void;
@@ -276,39 +285,34 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                     </div>
                   </div>
 
-                  {/* 플러그인 메타데이터 기반 동적 옵션 UI */}
-                  {metadataLoaded.has(plugin.name) && supportedOptions && Object.keys(supportedOptions).length > 0 && (
+                  {/* pluginMeta.supportedOptions 기반 옵션 UI */}
+                  {metadataLoaded.has(plugin.name) && supportedOptions && supportedOptions.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-slate-100 space-y-2">
-                      {Object.entries(supportedOptions).map(([category, options]) => (
-                        Object.entries(options).map(([optionKey, optionMeta]) => {
-                          const currentValue = (plugin.options as Record<string, Record<string, unknown>>)?.[category]?.[optionKey];
-                          const defaultValue = optionMeta.default;
-                          const isChecked = currentValue !== undefined ? Boolean(currentValue) : Boolean(defaultValue);
+                      {supportedOptions.map((optionName) => {
+                        const optionDef = KNOWN_PLUGIN_OPTIONS[optionName];
+                        if (!optionDef) return null;
 
-                          // boolean 타입만 체크박스로 렌더링
-                          if (optionMeta.type === 'boolean') {
-                            return (
-                              <label key={`${category}:${optionKey}`} className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => handleTogglePluginOption(index, category, optionKey, e.target.checked)}
-                                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-xs text-slate-600">
-                                  {getLocalizedLabel(optionMeta.label, i18n.language)}
-                                </span>
-                                {optionMeta.description && (
-                                  <span className="text-xs text-slate-400">
-                                    ({getLocalizedLabel(optionMeta.description, i18n.language)})
-                                  </span>
-                                )}
-                              </label>
-                            );
-                          }
-                          return null;
-                        })
-                      ))}
+                        const { category } = optionDef;
+                        const currentValue = (plugin.options as Record<string, Record<string, unknown>>)?.[category]?.[optionName];
+                        const isChecked = currentValue !== undefined ? Boolean(currentValue) : optionDef.defaultValue;
+
+                        return (
+                          <label key={optionName} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => handleTogglePluginOption(index, category, optionName, e.target.checked)}
+                              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-xs text-slate-600">
+                              {t(optionDef.labelKey)}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              ({t(optionDef.descriptionKey)})
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

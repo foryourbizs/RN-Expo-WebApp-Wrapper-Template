@@ -11,23 +11,12 @@ interface SearchResult {
   description?: string;
 }
 
-/** 플러그인 옵션 메타데이터 */
-interface PluginOptionMeta {
-  type: 'boolean' | 'string' | 'number';
-  default?: boolean | string | number;
-  label: { ko: string; en: string } | string;
-  description?: { ko: string; en: string } | string;
-}
-
 /** 플러그인 메타데이터 */
 export interface PluginMeta {
   name: string;
   version?: string;
-  supportedOptions?: {
-    [category: string]: {
-      [optionKey: string]: PluginOptionMeta;
-    };
-  };
+  /** 지원하는 옵션 이름 목록 (예: ["enableHeadlessBridge"]) */
+  supportedOptions?: string[];
 }
 
 export function usePlugins() {

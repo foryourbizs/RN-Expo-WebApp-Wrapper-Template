@@ -82,12 +82,8 @@ export interface PluginOptionMeta {
 export interface PluginMeta {
   name: string;
   version?: string;
-  /** 지원하는 옵션 정의 */
-  supportedOptions?: {
-    [category: string]: {
-      [optionKey: string]: PluginOptionMeta;
-    };
-  };
+  /** 지원하는 옵션 이름 목록 (예: ["enableHeadlessBridge"]) */
+  supportedOptions?: string[];
 }
 
 /**
