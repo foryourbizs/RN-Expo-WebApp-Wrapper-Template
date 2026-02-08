@@ -204,6 +204,9 @@ if (mergedConfig.security.debug === undefined) {
   mergedConfig.security.debug = __DEV__;
 }
 
+// 디버그 설정 확인용 (문제 해결 후 제거)
+console.log('[AppConfig] debug.enabled =', mergedConfig.debug.enabled, '(type:', typeof mergedConfig.debug.enabled + ')');
+
 export const APP_CONFIG = mergedConfig;
 
 // 하위 타입 추출

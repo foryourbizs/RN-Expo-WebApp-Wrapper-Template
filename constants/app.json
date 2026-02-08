@@ -37,18 +37,18 @@
     "behavior": "overlay-swipe"
   },
   "splash": {
-    "enabled": true,
+    "enabled": false,
     "loadingText": "스플레시 이미지",
     "logoImage": null,
     "mode": "image",
     "fullscreenImage": "./assets/images/splash-icon.png"
   },
   "safeArea": {
-    "enabled": false,
+    "enabled": true,
     "edges": "all"
   },
   "debug": {
-    "enabled": true,
+    "enabled": false,
     "maxLogLines": 999
   },
   "theme": {
