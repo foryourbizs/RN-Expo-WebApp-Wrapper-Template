@@ -285,7 +285,7 @@ export default function PermissionsConfigPage() {
                 <div key={ep.plugin} className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="font-mono text-sm text-slate-800 mb-1">{ep.plugin}</div>
                   <div className="ml-1 space-y-0.5">
-                    {Object.entries(ep.permissions).map(([key, value]) => (
+                    {Object.entries(ep.permissions).map(([key]) => (
                       <div key={key}>
                         <span className="font-mono text-xs text-slate-600">{key}</span>
                       </div>

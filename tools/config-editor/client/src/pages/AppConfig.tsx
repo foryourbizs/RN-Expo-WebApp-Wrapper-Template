@@ -436,6 +436,12 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           onChange={(v) => updateField(['offline', 'message'], v)}
           description={t('app.offline.messageDesc')}
         />
+        <Toggle
+          label={t('app.offline.showRetryButton')}
+          value={data.offline?.showRetryButton ?? true}
+          onChange={(v) => updateField(['offline', 'showRetryButton'], v)}
+          description={t('app.offline.showRetryButtonDesc')}
+        />
         <TextInput
           label={t('app.offline.retryButtonText')}
           value={data.offline?.retryButtonText || ''}
@@ -447,6 +453,26 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
           value={data.offline?.autoReconnect ?? true}
           onChange={(v) => updateField(['offline', 'autoReconnect'], v)}
           description={t('app.offline.autoReconnectDesc')}
+        />
+      </Accordion>
+
+      {/* Error Screen */}
+      <Accordion
+        title={t('app.error.title')}
+        sectionId="error"
+        onToggle={(isOpen) => handleAccordionToggle('error', isOpen)}
+      >
+        <Toggle
+          label={t('app.error.showRetryButton')}
+          value={data.error?.showRetryButton ?? true}
+          onChange={(v) => updateField(['error', 'showRetryButton'], v)}
+          description={t('app.error.showRetryButtonDesc')}
+        />
+        <TextInput
+          label={t('app.error.retryButtonText')}
+          value={data.error?.retryButtonText || ''}
+          onChange={(v) => updateField(['error', 'retryButtonText'], v)}
+          description={t('app.error.retryButtonTextDesc')}
         />
       </Accordion>
 
@@ -587,19 +613,6 @@ export default function AppConfigPage({ onUnsavedChange }: AppConfigProps) {
         />
       </Accordion>
 
-      {/* Theme */}
-      <Accordion
-        title={t('app.theme.title')}
-        sectionId="theme"
-        onToggle={(isOpen) => handleAccordionToggle('theme', isOpen)}
-      >
-        <ColorPicker
-          label={t('app.theme.loadingIndicatorColor')}
-          value={data.theme?.loadingIndicatorColor || '#007AFF'}
-          onChange={(v) => updateField(['theme', 'loadingIndicatorColor'], v)}
-          description={t('app.theme.loadingIndicatorColorDesc')}
-        />
-      </Accordion>
 
       {/* Splash Screen */}
       <Accordion

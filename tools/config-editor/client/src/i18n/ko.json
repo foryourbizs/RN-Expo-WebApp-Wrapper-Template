@@ -104,10 +104,19 @@
       "titleFieldDesc": "오프라인 화면에 표시되는 제목",
       "message": "메시지",
       "messageDesc": "오프라인 화면에 표시되는 메시지",
+      "showRetryButton": "재시도 버튼 표시",
+      "showRetryButtonDesc": "오프라인 화면에 재시도 버튼 표시 여부",
       "retryButtonText": "재시도 버튼 텍스트",
       "retryButtonTextDesc": "재시도 버튼에 표시되는 텍스트",
       "autoReconnect": "자동 재연결",
       "autoReconnectDesc": "네트워크 복구 시 자동으로 새로고침"
+    },
+    "error": {
+      "title": "에러 화면",
+      "showRetryButton": "재시도 버튼 표시",
+      "showRetryButtonDesc": "에러 화면에 재시도 버튼 표시 여부",
+      "retryButtonText": "재시도 버튼 텍스트",
+      "retryButtonTextDesc": "에러 화면의 재시도 버튼에 표시되는 텍스트"
     },
     "statusBar": {
       "title": "상태바",
@@ -147,11 +156,6 @@
       "backgroundColorDesc": "Safe Area 배경색",
       "darkBackgroundColor": "다크모드 배경색",
       "darkBackgroundColorDesc": "다크모드에서의 Safe Area 배경색"
-    },
-    "theme": {
-      "title": "앱 테마",
-      "loadingIndicatorColor": "로딩 인디케이터 색상",
-      "loadingIndicatorColorDesc": "로딩 인디케이터의 색상"
     },
     "splash": {
       "title": "스플래시 스크린",

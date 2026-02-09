@@ -38,6 +38,7 @@ export default function OfflinePreview({ appConfig, themeConfig }: OfflinePrevie
   const title = offline?.title || 'No Connection';
   const message = offline?.message || 'Please check your internet connection';
   const buttonText = offline?.retryButtonText || 'Retry';
+  const showRetryButton = offline?.showRetryButton ?? true;
 
   return (
     <div
@@ -61,12 +62,14 @@ export default function OfflinePreview({ appConfig, themeConfig }: OfflinePrevie
       </p>
 
       {/* Retry Button - 실제 RN: #007AFF, px 32, py 14, borderRadius 8 */}
-      <button
-        className="px-8 py-3.5 rounded-lg text-base font-semibold text-white"
-        style={{ backgroundColor: buttonColor }}
-      >
-        {buttonText}
-      </button>
+      {showRetryButton && (
+        <button
+          className="px-8 py-3.5 rounded-lg text-base font-semibold text-white"
+          style={{ backgroundColor: buttonColor }}
+        >
+          {buttonText}
+        </button>
+      )}
     </div>
   );
 }

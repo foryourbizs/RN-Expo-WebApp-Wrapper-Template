@@ -75,11 +75,11 @@ export default function SplashPreview({ appConfig, themeConfig }: SplashPreviewP
         />
       ) : null}
 
-      {/* Loading Text - 실제 RN: fontSize 14, letterSpacing 0.5 */}
+      {/* Loading Text - 실제 RN: fontSize 14, fontWeight 400, letterSpacing 0.5, mb 24 */}
       {loadingText && (
         <p
-          className="text-sm mb-6 tracking-wide"
-          style={{ color: textColor }}
+          className="text-sm mb-6"
+          style={{ color: textColor, letterSpacing: '0.5px' }}
         >
           {loadingText}
         </p>

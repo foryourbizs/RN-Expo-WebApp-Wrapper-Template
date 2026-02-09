@@ -28,7 +28,12 @@ export interface AppConfig {
     title?: string;
     message?: string;
     retryButtonText?: string;
+    showRetryButton?: boolean;
     autoReconnect?: boolean;
+  };
+  error?: {
+    showRetryButton?: boolean;
+    retryButtonText?: string;
   };
   statusBar?: {
     visible?: boolean;
@@ -81,9 +86,6 @@ export interface AppConfig {
       event?: string;
       nav?: string;
     };
-  };
-  theme?: {
-    loadingIndicatorColor?: string;
   };
 }
 

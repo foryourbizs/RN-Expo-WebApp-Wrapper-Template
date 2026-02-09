@@ -53,6 +53,7 @@ export default function PreviewControls({ showThemeToggle = false, showScreenSel
     splash: 'Splash',
     webview: 'WebView',
     offline: 'Offline',
+    error: 'Error',
     theme: 'Theme',
   };
 
@@ -103,7 +104,7 @@ export default function PreviewControls({ showThemeToggle = false, showScreenSel
 
           {showScreenMenu && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20 min-w-[100px]">
-              {(['splash', 'offline', 'theme'] as PreviewScreen[]).map((screen) => (
+              {(['splash', 'offline', 'error', 'theme'] as PreviewScreen[]).map((screen) => (
                 <button
                   key={screen}
                   onClick={() => {

@@ -71,8 +71,18 @@ const APP_CONFIG_DEFAULTS = {
     message: '네트워크 연결을 확인해주세요.\nWi-Fi 또는 모바일 데이터가\n활성화되어 있는지 확인하세요.',
     // 재시도 버튼 텍스트
     retryButtonText: '다시 시도',
+    // 재시도 버튼 표시 여부
+    showRetryButton: true,
     // 자동 재연결 시도 (온라인 복구 시 자동 새로고침)
     autoReconnect: true,
+  },
+
+  // 에러 화면 설정
+  error: {
+    // 재시도 버튼 표시 여부
+    showRetryButton: true,
+    // 재시도 버튼 텍스트
+    retryButtonText: '다시 시도',
   },
 
   // 상태바 설정

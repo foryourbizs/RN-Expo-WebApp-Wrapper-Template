@@ -104,10 +104,19 @@
       "titleFieldDesc": "Title text shown on offline screen",
       "message": "Message",
       "messageDesc": "Message text shown on offline screen",
+      "showRetryButton": "Show Retry Button",
+      "showRetryButtonDesc": "Show retry button on offline screen",
       "retryButtonText": "Retry Button Text",
       "retryButtonTextDesc": "Text displayed on retry button",
       "autoReconnect": "Auto Reconnect",
       "autoReconnectDesc": "Auto refresh when network is restored"
+    },
+    "error": {
+      "title": "Error Screen",
+      "showRetryButton": "Show Retry Button",
+      "showRetryButtonDesc": "Show retry button on error screen",
+      "retryButtonText": "Retry Button Text",
+      "retryButtonTextDesc": "Text displayed on error screen retry button"
     },
     "statusBar": {
       "title": "Status Bar",
@@ -147,11 +156,6 @@
       "backgroundColorDesc": "Safe area background color",
       "darkBackgroundColor": "Dark Mode Background",
       "darkBackgroundColorDesc": "Safe area background color in dark mode"
-    },
-    "theme": {
-      "title": "App Theme",
-      "loadingIndicatorColor": "Loading Indicator Color",
-      "loadingIndicatorColorDesc": "Color of the loading indicator"
     },
     "splash": {
       "title": "Splash Screen",

@@ -1,7 +1,7 @@
 // tools/config-editor/client/src/contexts/PreviewContext.tsx
 import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
 
-export type PreviewScreen = 'splash' | 'webview' | 'offline' | 'theme';
+export type PreviewScreen = 'splash' | 'webview' | 'offline' | 'error' | 'theme';
 export type Orientation = 'portrait' | 'landscape';
 export type DeviceSize = 'small' | 'phone' | 'large' | 'tablet';
 export type HighlightTarget = 'statusBar' | 'navBar' | null;

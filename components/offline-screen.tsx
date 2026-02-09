@@ -57,11 +57,6 @@ export default function OfflineScreen({ onRetry, isReconnecting = false }: Offli
       ]}
     >
       <View style={styles.content}>
-        {/* 아이콘 */}
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>📡</Text>
-        </View>
-
         {/* 제목 */}
         <Text style={[styles.title, { color: textColor }]}>
           {offline.title}
@@ -73,28 +68,30 @@ export default function OfflineScreen({ onRetry, isReconnecting = false }: Offli
         </Text>
 
         {/* 재시도 버튼 */}
-        {isReconnecting ? (
-          <View style={styles.reconnectingContainer}>
-            <ActivityIndicator
-              size="small"
-              color={themeColors.loadingIndicator}
-            />
-            <Text style={[styles.reconnectingText, { color: subTextColor }]}>
-              연결 확인 중...
-            </Text>
-          </View>
-        ) : (
-          <Pressable
-            onPress={handleRetry}
-            style={({ pressed }) => [
-              styles.retryButton,
-              { backgroundColor: buttonColor, opacity: pressed ? 0.7 : 1 }
-            ]}
-          >
-            <Text style={styles.retryButtonText}>
-              {offline.retryButtonText}
-            </Text>
-          </Pressable>
+        {offline.showRetryButton !== false && (
+          isReconnecting ? (
+            <View style={styles.reconnectingContainer}>
+              <ActivityIndicator
+                size="small"
+                color={themeColors.loadingIndicator}
+              />
+              <Text style={[styles.reconnectingText, { color: subTextColor }]}>
+                연결 확인 중...
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={handleRetry}
+              style={({ pressed }) => [
+                styles.retryButton,
+                { backgroundColor: buttonColor, opacity: pressed ? 0.7 : 1 }
+              ]}
+            >
+              <Text style={styles.retryButtonText}>
+                {offline.retryButtonText}
+              </Text>
+            </Pressable>
+          )
         )}
       </View>
     </Animated.View>
@@ -111,12 +108,6 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     padding: 40,
-  },
-  iconContainer: {
-    marginBottom: 24,
-  },
-  icon: {
-    fontSize: 64,
   },
   title: {
     fontSize: 20,

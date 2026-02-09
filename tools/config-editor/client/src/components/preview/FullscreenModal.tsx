@@ -4,7 +4,7 @@ import { usePreview } from '../../contexts/PreviewContext';
 import { DEVICE_SIZES } from '../../constants/devices';
 import PhoneMockup from './PhoneMockup';
 import PreviewControls from './PreviewControls';
-import { SplashPreview, WebViewPreview, OfflinePreview, ThemePreview } from './screens';
+import { SplashPreview, WebViewPreview, OfflinePreview, ErrorPreview, ThemePreview } from './screens';
 import type { AppConfig, ThemeConfig } from '../../types/config';
 
 interface FullscreenModalProps {
@@ -51,6 +51,8 @@ export default function FullscreenModal({ appConfig, themeConfig, activeTab }: F
         return <SplashPreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'offline':
         return <OfflinePreview appConfig={appConfig} themeConfig={themeConfig} />;
+      case 'error':
+        return <ErrorPreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'theme':
         return <ThemePreview themeConfig={themeConfig} />;
       case 'webview':

@@ -62,17 +62,9 @@ export default function ThemePreview({ themeConfig }: ThemePreviewProps) {
           className="rounded-lg p-6 flex flex-col items-center justify-center"
           style={{ backgroundColor: c('splashBackground') }}
         >
+          <p className="text-xs mb-3" style={{ color: c('splashText') }}>Loading...</p>
           <div
-            className="w-12 h-12 rounded-xl mb-3 flex items-center justify-center"
-            style={{ backgroundColor: c('splashSpinner') + '20' }}
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill={c('splashSpinner')}>
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <p className="text-xs" style={{ color: c('splashText') }}>Loading...</p>
-          <div
-            className="w-5 h-5 mt-3 rounded-full border-2 animate-spin"
+            className="w-5 h-5 rounded-full border-2 animate-spin"
             style={{
               borderColor: c('splashSpinner') + '30',
               borderTopColor: c('splashSpinner')
@@ -97,7 +89,7 @@ export default function ThemePreview({ themeConfig }: ThemePreviewProps) {
             Please check your internet
           </p>
           <button
-            className="px-4 py-1.5 rounded text-xs font-medium text-white"
+            className="px-4 py-1.5 rounded-lg text-xs font-medium text-white"
             style={{ backgroundColor: c('offlineButton') }}
           >
             Retry
@@ -114,17 +106,17 @@ export default function ThemePreview({ themeConfig }: ThemePreviewProps) {
           className="rounded-lg p-4 flex flex-col items-center"
           style={{ backgroundColor: c('errorBackground') }}
         >
-          <p className="text-sm font-medium mb-1" style={{ color: c('errorTitle') }}>
-            Something went wrong
+          <p className="text-sm font-semibold mb-1" style={{ color: c('errorTitle') }}>
+            페이지를 불러올 수 없습니다
           </p>
           <p className="text-[10px] mb-3 text-center" style={{ color: c('errorMessage') }}>
-            Unable to load the page
+            알 수 없는 오류가 발생했습니다.
           </p>
           <button
-            className="px-4 py-1.5 rounded text-xs font-medium text-white"
+            className="px-4 py-1.5 rounded-xl text-xs font-medium text-white"
             style={{ backgroundColor: c('errorButton') }}
           >
-            Try Again
+            다시 시도
           </button>
         </div>
       </div>

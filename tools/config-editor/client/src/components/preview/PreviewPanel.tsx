@@ -6,7 +6,7 @@ import { DEVICE_SIZES, calculateScale } from '../../constants/devices';
 import PhoneMockup from './PhoneMockup';
 import PreviewControls from './PreviewControls';
 import PreviewSettings from './PreviewSettings';
-import { SplashPreview, WebViewPreview, OfflinePreview, ThemePreview } from './screens';
+import { SplashPreview, WebViewPreview, OfflinePreview, ErrorPreview, ThemePreview } from './screens';
 import type { AppConfig, ThemeConfig } from '../../types/config';
 
 interface PreviewPanelProps {
@@ -54,6 +54,8 @@ export default function PreviewPanel({ appConfig, themeConfig, activeTab }: Prev
         return <SplashPreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'offline':
         return <OfflinePreview appConfig={appConfig} themeConfig={themeConfig} />;
+      case 'error':
+        return <ErrorPreview appConfig={appConfig} themeConfig={themeConfig} />;
       case 'theme':
         return <ThemePreview themeConfig={themeConfig} />;
       case 'webview':
