@@ -21,7 +21,8 @@
     "title": "오프라인 상태입니다.",
     "message": "인터넷을 연결해 주세요.",
     "retryButtonText": "",
-    "autoReconnect": true
+    "autoReconnect": true,
+    "showRetryButton": false
   },
   "statusBar": {
     "visible": true,
@@ -31,24 +32,27 @@
     "showOverlay": true
   },
   "navigationBar": {
-    "visibility": "visible",
+    "visibility": "hidden",
     "buttonStyle": "dark",
     "backgroundColor": "#ffffff",
-    "behavior": "overlay-swipe"
+    "behavior": "inset-swipe"
   },
   "splash": {
-    "enabled": false,
+    "enabled": true,
     "loadingText": "스플레시 이미지",
     "logoImage": null,
     "mode": "image",
-    "fullscreenImage": "./assets/images/splash-icon.png"
+    "fullscreenImage": "./assets/images/android-icon-foreground.png"
   },
   "safeArea": {
     "enabled": true,
-    "edges": "all"
+    "edges": "none"
   },
   "debug": {
     "enabled": false,
     "maxLogLines": 999
+  },
+  "error": {
+    "showRetryButton": false
   }
 }
