@@ -915,6 +915,38 @@ async function getPluginMetadata(packageNames: string[]): Promise<Record<string,
   return results;
 }
 
+// 업데이트 가능한 rnww-plugin-* 패키지 확인
+async function checkOutdatedPackages(): Promise<Record<string, { current: string; latest: string }>> {
+  try {
+    const { stdout } = await execAsync('npm outdated --json', { cwd: projectRoot, timeout: 60000 });
+    const data = JSON.parse(stdout);
+    const result: Record<string, { current: string; latest: string }> = {};
+    for (const [name, info] of Object.entries(data)) {
+      if (name.startsWith('rnww-plugin-')) {
+        result[name] = { current: (info as any).current, latest: (info as any).latest };
+      }
+    }
+    return result;
+  } catch (error: any) {
+    // npm outdated는 업데이트가 있으면 exit code 1 반환 - stdout 파싱 필요
+    if (error.stdout) {
+      try {
+        const data = JSON.parse(error.stdout);
+        const result: Record<string, { current: string; latest: string }> = {};
+        for (const [name, info] of Object.entries(data)) {
+          if (name.startsWith('rnww-plugin-')) {
+            result[name] = { current: (info as any).current, latest: (info as any).latest };
+          }
+        }
+        return result;
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  }
+}
+
 async function regeneratePluginRegistry() {
   try {
     await execAsync('npm run generate:plugins', { cwd: projectRoot });
@@ -2370,6 +2402,18 @@ export function apiPlugin(): Plugin {
             } catch (error) {
               console.error('[api-plugin] Plugin metadata error:', error);
               sendJson(res, 500, { error: 'Failed to fetch plugin metadata' });
+            }
+            return;
+          }
+
+          // GET /api/plugins/outdated - 업데이트 가능한 플러그인 확인
+          if (url === '/api/plugins/outdated' && req.method === 'GET') {
+            try {
+              const outdated = await checkOutdatedPackages();
+              sendJson(res, 200, outdated);
+            } catch (error) {
+              console.error('[api-plugin] Outdated check error:', error);
+              sendJson(res, 500, { error: 'Failed to check outdated packages' });
             }
             return;
           }

@@ -26,6 +26,8 @@ export function usePlugins() {
   const [scannedFolders, setScannedFolders] = useState<string[]>([]);
   const [pluginMetadata, setPluginMetadata] = useState<Record<string, PluginMeta | null>>({});
   const [metadataLoaded, setMetadataLoaded] = useState<Set<string>>(new Set());
+  const [outdatedPackages, setOutdatedPackages] = useState<Record<string, { current: string; latest: string }>>({});
+  const [outdatedLoaded, setOutdatedLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +115,45 @@ export function usePlugins() {
     }
   }, [fetchInstalled]);
 
+  /** 업데이트 가능한 플러그인 확인 */
+  const checkOutdated = useCallback(async () => {
+    try {
+      const res = await fetch('/api/plugins/outdated');
+      if (!res.ok) throw new Error('Failed to check outdated');
+      setOutdatedPackages(await res.json());
+      setOutdatedLoaded(true);
+    } catch {
+      setOutdatedLoaded(true);
+    }
+  }, []);
+
+  /** 플러그인 업데이트 (기존 install 엔드포인트 재사용) */
+  const updatePackage = useCallback(async (name: string, version: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/plugins/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, version })
+      });
+      if (!res.ok) throw new Error('Failed to update');
+      await fetchInstalled();
+      // 업데이트 후 outdated 목록에서 제거
+      setOutdatedPackages(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchInstalled]);
+
   /** 설치된 플러그인의 메타데이터 조회 */
   const fetchMetadata = useCallback(async (packageNames?: string[]) => {
     setError(null);
@@ -154,6 +195,8 @@ export function usePlugins() {
     scannedFolders,
     pluginMetadata,
     metadataLoaded,
+    outdatedPackages,
+    outdatedLoaded,
     loading,
     error,
     fetchInstalled,
@@ -161,6 +204,8 @@ export function usePlugins() {
     scanFolders,
     installPackage,
     uninstallPackage,
-    fetchMetadata
+    fetchMetadata,
+    checkOutdated,
+    updatePackage
   };
 }

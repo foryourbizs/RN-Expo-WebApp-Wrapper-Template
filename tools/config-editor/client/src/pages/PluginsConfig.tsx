@@ -35,16 +35,18 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
   const { t, i18n } = useTranslation();
   const { data, setData, loading, error, saving, save: saveConfig, revert, hasChanges } =
     usePluginsConfig();
-  const { installedPackages, installedLoaded, pluginMetadata, metadataLoaded, fetchInstalled, fetchMetadata, installPackage } = usePlugins();
+  const { installedPackages, installedLoaded, pluginMetadata, metadataLoaded, outdatedPackages, outdatedLoaded, fetchInstalled, fetchMetadata, installPackage, checkOutdated, updatePackage } = usePlugins();
 
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [installing, setInstalling] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
 
-  // 설치된 패키지와 메타데이터 조회
+  // 설치된 패키지와 outdated 정보 조회
   useEffect(() => {
     fetchInstalled();
-  }, [fetchInstalled]);
+    checkOutdated();
+  }, [fetchInstalled, checkOutdated]);
 
   // auto 플러그인 목록이 변경되면 해당 플러그인들의 메타데이터 조회
   const autoPluginNames = useMemo(() =>
@@ -240,6 +242,8 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
               const hasConflict = conflictingNamespaces.has(plugin.namespace);
               const meta = pluginMetadata[plugin.name];
               const supportedOptions = meta?.supportedOptions;
+              const outdatedInfo = outdatedPackages[plugin.name];
+              const installedPkg = installedPackages.find(p => p.name === plugin.name);
 
               return (
                 <div key={plugin.name} className={`p-3 bg-white border rounded ${hasConflict ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
@@ -255,9 +259,26 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                         </span>
                       )}
                       {installedLoaded ? (
-                        <span className={`ml-2 text-xs ${installed ? 'text-green-600' : 'text-orange-500'}`}>
-                          {installed ? 'installed' : 'not installed'}
-                        </span>
+                        installed ? (
+                          <>
+                            <span className="ml-2 text-xs text-green-600">
+                              v{installedPkg?.version || '?'}
+                            </span>
+                            {outdatedLoaded && outdatedInfo ? (
+                              <span className="ml-1 text-xs text-orange-600 font-medium">
+                                → v{outdatedInfo.latest}
+                              </span>
+                            ) : outdatedLoaded ? (
+                              <span className="ml-1 text-xs text-slate-400">
+                                ({t('plugins.upToDate')})
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="ml-2 text-xs text-orange-500">
+                            not installed
+                          </span>
+                        )
                       ) : (
                         <span className="ml-2 text-xs text-slate-400">checking...</span>
                       )}
@@ -274,6 +295,19 @@ export default function PluginsConfigPage({ onUnsavedChange }: PluginsConfigProp
                           className="px-2 py-1 text-xs border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-50"
                         >
                           {installing === plugin.name ? '...' : t('plugins.install')}
+                        </button>
+                      )}
+                      {outdatedLoaded && outdatedInfo && (
+                        <button
+                          onClick={async () => {
+                            setUpdating(plugin.name);
+                            await updatePackage(plugin.name, outdatedInfo.latest);
+                            setUpdating(null);
+                          }}
+                          disabled={updating === plugin.name}
+                          className="px-2 py-1 text-xs text-orange-700 border border-orange-300 rounded hover:bg-orange-50 disabled:opacity-50"
+                        >
+                          {updating === plugin.name ? t('plugins.updating') : t('plugins.update')}
                         </button>
                       )}
                       <button

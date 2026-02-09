@@ -266,7 +266,11 @@
     "alreadyAdded": "이미 추가됨",
     "namespaceConflict": "네임스페이스 충돌이 있습니다. 각 플러그인은 고유한 네임스페이스를 사용해야 합니다.",
     "enableHeadlessBridge": "Headless Bridge 연동",
-    "headlessBridgeDesc": "백그라운드에서 기존 핸들러 사용"
+    "headlessBridgeDesc": "백그라운드에서 기존 핸들러 사용",
+    "update": "업데이트",
+    "updateAvailable": "업데이트 가능",
+    "updating": "업데이트 중...",
+    "upToDate": "최신"
   },
   "permissions": {
     "androidTitle": "Android 권한",

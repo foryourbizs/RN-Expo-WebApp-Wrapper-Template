@@ -266,7 +266,11 @@
     "alreadyAdded": "Already added",
     "namespaceConflict": "Namespace conflict detected. Each plugin must have a unique namespace.",
     "enableHeadlessBridge": "Enable Headless Bridge",
-    "headlessBridgeDesc": "Use existing handlers in background"
+    "headlessBridgeDesc": "Use existing handlers in background",
+    "update": "Update",
+    "updateAvailable": "Update available",
+    "updating": "Updating...",
+    "upToDate": "Up to date"
   },
   "permissions": {
     "androidTitle": "Android Permissions",
