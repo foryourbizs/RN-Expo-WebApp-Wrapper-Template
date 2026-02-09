@@ -4,7 +4,8 @@
     "theme": "Theme",
     "plugins": "Plugins",
     "build": "Build",
-    "debug": "Debug"
+    "debug": "Debug",
+    "permissions": "Permissions"
   },
   "app": {
     "appInfo": {
@@ -262,6 +263,27 @@
     "namespaceConflict": "Namespace conflict detected. Each plugin must have a unique namespace.",
     "enableHeadlessBridge": "Enable Headless Bridge",
     "headlessBridgeDesc": "Use existing handlers in background"
+  },
+  "permissions": {
+    "androidTitle": "Android Permissions",
+    "iosTitle": "iOS Permissions",
+    "pluginInjection": "Plugin Auto-injection (AndroidManifest.xml)",
+    "expoPluginInjection": "Expo Plugin Auto-injection",
+    "appJsonManual": "app.json Manual Declaration (expo.android.permissions)",
+    "currentIosPerms": "Current Permissions (app.json ios.infoPlist)",
+    "missingIosTitle": "Missing iOS Permissions",
+    "noPlugins": "No rnww-plugin packages installed",
+    "noManualPerms": "No manually declared permissions",
+    "noInfoPlist": "No iOS permissions configured",
+    "required": "required",
+    "optional": "optional",
+    "inactiveHint": "Inactive plugin — not included in build",
+    "neededBy": "Needed by",
+    "defaultValue": "Default",
+    "duplicateWithAuto": "{{perms}} — Auto-injected by Expo/plugins, safe to remove",
+    "duplicateIosWithExpo": "app.json infoPlist overlaps with Expo plugin — custom message takes priority",
+    "retry": "Retry",
+    "refresh": "Refresh"
   },
   "build": {
     "envSettings": "Environment Settings",

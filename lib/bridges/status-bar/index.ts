@@ -2,14 +2,27 @@
  * 상태바(Status Bar) 관련 핸들러
  */
 
+import { APP_CONFIG } from '@/constants/app-config';
 import { BridgeAPI, PlatformInfo } from '@/lib/plugin-system';
 
-// 저장된 상태바 상태
+// APP_CONFIG의 style 값을 RN StatusBar barStyle로 변환
+const mapStyleToBarStyle = (style: string): 'default' | 'light-content' | 'dark-content' => {
+  switch (style) {
+    case 'light': return 'light-content';
+    case 'dark': return 'dark-content';
+    default: return 'default';
+  }
+};
+
+// 저장된 상태바 상태 (APP_CONFIG 기반 초기값)
 let savedStatusBarState: {
   hidden: boolean;
   style: 'default' | 'light-content' | 'dark-content';
   color?: string;
-} | null = null;
+} | null = {
+  hidden: !APP_CONFIG.statusBar.visible,
+  style: mapStyleToBarStyle(APP_CONFIG.statusBar.style),
+};
 
 export const registerStatusBarHandlers = (bridge: BridgeAPI, _platform: PlatformInfo) => {
   const { registerHandler } = bridge;
@@ -38,9 +51,12 @@ export const registerStatusBarHandlers = (bridge: BridgeAPI, _platform: Platform
     try {
       const { StatusBar, Platform } = await import('react-native');
 
-      // 현재 상태 저장 (첫 호출 시)
+      // 현재 상태 저장 (초기값이 없는 경우 대비)
       if (!savedStatusBarState) {
-        savedStatusBarState = { hidden: false, style: 'default' };
+        savedStatusBarState = {
+          hidden: !APP_CONFIG.statusBar.visible,
+          style: mapStyleToBarStyle(APP_CONFIG.statusBar.style),
+        };
       }
 
       if (hidden !== undefined) {

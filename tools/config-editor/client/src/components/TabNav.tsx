@@ -6,7 +6,7 @@ interface TabNavProps {
   unsavedTabs: string[];
 }
 
-const TABS = ['appSettings', 'theme', 'plugins', 'build', 'debug'] as const;
+const TABS = ['appSettings', 'theme', 'plugins', 'permissions', 'build', 'debug'] as const;
 
 export default function TabNav({ activeTab, onTabChange, unsavedTabs }: TabNavProps) {
   const { t } = useTranslation();

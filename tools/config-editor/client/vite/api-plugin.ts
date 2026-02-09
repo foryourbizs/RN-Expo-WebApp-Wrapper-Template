@@ -3142,6 +3142,254 @@ MYAPP_RELEASE_KEY_PASSWORD=${finalKeyPassword}
             return;
           }
 
+          // GET /api/permissions - 권한 현황 대시보드
+          if (url === '/api/permissions' && req.method === 'GET') {
+            try {
+              // 1. plugins.json 읽기 → 활성화된 auto 플러그인 목록
+              const pluginsJsonPath = path.join(constantsDir, 'plugins.json');
+              let pluginsConfig: any = { plugins: { auto: [], manual: [] } };
+              try {
+                const raw = await fs.readFile(pluginsJsonPath, 'utf-8');
+                pluginsConfig = JSON.parse(raw);
+              } catch { /* 기본값 사용 */ }
+
+              const autoPlugins: Array<{ name: string; namespace: string }> = pluginsConfig.plugins?.auto || [];
+              const enabledNames = new Set(autoPlugins.map((p: any) => p.name));
+
+              // 2. node_modules에서 모든 rnww-plugin-* 패키지 탐색
+              const nodeModulesDir = path.join(projectRoot, 'node_modules');
+              let allPluginDirs: string[] = [];
+              try {
+                const entries = await fs.readdir(nodeModulesDir);
+                allPluginDirs = entries.filter(e => e.startsWith('rnww-plugin-'));
+              } catch { /* node_modules 없음 */ }
+
+              // 3. 각 플러그인의 AndroidManifest.xml 파싱
+              const androidFromPlugins: Array<{
+                plugin: string;
+                enabled: boolean;
+                permissions: string[];
+                features: Array<{ name: string; required: boolean }>;
+              }> = [];
+
+              for (const pluginName of allPluginDirs) {
+                const manifestPath = path.join(
+                  nodeModulesDir, pluginName,
+                  'src', 'modules', 'android', 'src', 'main', 'AndroidManifest.xml'
+                );
+                let permissions: string[] = [];
+                let features: Array<{ name: string; required: boolean }> = [];
+
+                try {
+                  const xml = await fs.readFile(manifestPath, 'utf-8');
+
+                  // uses-permission 라인에서 퍼미션 추출
+                  const permLines = xml.match(/<uses-permission[^>]*\/>/g) || [];
+                  for (const line of permLines) {
+                    const m = line.match(/android:name="([^"]+)"/);
+                    if (m) permissions.push(m[1]);
+                  }
+
+                  // uses-feature 라인에서 feature 추출
+                  const featureRegex = /<uses-feature[^>]*android:name="([^"]+)"[^>]*(?:android:required="([^"]+)")?[^>]*\/>/g;
+                  let fm;
+                  while ((fm = featureRegex.exec(xml)) !== null) {
+                    features.push({
+                      name: fm[1],
+                      required: fm[2] !== 'false',
+                    });
+                  }
+                } catch {
+                  // AndroidManifest.xml 없음 — 무시
+                }
+
+                if (permissions.length > 0 || features.length > 0) {
+                  androidFromPlugins.push({
+                    plugin: pluginName,
+                    enabled: enabledNames.has(pluginName),
+                    permissions,
+                    features,
+                  });
+                }
+              }
+
+              // 4. app.json 읽기
+              const appJsonPath = path.join(projectRoot, 'app.json');
+              let appJson: any = {};
+              try {
+                const raw = await fs.readFile(appJsonPath, 'utf-8');
+                appJson = JSON.parse(raw);
+              } catch { /* app.json 읽기 실패 */ }
+
+              const expo = appJson.expo || {};
+              const androidPermissions: string[] = expo.android?.permissions || [];
+              const iosInfoPlist: Record<string, string> = expo.ios?.infoPlist || {};
+              const expoPlugins: any[] = expo.plugins || [];
+
+              // 5. Expo config 플러그인 → 권한 매핑
+              const EXPO_PLUGIN_PERMISSIONS: Record<string, {
+                android: string[];
+                ios: Record<string, string>;
+              }> = {
+                'expo-camera': {
+                  android: ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO'],
+                  ios: {
+                    NSCameraUsageDescription: 'Allow $(PRODUCT_NAME) to access your camera',
+                    NSMicrophoneUsageDescription: 'Allow $(PRODUCT_NAME) to access your microphone',
+                  }
+                },
+                'expo-location': {
+                  android: ['android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_COARSE_LOCATION'],
+                  ios: {
+                    NSLocationWhenInUseUsageDescription: 'Allow $(PRODUCT_NAME) to access your location',
+                  }
+                },
+                'expo-media-library': {
+                  android: ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE'],
+                  ios: {
+                    NSPhotoLibraryUsageDescription: 'Allow $(PRODUCT_NAME) to access your photos',
+                    NSPhotoLibraryAddUsageDescription: 'Allow $(PRODUCT_NAME) to save photos',
+                  }
+                },
+                'expo-contacts': {
+                  android: ['android.permission.READ_CONTACTS'],
+                  ios: {
+                    NSContactsUsageDescription: 'Allow $(PRODUCT_NAME) to access your contacts',
+                  }
+                },
+                'expo-calendar': {
+                  android: ['android.permission.READ_CALENDAR', 'android.permission.WRITE_CALENDAR'],
+                  ios: {
+                    NSCalendarsUsageDescription: 'Allow $(PRODUCT_NAME) to access your calendar',
+                  }
+                },
+                'expo-sensors': {
+                  android: [],
+                  ios: {
+                    NSMotionUsageDescription: 'Allow $(PRODUCT_NAME) to access motion data',
+                  }
+                },
+                'expo-av': {
+                  android: ['android.permission.RECORD_AUDIO'],
+                  ios: {
+                    NSMicrophoneUsageDescription: 'Allow $(PRODUCT_NAME) to access your microphone',
+                  }
+                },
+                'expo-notifications': {
+                  android: ['android.permission.POST_NOTIFICATIONS'],
+                  ios: {},
+                },
+                'expo-image-picker': {
+                  android: ['android.permission.CAMERA', 'android.permission.READ_EXTERNAL_STORAGE'],
+                  ios: {
+                    NSCameraUsageDescription: 'Allow $(PRODUCT_NAME) to access your camera',
+                    NSPhotoLibraryUsageDescription: 'Allow $(PRODUCT_NAME) to access your photos',
+                  }
+                },
+              };
+
+              const androidFromExpoPlugins: Array<{ plugin: string; permissions: string[] }> = [];
+              const iosFromExpoPlugins: Array<{ plugin: string; permissions: Record<string, string> }> = [];
+
+              for (const p of expoPlugins) {
+                const pluginName = typeof p === 'string' ? p : Array.isArray(p) ? p[0] : null;
+                if (!pluginName || typeof pluginName !== 'string') continue;
+
+                const mapping = EXPO_PLUGIN_PERMISSIONS[pluginName];
+                if (!mapping) continue;
+
+                if (mapping.android.length > 0) {
+                  androidFromExpoPlugins.push({ plugin: pluginName, permissions: mapping.android });
+                }
+                if (Object.keys(mapping.ios).length > 0) {
+                  iosFromExpoPlugins.push({ plugin: pluginName, permissions: mapping.ios });
+                }
+              }
+
+              // 6. Android→iOS 권한 매핑 (누락 경고용)
+              const ANDROID_TO_IOS_MAP: Record<string, { key: string; defaultValue: string }> = {
+                'android.permission.CAMERA': {
+                  key: 'NSCameraUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to access your camera'
+                },
+                'android.permission.RECORD_AUDIO': {
+                  key: 'NSMicrophoneUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to access your microphone'
+                },
+                'android.permission.ACCESS_FINE_LOCATION': {
+                  key: 'NSLocationWhenInUseUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to access your location'
+                },
+                'android.permission.ACCESS_COARSE_LOCATION': {
+                  key: 'NSLocationWhenInUseUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to access your location'
+                },
+                'android.permission.ACCESS_BACKGROUND_LOCATION': {
+                  key: 'NSLocationAlwaysAndWhenInUseUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to always access your location'
+                },
+                'android.permission.BLUETOOTH_SCAN': {
+                  key: 'NSBluetoothAlwaysUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to use Bluetooth'
+                },
+                'android.permission.BLUETOOTH_CONNECT': {
+                  key: 'NSBluetoothAlwaysUsageDescription',
+                  defaultValue: 'Allow $(PRODUCT_NAME) to use Bluetooth'
+                },
+              };
+
+              // 활성화된 플러그인의 Android 권한에서 iOS 누락 검사
+              const allExpoIosKeys = new Set<string>();
+              for (const ep of iosFromExpoPlugins) {
+                for (const k of Object.keys(ep.permissions)) {
+                  allExpoIosKeys.add(k);
+                }
+              }
+
+              const iosMissing: Array<{
+                key: string;
+                reason: string;
+                defaultValue: string;
+                sourcePlugin: string;
+              }> = [];
+
+              for (const pluginData of androidFromPlugins) {
+                if (!pluginData.enabled) continue;
+                for (const perm of pluginData.permissions) {
+                  const iosMapping = ANDROID_TO_IOS_MAP[perm];
+                  if (!iosMapping) continue;
+                  // infoPlist에도 없고, Expo 플러그인 자동 주입에도 없으면 누락
+                  if (!iosInfoPlist[iosMapping.key] && !allExpoIosKeys.has(iosMapping.key)) {
+                    if (!iosMissing.some(m => m.key === iosMapping.key)) {
+                      iosMissing.push({
+                        key: iosMapping.key,
+                        reason: `${pluginData.plugin} (${perm.replace('android.permission.', '')})`,
+                        defaultValue: iosMapping.defaultValue,
+                        sourcePlugin: pluginData.plugin,
+                      });
+                    }
+                  }
+                }
+              }
+
+              sendJson(res, 200, {
+                android: {
+                  fromPlugins: androidFromPlugins,
+                  fromExpoPlugins: androidFromExpoPlugins,
+                  fromAppJson: androidPermissions,
+                },
+                ios: {
+                  fromInfoPlist: iosInfoPlist,
+                  fromExpoPlugins: iosFromExpoPlugins,
+                  missing: iosMissing,
+                },
+              });
+            } catch (error: any) {
+              sendJson(res, 500, { error: `Failed to scan permissions: ${error.message}` });
+            }
+            return;
+          }
+
           // Not found
           sendJson(res, 404, { error: 'Not found' });
 

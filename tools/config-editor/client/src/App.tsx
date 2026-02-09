@@ -8,6 +8,7 @@ import ThemeConfigPage from './pages/ThemeConfig';
 import PluginsConfigPage from './pages/PluginsConfig';
 import BuildConfigPage from './pages/BuildConfig';
 import DebugConfigPage from './pages/DebugConfig';
+import PermissionsConfigPage from './pages/PermissionsConfig';
 import { PreviewPanel, FullscreenModal } from './components/preview';
 import { PreviewProvider } from './contexts/PreviewContext';
 import { PreviewNavigationProvider } from './contexts/PreviewNavigationContext';
@@ -75,6 +76,9 @@ function AppContent() {
             )}
             {activeTab === 'plugins' && (
               <PluginsConfigPage onUnsavedChange={handleUnsavedChange('plugins')} />
+            )}
+            {activeTab === 'permissions' && (
+              <PermissionsConfigPage />
             )}
             {activeTab === 'build' && (
               <BuildConfigPage onBuildingChange={handleBuildingChange} />

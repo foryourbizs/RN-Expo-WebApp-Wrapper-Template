@@ -32,7 +32,7 @@
   },
   "navigationBar": {
     "visibility": "visible",
-    "buttonStyle": "light",
+    "buttonStyle": "dark",
     "backgroundColor": "#ffffff",
     "behavior": "overlay-swipe"
   },

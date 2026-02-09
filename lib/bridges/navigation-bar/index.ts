@@ -66,9 +66,13 @@ export const registerNavigationBarHandlers = (bridge: BridgeAPI, _platform: Plat
 
       if (visible !== undefined) {
         if (!visible) {
+          await NavigationBar.setPositionAsync('absolute');
           await NavigationBar.setBehaviorAsync(behavior);
+          await NavigationBar.setVisibilityAsync('hidden');
+        } else {
+          await NavigationBar.setPositionAsync('relative');
+          await NavigationBar.setVisibilityAsync('visible');
         }
-        await NavigationBar.setVisibilityAsync(visible ? 'visible' : 'hidden');
       }
 
       if (color) {
@@ -96,7 +100,14 @@ export const registerNavigationBarHandlers = (bridge: BridgeAPI, _platform: Plat
       const NavigationBar = await import('expo-navigation-bar');
 
       if (savedNavigationBarState) {
-        await NavigationBar.setVisibilityAsync(savedNavigationBarState.visible ? 'visible' : 'hidden');
+        // position 설정 후 visibility 변경
+        if (savedNavigationBarState.visible) {
+          await NavigationBar.setPositionAsync('relative');
+          await NavigationBar.setVisibilityAsync('visible');
+        } else {
+          await NavigationBar.setPositionAsync('absolute');
+          await NavigationBar.setVisibilityAsync('hidden');
+        }
         if (savedNavigationBarState.color) {
           await NavigationBar.setBackgroundColorAsync(savedNavigationBarState.color);
         }
@@ -106,6 +117,7 @@ export const registerNavigationBarHandlers = (bridge: BridgeAPI, _platform: Plat
         respond({ success: true, restored: savedNavigationBarState });
       } else {
         // 기본값으로 복원
+        await NavigationBar.setPositionAsync('relative');
         await NavigationBar.setVisibilityAsync('visible');
         respond({ success: true, restored: { visible: true } });
       }

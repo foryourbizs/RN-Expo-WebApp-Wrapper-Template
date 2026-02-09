@@ -197,6 +197,13 @@ export default function CustomSplash({ visible, onHidden }: CustomSplashProps) {
     }
   }, [visible, fadeAnim, scaleAnim, onHidden, splash.fadeOutDuration]);
 
+  // 스플래시 비활성화 시 즉시 onHidden 호출 후 렌더링 스킵
+  useEffect(() => {
+    if (!splash.enabled) {
+      onHidden?.();
+    }
+  }, [splash.enabled, onHidden]);
+
   if (!splash.enabled) {
     return null;
   }
